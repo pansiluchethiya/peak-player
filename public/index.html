@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sign in · Peak</title>
+  <meta name="description" content="Sign in to the Peak administration portal." />
+  <meta name="theme-color" content="#E7F0E3" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" href="/assets/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css" />
+  <script defer src="/login.js"></script>
+</head>
+<body class="auth-body">
+  <a class="skip-link" href="#mainContent">Skip to sign in</a>
+  <div class="auth-shell">
+    <section class="auth-story" aria-label="About Peak">
+      <div class="auth-story-top">
+        <a class="brand brand-on-dark" href="/" aria-label="Peak home">
+          <img class="brand-mark" src="/assets/peak-mark.svg" alt="" width="42" height="42" />
+          <span class="brand-word">peak</span>
+          <span class="brand-tag">admin</span>
+        </a>
+        <span class="auth-edition">Self-hosted · v1.0.0</span>
+      </div>
+
+      <div class="auth-story-copy">
+        <p class="auth-kicker"><span></span>Streaming control plane</p>
+        <h1>Everything you stream,<br /><em>at its peak.</em></h1>
+        <p class="auth-lede">One quiet dashboard for provider health, smart filtering, and the credentials that keep your sources flowing.</p>
+        <ul class="auth-features">
+          <li><span class="auth-feature-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-activity"></use></svg></span><span><strong>Live provider health</strong><small>Know which sources are answering before playback does.</small></span></li>
+          <li><span class="auth-feature-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-sliders"></use></svg></span><span><strong>Precision controls</strong><small>Quality floors, codec rules, and per-provider defaults.</small></span></li>
+          <li><span class="auth-feature-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-shield"></use></svg></span><span><strong>Local by design</strong><small>Your keys and sessions stay inside your deployment.</small></span></li>
+        </ul>
+      </div>
+
+      <div class="auth-scenery" aria-hidden="true">
+        <svg viewBox="0 0 760 240" preserveAspectRatio="none">
+          <path class="ridge-back" d="M0 238 110 126l62 60 98-112 79 91 62-44 110 117Z" />
+          <path class="ridge-front" d="M0 240 132 150l52 38 88-90 67 85 74-50 90 64 95-45 162 88Z" />
+          <circle class="auth-sun" cx="642" cy="65" r="27" />
+        </svg>
+      </div>
+      <p class="auth-copyright">Peak <span aria-hidden="true">·</span> MIT licensed <span aria-hidden="true">·</span> Built for your own infrastructure</p>
+    </section>
+
+    <main class="auth-main" id="mainContent" tabindex="-1">
+      <div class="auth-toolbar">
+        <span class="auth-toolbar-label">Admin access</span>
+        <button class="icon-btn theme-icon-btn" type="button" data-theme-toggle aria-label="Switch color theme">
+          <svg class="icon icon-sun" aria-hidden="true"><use href="/assets/icons.svg#i-sun"></use></svg>
+          <svg class="icon icon-moon" aria-hidden="true"><use href="/assets/icons.svg#i-moon"></use></svg>
+        </button>
+      </div>
+
+      <div class="auth-card-wrap">
+        <div class="login-card" id="loginCard">
+          <div class="auth-mobile-brand">
+            <img class="brand-mark" src="/assets/peak-mark.svg" alt="" width="36" height="36" />
+            <span class="brand-word">peak</span>
+          </div>
+          <p class="eyebrow">Welcome back</p>
+          <h2>Sign in to Peak</h2>
+          <p class="auth-card-sub">Manage sources, filtering, and runtime settings.</p>
+
+          <div id="lockoutBanner" class="alert danger" role="alert" hidden>
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-lock"></use></svg>
+            <div><strong>Too many attempts.</strong> Try again in <span id="lockoutCountdown">00:00</span>.</div>
+          </div>
+
+          <form id="loginForm" class="auth-form" autocomplete="on">
+            <div class="field">
+              <label for="username">Username</label>
+              <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus />
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="password-field">
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+                <button class="password-toggle" type="button" data-password-toggle="password" aria-label="Show password" aria-pressed="false">
+                  <svg class="icon icon-eye" aria-hidden="true"><use href="/assets/icons.svg#i-eye"></use></svg>
+                  <svg class="icon icon-eye-off" aria-hidden="true"><use href="/assets/icons.svg#i-eye-off"></use></svg>
+                </button>
+              </div>
+            </div>
+            <button id="loginBtn" class="btn btn-primary btn-block" type="submit">Sign in</button>
+            <div class="status" id="status" aria-live="polite"></div>
+          </form>
+
+          <div class="auth-divider"><span>Session</span></div>
+          <div class="auth-meta-row">
+            <span class="auth-expiry"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-clock"></use></svg> Expires after 12 hours or a restart</span>
+            <button id="togglePw" class="link-btn" type="button" aria-expanded="false" aria-controls="pwChange">Change password</button>
+          </div>
+
+          <div class="pw-change" id="pwChange" hidden>
+            <div class="pw-change-head">
+              <h3>Change password</h3>
+              <button class="icon-btn" type="button" data-close-password aria-label="Close password form">
+                <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-close"></use></svg>
+              </button>
+            </div>
+            <form id="pwForm" class="auth-form" autocomplete="on">
+              <input class="sr-only" type="text" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" />
+              <div class="field">
+                <label for="oldPw">Current password</label>
+                <div class="password-field">
+                  <input id="oldPw" type="password" autocomplete="current-password" required />
+                  <button class="password-toggle" type="button" data-password-toggle="oldPw" aria-label="Show current password" aria-pressed="false">
+                    <svg class="icon icon-eye" aria-hidden="true"><use href="/assets/icons.svg#i-eye"></use></svg>
+                    <svg class="icon icon-eye-off" aria-hidden="true"><use href="/assets/icons.svg#i-eye-off"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="newPw">New password</label>
+                <div class="password-field">
+                  <input id="newPw" type="password" autocomplete="new-password" minlength="8" required />
+                  <button class="password-toggle" type="button" data-password-toggle="newPw" aria-label="Show new password" aria-pressed="false">
+                    <svg class="icon icon-eye" aria-hidden="true"><use href="/assets/icons.svg#i-eye"></use></svg>
+                    <svg class="icon icon-eye-off" aria-hidden="true"><use href="/assets/icons.svg#i-eye-off"></use></svg>
+                  </button>
+                </div>
+                <p class="hint">Use at least 8 characters.</p>
+              </div>
+              <button id="pwBtn" class="btn btn-primary btn-block" type="submit">Update password</button>
+              <div class="status" id="pwStatus" aria-live="polite"></div>
+            </form>
+          </div>
+
+          <div class="auth-default-note">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-lock"></use></svg>
+            <p>First run? The default account is <strong>admin</strong> with password <strong>change-me</strong>. Change it immediately.</p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="auth-footer">
+        <span>Peak admin</span>
+        <span>Protected by local sessions</span>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

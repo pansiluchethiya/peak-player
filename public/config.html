@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Overview · Peak</title>
+  <meta name="description" content="Peak administration portal — monitor providers, tune filtering, and manage your streaming API." />
+  <meta name="theme-color" content="#E7F0E3" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" href="/assets/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/assets/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css" />
+  <script defer src="/index.js"></script>
+</head>
+<body class="app-body" data-active-panel="panel-status">
+  <a class="skip-link" href="#mainContent">Skip to content</a>
+
+  <div class="app-shell">
+    <div class="sidebar-scrim" data-close-nav aria-hidden="true"></div>
+    <aside class="sidebar" id="sidebar" aria-label="Administration navigation">
+      <div class="sidebar-brand">
+        <a class="brand" href="#panel-status" aria-label="Peak overview">
+          <img class="brand-mark" src="/assets/peak-mark.svg" alt="" width="40" height="40" />
+          <span class="brand-word">peak</span>
+          <span class="brand-tag">admin</span>
+        </a>
+        <button class="icon-btn sidebar-close" type="button" data-close-nav aria-label="Close navigation">
+          <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-close"></use></svg>
+        </button>
+      </div>
+
+      <div class="workspace-pill">
+        <span class="workspace-dot" aria-hidden="true"></span>
+        <span class="workspace-copy">
+          <strong>Self-hosted</strong>
+          <span>Streaming control plane</span>
+        </span>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <div class="nav-group">
+          <p class="nav-label">Monitor</p>
+          <button class="nav-item" type="button" data-target="panel-status">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-grid"></use></svg>
+            <span>Overview</span>
+          </button>
+        </div>
+        <div class="nav-group">
+          <p class="nav-label">Configure</p>
+          <button class="nav-item" type="button" data-target="panel-core">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-server"></use></svg>
+            <span>Providers &amp; defaults</span>
+          </button>
+          <button class="nav-item" type="button" data-target="panel-quality">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-sliders"></use></svg>
+            <span>Quality &amp; filters</span>
+          </button>
+          <button class="nav-item" type="button" data-target="panel-keys">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-key"></use></svg>
+            <span>API keys</span>
+          </button>
+          <button class="nav-item" type="button" data-target="panel-febbox">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-cloud"></use></svg>
+            <span>FebBox</span>
+          </button>
+        </div>
+        <div class="nav-group">
+          <p class="nav-label">System</p>
+          <button class="nav-item" type="button" data-target="panel-advanced">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-settings"></use></svg>
+            <span>Advanced</span>
+          </button>
+          <button class="nav-item" type="button" data-target="panel-live">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-code"></use></svg>
+            <span>Live configuration</span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="theme-control">
+          <span class="theme-control-label">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-sun"></use></svg>
+            Appearance
+          </span>
+          <div class="theme-toggle" role="group" aria-label="Color theme">
+            <button type="button" class="theme-option" data-theme-value="light" aria-label="Use light theme" aria-pressed="false">
+              <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-sun"></use></svg>
+            </button>
+            <button type="button" class="theme-option" data-theme-value="dark" aria-label="Use dark theme" aria-pressed="false">
+              <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-moon"></use></svg>
+            </button>
+          </div>
+        </div>
+        <button class="sidebar-action" id="restartBtn" type="button">
+          <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-restart"></use></svg>
+          <span>Restart server</span>
+        </button>
+        <button class="sidebar-action" id="logoutBtn" type="button">
+          <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-logout"></use></svg>
+          <span>Sign out</span>
+        </button>
+        <p class="sidebar-meta"><span>Peak</span><span>v1.0.0</span></p>
+      </div>
+    </aside>
+
+    <div class="app-frame">
+      <header class="topbar">
+        <button class="icon-btn burger" id="navToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+          <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-menu"></use></svg>
+        </button>
+        <div class="topbar-heading">
+          <span class="topbar-eyebrow">Peak admin</span>
+          <strong id="topbarTitle">Overview</strong>
+        </div>
+        <div class="topbar-actions">
+          <span class="health-chip is-neutral" id="topbarHealth" role="status" aria-live="polite">
+            <span class="health-dot" aria-hidden="true"></span>
+            <span id="topbarHealthText">Checking API</span>
+          </span>
+          <button class="icon-btn theme-icon-btn" type="button" data-theme-toggle aria-label="Switch color theme">
+            <svg class="icon icon-sun" aria-hidden="true"><use href="/assets/icons.svg#i-sun"></use></svg>
+            <svg class="icon icon-moon" aria-hidden="true"><use href="/assets/icons.svg#i-moon"></use></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="main-content" id="mainContent" tabindex="-1">
+        <div class="banner-stack">
+          <div id="bootWarn" class="alert warning" style="display:none;" role="status">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-alert"></use></svg>
+            <div><strong>FebBox cookies are missing.</strong> Showbox / PStream streams may be unavailable. <button type="button" class="alert-link" data-nav-target="panel-febbox">Add a cookie</button></div>
+          </div>
+          <div id="cacheDisabledBanner" class="alert info" style="display:none;" role="status">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-database"></use></svg>
+            <div><strong>Cache is disabled.</strong> Expect slower responses and higher source load.</div>
+          </div>
+          <div id="tmdbMissingBanner" class="alert warning" style="display:none;" role="status">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-key"></use></svg>
+            <div><strong>No TMDB API key configured.</strong> Metadata-dependent providers may degrade. <button type="button" class="alert-link" data-nav-target="panel-keys">Add a key</button></div>
+          </div>
+        </div>
+
+        <form id="cfgForm" novalidate class="panels">
+          <section id="panel-status" class="panel active" aria-labelledby="title-status">
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">Monitor</p>
+                <h1 id="title-status">Overview</h1>
+                <p class="page-subtitle">A live read on your API, providers, and launch readiness.</p>
+              </div>
+              <div class="page-head-actions">
+                <span class="status-pill is-neutral" id="dashboardHealthChip" role="status" aria-live="polite">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  <span id="dashboardHealthText">Checking</span>
+                </span>
+                <button class="btn btn-secondary" id="refreshStatusBtn" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-refresh"></use></svg>
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div class="kpi-grid" aria-label="Key metrics">
+              <article class="kpi-card kpi-mint">
+                <div class="kpi-top">
+                  <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-clock"></use></svg></span>
+                  <span class="kpi-label">Uptime</span>
+                </div>
+                <p class="kpi-value" id="kpiUptime">—</p>
+                <p class="kpi-note" id="kpiUptimeNote">Since last restart</p>
+              </article>
+              <article class="kpi-card kpi-lemon">
+                <div class="kpi-top">
+                  <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-activity"></use></svg></span>
+                  <span class="kpi-label">Requests</span>
+                </div>
+                <p class="kpi-value" id="kpiRequests">—</p>
+                <p class="kpi-note" id="kpiRequestsNote">Total handled</p>
+              </article>
+              <article class="kpi-card kpi-lavender">
+                <div class="kpi-top">
+                  <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-play"></use></svg></span>
+                  <span class="kpi-label">Streams returned</span>
+                </div>
+                <p class="kpi-value" id="kpiStreams">—</p>
+                <p class="kpi-note" id="kpiStreamsNote">Across all requests</p>
+              </article>
+              <article class="kpi-card kpi-sky">
+                <div class="kpi-top">
+                  <span class="kpi-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-database"></use></svg></span>
+                  <span class="kpi-label">Memory</span>
+                </div>
+                <p class="kpi-value" id="kpiMemory">—</p>
+                <p class="kpi-note" id="kpiMemoryNote">Node process RSS</p>
+              </article>
+            </div>
+
+            <div class="dashboard-grid">
+              <div class="dashboard-primary">
+                <section class="card provider-card" aria-labelledby="provider-health-title">
+                  <div class="card-head">
+                    <div>
+                      <p class="card-kicker">Sources</p>
+                      <h2 id="provider-health-title">Provider health</h2>
+                      <p class="card-subtitle">Enablement, credentials, and live functional checks.</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="runProviderChecksBtn" type="button">
+                      <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-play"></use></svg>
+                      Run checks
+                    </button>
+                  </div>
+
+                  <div class="provider-check-bar">
+                    <label for="providerCheckTmdbId">Check title <span class="mono">TMDB ID</span></label>
+                    <div class="inline-field">
+                      <input type="text" inputmode="numeric" id="providerCheckTmdbId" placeholder="278" />
+                      <button class="btn btn-secondary btn-sm" id="saveProviderCheckTmdbBtn" type="button">Save</button>
+                    </div>
+                    <span class="provider-check-hint">Default <span class="mono">278</span> · The Shawshank Redemption</span>
+                  </div>
+
+                  <div id="statusProvidersEnhanced" class="provider-table" aria-live="polite">
+                    <div class="provider-loading">Loading providers…</div>
+                  </div>
+                  <p id="providerCheckSummary" class="check-summary" aria-live="polite"></p>
+                </section>
+
+                <section class="card endpoints-card" aria-labelledby="endpoints-title">
+                  <div class="card-head">
+                    <div>
+                      <p class="card-kicker">API surface</p>
+                      <h2 id="endpoints-title">Endpoints</h2>
+                      <p class="card-subtitle">Copy a route to test it from your terminal.</p>
+                    </div>
+                  </div>
+                  <div id="statusEndpoints" class="endpoint-list" aria-live="polite">
+                    <div class="provider-loading">Loading endpoints…</div>
+                  </div>
+                </section>
+              </div>
+
+              <aside class="dashboard-rail" aria-label="Readiness and quick actions">
+                <section class="card readiness-card" aria-labelledby="readiness-title">
+                  <div class="card-head compact">
+                    <div>
+                      <p class="card-kicker">Launch check</p>
+                      <h2 id="readiness-title">Readiness</h2>
+                    </div>
+                    <span class="readiness-score" id="readinessScore">—</span>
+                  </div>
+                  <div class="readiness-list" id="readinessList"></div>
+                  <p class="readiness-footnote" id="readinessFootnote">Checking your configuration…</p>
+                </section>
+
+                <section class="card quick-card" aria-labelledby="quick-title">
+                  <div class="card-head compact">
+                    <div>
+                      <p class="card-kicker">Shortcuts</p>
+                      <h2 id="quick-title">Quick actions</h2>
+                    </div>
+                  </div>
+                  <div class="quick-actions">
+                    <button class="quick-action" id="dashboardRefreshBtn" type="button">
+                      <span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-refresh"></use></svg></span>
+                      <span><strong>Refresh status</strong><small>Pull the latest metrics</small></span>
+                      <svg class="icon quick-arrow" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"></use></svg>
+                    </button>
+                    <button class="quick-action" id="dashboardRunChecksBtn" type="button">
+                      <span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-play"></use></svg></span>
+                      <span><strong>Run provider checks</strong><small>Test all enabled sources</small></span>
+                      <svg class="icon quick-arrow" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"></use></svg>
+                    </button>
+                    <button class="quick-action" data-nav-target="panel-live" type="button">
+                      <span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-code"></use></svg></span>
+                      <span><strong>Inspect live config</strong><small>Merged and override JSON</small></span>
+                      <svg class="icon quick-arrow" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"></use></svg>
+                    </button>
+                    <button class="quick-action" id="dashboardRestartBtn" type="button">
+                      <span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-restart"></use></svg></span>
+                      <span><strong>Restart server</strong><small>Apply a clean process start</small></span>
+                      <svg class="icon quick-arrow" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"></use></svg>
+                    </button>
+                  </div>
+                </section>
+
+                <section class="card activity-card" aria-labelledby="activity-title">
+                  <div class="card-head compact">
+                    <div>
+                      <p class="card-kicker">Runtime</p>
+                      <h2 id="activity-title">Activity</h2>
+                    </div>
+                  </div>
+                  <dl class="activity-list">
+                    <div><dt>Last request</dt><dd id="activityLastRequest">—</dd></div>
+                    <div><dt>Stream requests</dt><dd id="activityStreamRequests">—</dd></div>
+                    <div><dt>Provider calls</dt><dd id="activityProviderCalls">—</dd></div>
+                    <div><dt>TMDB ↔ IMDb</dt><dd id="activityLookups">—</dd></div>
+                    <div><dt>Node runtime</dt><dd id="activityNode">—</dd></div>
+                  </dl>
+                  <p class="activity-refresh">Last refreshed <span id="dashboardLastRefresh">—</span></p>
+                </section>
+              </aside>
+            </div>
+
+            <pre id="statusMetrics" class="json-viewer sr-only" aria-hidden="true">loading...</pre>
+          </section>
+
+          <section id="panel-core" class="panel" aria-labelledby="title-core" hidden>
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">Configure</p>
+                <h1 id="title-core">Providers &amp; defaults</h1>
+                <p class="page-subtitle">Choose where Peak listens and which sources participate by default.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <section class="card" aria-labelledby="network-title">
+                <div class="card-head compact">
+                  <div>
+                    <p class="card-kicker">Network</p>
+                    <h2 id="network-title">Server defaults</h2>
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="portInput">API port</label>
+                    <input id="portInput" type="text" name="port" inputmode="numeric" placeholder="8787" autocomplete="off" />
+                    <p class="hint">Changing the port requires a restart. The default is 8787.</p>
+                  </div>
+                  <div class="field">
+                    <label for="regionSelect">Default region</label>
+                    <select id="regionSelect" name="defaultRegion">
+                      <option value="">Auto / none</option>
+                      <option value="USA7">US East</option>
+                      <option value="USA6">US West</option>
+                      <option value="USA5">US Middle</option>
+                      <option value="UK3">United Kingdom</option>
+                      <option value="CA1">Canada</option>
+                      <option value="FR1">France</option>
+                      <option value="DE2">Germany</option>
+                      <option value="HK1">Hong Kong</option>
+                      <option value="IN1">India</option>
+                      <option value="AU1">Australia</option>
+                      <option value="SZ">China</option>
+                    </select>
+                    <p class="hint">Auto is recommended unless a source needs a specific region.</p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="card provider-settings-card" aria-labelledby="provider-settings-title">
+                <div class="card-head">
+                  <div>
+                    <p class="card-kicker">Aggregation</p>
+                    <h2 id="provider-settings-title">Provider roster</h2>
+                    <p class="card-subtitle">Toggle a source on or off, and star the sources that should answer by default.</p>
+                  </div>
+                  <div class="provider-counts" aria-live="polite">
+                    <span><strong id="providerEnabledCount">—</strong> enabled</span>
+                    <span><strong id="providerDefaultCount">—</strong> default</span>
+                  </div>
+                </div>
+                <div id="providerMatrix" class="provider-matrix" aria-live="polite">
+                  <div class="provider-loading">Loading providers…</div>
+                </div>
+                <input type="hidden" name="defaultProviders" />
+                <p class="hint provider-hint">Default selections apply immediately when toggled. If no defaults are starred, every enabled provider is queried.</p>
+              </section>
+            </div>
+          </section>
+
+          <section id="panel-quality" class="panel" aria-labelledby="title-quality" hidden>
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">Configure</p>
+                <h1 id="title-quality">Quality &amp; filters</h1>
+                <p class="page-subtitle">Set the floor for stream quality and keep unwanted codecs out of results.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <section class="card" aria-labelledby="quality-title">
+                <div class="card-head compact">
+                  <div>
+                    <p class="card-kicker">Resolution</p>
+                    <h2 id="quality-title">Minimum quality</h2>
+                    <p class="card-subtitle">Presets serialize to a simple value. Custom mode accepts raw JSON.</p>
+                  </div>
+                </div>
+                <div class="preset-grid" id="qualityPresets">
+                  <label class="preset-card"><input type="radio" name="qualityPreset" value="all" /><span class="preset-strong">All</span><span class="preset-meta">No floor</span></label>
+                  <label class="preset-card"><input type="radio" name="qualityPreset" value="480p" /><span class="preset-strong">480p+</span><span class="preset-meta">SD</span></label>
+                  <label class="preset-card"><input type="radio" name="qualityPreset" value="720p" /><span class="preset-strong">720p+</span><span class="preset-meta">HD</span></label>
+                  <label class="preset-card"><input type="radio" name="qualityPreset" value="1080p" /><span class="preset-strong">1080p+</span><span class="preset-meta">Full HD</span></label>
+                  <label class="preset-card"><input type="radio" name="qualityPreset" value="1440p" /><span class="preset-strong">1440p+</span><span class="preset-meta">QHD</span></label>
+                  <label class="preset-card"><input type="radio" name="qualityPreset" value="2160p" /><span class="preset-strong">4K+</span><span class="preset-meta">UHD</span></label>
+                  <label class="preset-card preset-custom"><input type="radio" name="qualityPreset" value="custom" /><span class="preset-strong">Custom</span><span class="preset-meta">JSON</span></label>
+                </div>
+                <div class="editor-reveal" data-editor="quality">
+                  <label class="field-label" for="minQualitiesRaw">Minimum quality JSON</label>
+                  <textarea id="minQualitiesRaw" name="minQualitiesRaw" class="json-editor mini quality-json" rows="5" spellcheck="false" placeholder='{"default":"900p"}' disabled></textarea>
+                  <p class="hint">Example: <code>{"default":"900p","4khdhub":"720p"}</code></p>
+                </div>
+              </section>
+
+              <section class="card" aria-labelledby="codec-title">
+                <div class="card-head compact">
+                  <div>
+                    <p class="card-kicker">Codecs</p>
+                    <h2 id="codec-title">Codec exclusions</h2>
+                    <p class="card-subtitle">Remove formats that do not play well with your devices.</p>
+                  </div>
+                </div>
+                <div class="preset-grid preset-grid-codec" id="codecPresets">
+                  <label class="preset-card"><input type="radio" name="codecPreset" value="none" /><span class="preset-strong">None</span><span class="preset-meta">Keep everything</span></label>
+                  <label class="preset-card"><input type="radio" name="codecPreset" value="all" /><span class="preset-strong">All</span><span class="preset-meta">DV + HDR</span></label>
+                  <label class="preset-card"><input type="radio" name="codecPreset" value="dv" /><span class="preset-strong">Dolby Vision</span><span class="preset-meta">Exclude DV</span></label>
+                  <label class="preset-card"><input type="radio" name="codecPreset" value="hdr" /><span class="preset-strong">HDR</span><span class="preset-meta">HDR10 / HDR10+</span></label>
+                  <label class="preset-card preset-custom"><input type="radio" name="codecPreset" value="advanced" /><span class="preset-strong">Advanced</span><span class="preset-meta">JSON</span></label>
+                </div>
+                <div class="editor-reveal" data-editor="codec">
+                  <label class="field-label" for="excludeCodecsRaw">Codec exclusion JSON</label>
+                  <textarea id="excludeCodecsRaw" name="excludeCodecsRaw" class="json-editor mini json-adv" rows="5" spellcheck="false" placeholder='{"excludeDV":true,"excludeHDR":false}' disabled></textarea>
+                  <p class="hint">Example: <code>{"excludeDV":true,"excludeHDR":false}</code></p>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section id="panel-keys" class="panel" aria-labelledby="title-keys" hidden>
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">Configure</p>
+                <h1 id="title-keys">API keys</h1>
+                <p class="page-subtitle">Rotate multiple TMDB credentials to spread usage and reduce rate limits.</p>
+              </div>
+            </div>
+
+            <section class="card secret-card" aria-labelledby="tmdb-keys-title">
+              <div class="card-head">
+                <div>
+                  <p class="card-kicker">Metadata</p>
+                  <h2 id="tmdb-keys-title">TMDB credentials</h2>
+                  <p class="card-subtitle">Keys rotate randomly per request. Values are masked until revealed.</p>
+                </div>
+                <span class="count-chip" id="tmdbKeyCount">0 keys</span>
+              </div>
+              <div class="secret-add-row">
+                <div class="field grow">
+                  <label for="tmdbKeyInput">Add a key</label>
+                  <input id="tmdbKeyInput" type="password" placeholder="Enter TMDB API key" autocomplete="off" spellcheck="false" />
+                </div>
+                <button id="addTmdbKeyBtn" type="button" class="btn btn-primary">Add key</button>
+              </div>
+              <div id="tmdbKeyList" class="secret-list" aria-live="polite"></div>
+              <input type="hidden" name="tmdbApiKeysHidden" />
+              <div class="note-callout">
+                <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-shield"></use></svg>
+                <p>Rotate keys periodically and keep them out of screenshots and shared logs. A change takes effect after saving overrides.</p>
+              </div>
+            </section>
+          </section>
+
+          <section id="panel-febbox" class="panel" aria-labelledby="title-febbox" hidden>
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">Configure</p>
+                <h1 id="title-febbox">FebBox</h1>
+                <p class="page-subtitle">Supply cloud-storage sessions for Showbox and PStream sources.</p>
+              </div>
+              <div class="page-head-actions">
+                <a class="btn btn-secondary" href="https://febbox.com" target="_blank" rel="noopener noreferrer">
+                  Open FebBox
+                  <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-external"></use></svg>
+                </a>
+              </div>
+            </div>
+
+            <div class="settings-grid settings-grid-febbox">
+              <section class="card secret-card" aria-labelledby="febbox-cookies-title">
+                <div class="card-head">
+                  <div>
+                    <p class="card-kicker">Sessions</p>
+                    <h2 id="febbox-cookies-title">FebBox cookies</h2>
+                    <p class="card-subtitle">Each account provides 100 GB/month of fast streaming before speeds are reduced.</p>
+                  </div>
+                  <span class="count-chip" id="febboxCookieCount">0 cookies</span>
+                </div>
+                <div class="secret-add-row">
+                  <div class="field grow">
+                    <label for="febboxCookieInput">Add a <span class="mono">ui</span> token</label>
+                    <input id="febboxCookieInput" type="password" placeholder="Paste the value without ui=" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <button id="addFebboxCookieBtn" type="button" class="btn btn-primary">Add cookie</button>
+                </div>
+                <div id="febboxCookieList" class="secret-list" aria-live="polite"></div>
+                <input type="hidden" name="febboxCookiesHidden" />
+                <div class="note-callout warning-note">
+                  <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-alert"></use></svg>
+                  <p>Use a dedicated account. Sessions are stored in the local config and can expire without notice.</p>
+                </div>
+              </section>
+
+              <section class="card guide-card" aria-labelledby="guide-title">
+                <div class="card-head compact">
+                  <div>
+                    <p class="card-kicker">How-to</p>
+                    <h2 id="guide-title">Find your cookie</h2>
+                    <p class="card-subtitle">Six steps in a desktop browser.</p>
+                  </div>
+                </div>
+                <div class="guide-accordion">
+                  <details open>
+                    <summary><span class="step-number">1</span><span>Open FebBox</span><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-chevron"></use></svg></summary>
+                    <p>Go to <a href="https://febbox.com" target="_blank" rel="noopener noreferrer">febbox.com</a> in your browser.</p>
+                  </details>
+                  <details>
+                    <summary><span class="step-number">2</span><span>Sign in with Google</span><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-chevron"></use></svg></summary>
+                    <p>For safety, use a fresh account that you do not use for anything else.</p>
+                  </details>
+                  <details>
+                    <summary><span class="step-number">3</span><span>Open Developer Tools</span><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-chevron"></use></svg></summary>
+                    <p>Press <kbd>F12</kbd>, or right-click the page and choose <em>Inspect</em>.</p>
+                  </details>
+                  <details>
+                    <summary><span class="step-number">4</span><span>Navigate to cookies</span><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-chevron"></use></svg></summary>
+                    <p>Open the <em>Application</em> tab, expand <em>Storage</em>, and select <em>Cookies</em>.</p>
+                  </details>
+                  <details>
+                    <summary><span class="step-number">5</span><span>Find the <span class="mono">ui</span> cookie</span><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-chevron"></use></svg></summary>
+                    <p>Look for a cookie named exactly <code>ui</code>.</p>
+                  </details>
+                  <details>
+                    <summary><span class="step-number">6</span><span>Copy and add</span><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-chevron"></use></svg></summary>
+                    <p>Copy only its value, paste it above, and choose <em>Add cookie</em>. Save overrides when you are done.</p>
+                  </details>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section id="panel-advanced" class="panel" aria-labelledby="title-advanced" hidden>
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">System</p>
+                <h1 id="title-advanced">Advanced</h1>
+                <p class="page-subtitle">Performance, validation, and proxy controls for unusual deployments.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <section class="card" aria-labelledby="flags-title">
+                <div class="card-head compact">
+                  <div>
+                    <p class="card-kicker">Runtime flags</p>
+                    <h2 id="flags-title">Feature switches</h2>
+                    <p class="card-subtitle">These apply immediately after saving and can affect reliability.</p>
+                  </div>
+                </div>
+                <div class="adv-flag-grid" id="advFlags" aria-label="Core feature flags">
+                  <label class="switch-row">
+                    <span class="switch-copy"><strong>Disable cache</strong><small>Bypass response caching. Slower, but always fresh.</small></span>
+                    <input type="checkbox" name="adv_disableCache" value="1" />
+                    <span class="switch-ui" aria-hidden="true"></span>
+                  </label>
+                  <label class="switch-row">
+                    <span class="switch-copy"><strong>Disable URL validation</strong><small>Skip upstream link checks before returning streams.</small></span>
+                    <input type="checkbox" name="adv_disableUrlValidation" value="1" />
+                    <span class="switch-ui" aria-hidden="true"></span>
+                  </label>
+                  <label class="switch-row">
+                    <span class="switch-copy"><strong>Disable 4KHDHub validation</strong><small>Skip only the 4KHDHub URL probe.</small></span>
+                    <input type="checkbox" name="adv_disable4khdhubValidation" value="1" />
+                    <span class="switch-ui" aria-hidden="true"></span>
+                  </label>
+                  <label class="switch-row">
+                    <span class="switch-copy"><strong>Enable stream proxy</strong><small>Route playable streams through the bundled local proxy.</small></span>
+                    <input type="checkbox" name="adv_enableProxy" value="1" />
+                    <span class="switch-ui" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </section>
+
+              <section class="card" aria-labelledby="paths-title">
+                <div class="card-head compact">
+                  <div>
+                    <p class="card-kicker">Storage</p>
+                    <h2 id="paths-title">Cache path</h2>
+                    <p class="card-subtitle">Optional. Leave blank to use the platform temp directory.</p>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="showboxCacheDir">Showbox cache directory</label>
+                  <input id="showboxCacheDir" type="text" name="adv_showboxCacheDir" placeholder="/data/showbox-cache" autocomplete="off" spellcheck="false" />
+                  <p class="hint">The directory must be writable by the Peak process.</p>
+                </div>
+                <div class="note-callout warning-note">
+                  <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-alert"></use></svg>
+                  <p>Disabling validation improves speed but can surface dead links. Enable the proxy only when your deployment needs it.</p>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section id="panel-live" class="panel" aria-labelledby="title-live" hidden>
+            <div class="page-head">
+              <div>
+                <p class="eyebrow">System</p>
+                <h1 id="title-live">Live configuration</h1>
+                <p class="page-subtitle">Inspect the active merged config or only the overrides written by this portal.</p>
+              </div>
+              <div class="page-head-actions">
+                <button class="btn btn-secondary" id="copyLiveBtn" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-copy"></use></svg>
+                  Copy JSON
+                </button>
+                <button class="btn btn-secondary" id="downloadLiveBtn" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-download"></use></svg>
+                  Download
+                </button>
+              </div>
+            </div>
+
+            <section class="card live-card" aria-labelledby="live-json-title">
+              <div class="live-head">
+                <h2 id="live-json-title" class="sr-only">Configuration JSON</h2>
+                <div class="segmented" role="tablist" aria-label="Configuration view">
+                  <button class="segment active" type="button" role="tab" aria-selected="true" aria-controls="liveMerged" id="liveMergedTab" data-live-tab="merged">Merged</button>
+                  <button class="segment" type="button" role="tab" aria-selected="false" aria-controls="liveOverride" id="liveOverrideTab" data-live-tab="override">Overrides</button>
+                </div>
+                <span class="live-status">Read-only</span>
+              </div>
+              <div class="live-panel active" id="liveMerged" role="tabpanel" aria-labelledby="liveMergedTab" data-live-panel="merged">
+                <pre id="currentCfg" class="json-viewer" tabindex="0">loading...</pre>
+              </div>
+              <div class="live-panel" id="liveOverride" role="tabpanel" aria-labelledby="liveOverrideTab" data-live-panel="override" hidden>
+                <pre id="overrideCfg" class="json-viewer" tabindex="0">(none)</pre>
+              </div>
+              <div class="note-callout warning-note">
+                <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-shield"></use></svg>
+                <p>This view can contain live credentials. Do not share screenshots of the merged config without redacting keys and cookies.</p>
+              </div>
+            </section>
+          </section>
+        </form>
+      </main>
+
+      <div class="actions-bar" id="actionsBar">
+        <div class="actions-message">
+          <span id="status" class="status" role="status" aria-live="polite"></span>
+          <span id="validationSummary" class="validation-summary" role="alert"></span>
+        </div>
+        <div class="actions-buttons">
+          <button id="clearBtn" type="button" class="btn btn-danger-ghost" aria-label="Clear all overrides" title="Clear all overrides">Clear all</button>
+          <button id="reloadBtn" type="button" class="btn btn-secondary">Reload</button>
+          <button id="saveBtn" type="button" class="btn btn-primary" disabled>Save overrides</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmReset" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-action="cancel"></div>
+    <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="confirmResetTitle" aria-describedby="confirmResetDesc" tabindex="-1">
+      <div class="modal-icon danger"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-alert"></use></svg></div>
+      <h3 id="confirmResetTitle">Reset all settings?</h3>
+      <p class="modal-text" id="confirmResetDesc">This removes every override, deletes all TMDB keys and FebBox cookies, and restores provider and feature flags to their defaults. It cannot be undone.</p>
+      <ul class="modal-list">
+        <li>Clear TMDB keys and FebBox cookies</li>
+        <li>Reset provider enable and default selections</li>
+        <li>Reapply default quality and validation settings</li>
+      </ul>
+      <label class="modal-opt"><input type="checkbox" id="confirmResetDontAsk" /> Don't ask again on this device</label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" data-action="confirm">Reset everything</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmRestart" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-action="cancel"></div>
+    <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="confirmRestartTitle" aria-describedby="confirmRestartDesc" tabindex="-1">
+      <div class="modal-icon warning"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-restart"></use></svg></div>
+      <h3 id="confirmRestartTitle">Restart the server?</h3>
+      <p class="modal-text" id="confirmRestartDesc">Peak will exit and come back up under its process supervisor. In-flight requests will be interrupted.</p>
+      <ul class="modal-list">
+        <li>Interrupts any in-flight API calls</li>
+        <li>The process exits and starts again</li>
+        <li>This page reloads when the API returns</li>
+      </ul>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" data-action="confirm">Restart now</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastRegion" class="toast-region" role="status" aria-live="polite" aria-atomic="false"></div>
+</body>
+</html>

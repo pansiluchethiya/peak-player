@@ -1,0 +1,7 @@
+/node_modules
+restart.trigger
+.vscode/
+.env
+utils/user-config.json
+utils/auth-users.json
+/tmp_context
