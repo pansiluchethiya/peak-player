@@ -1,5 +1,97 @@
 # Plan: Progressive Streaming API (SSE) + IPTV Live TV for Peak
 
+## Status and next work (2026-10-25)
+
+> **Committed:** `83fb394` — `feat: add custom player, IPTV, and embed pipeline`.
+> **Working tree:** clean.
+> **Core correction:** the committed code already emits `source` events per provider as each scrape resolves. The `Promise.all` at `utils/playerService.js:438` is a completion barrier for caching and the `done` event; it is **not** a source-emission barrier. The remaining playback problem is source validation/ranking and slow failover, not SSE buffering.
+
+### Implementation status
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| SSE endpoint | Done | `GET /api/v1/stream/events/:type/:id` in `apiServer.js`; flushes headers and handles client disconnect. |
+| Concurrent provider scraping | Done | `scrapePromises` in `utils/playerService.js`. |
+| Progressive source emission | Done | `source`, `subtitle`, and `diagnostic` are emitted inside each provider promise (`utils/playerService.js:395-427`). |
+| First-source latency | Partial | The first provider to resolve wins, but it may be an unplayable MP4/MKV. |
+| Source validation | Missing | No HLS master/segment probe and no MP4 `Range` probe. |
+| Source ranking | Missing | `sortSourcesHlsFirst` is defined at `utils/playerService.js:47` but unused. `preferredSourceIndex` is imported by `player/src/components/Player.tsx` but never called. |
+| MKV/HEVC labeling | Bug | `playerSource` labels every non-HLS source `codec: 'mp4'`; MKV/HEVC files are mislabeled. |
+| Fast failover | Missing | `Player.tsx:643` still waits 2000 ms per failed source. |
+| HLS 1500 ms fallback | Missing | Not implemented. |
+| Event cache | Done, but hardcoded | 1 hour TTL and `expiresIn: 3600`; cache replay emits MP4 first, then HLS. |
+| IPTV storage/parser/sync | Done | `utils/db.js`, `utils/iptvStore.js`, `utils/iptvParser.js`, `utils/iptvSync.js`, `utils/iptvId.js`. |
+| IPTV admin/public APIs | Done | See `apiServer.js`. |
+| Live TV player route | Done | `player/src/app/live/[id]/page.tsx`; `utils/embed.js` supports `live_tv`. |
+| Player EventSource | Done | `player/src/lib/api.ts` and `player/src/components/Player.tsx`. |
+| Deployment config | Partial | `player/src/app/api/[...path]/route.ts` still defaults `API_URL` to `http://localhost:3000`; compose still sets `PUBLIC_API_URL=http://localhost:8787` and does not set `PLAYER_PUBLIC_URL`. |
+| Tests | Partial | Only `player/tests/quality.test.ts` and `time.test.ts`; no SSE, validation, ranking, or failover tests. |
+
+### Current evidence (2026-10-25)
+
+- TMDB 550: 13 sources from 5 providers, 13 diagnostics, 0 subtitles, 5.1 s to `done`; 3 providers timed out at 4 s.
+- Probes: Dahmer 403 Cloudflare, Vidlink 429, StreamFlix 500; VaPlayer/Vixsrc HLS 200.
+- Every probed MP4/MKV failed; every probed HLS worked. The first emitted source was a 2160p HEVC/HDR MKV mislabeled MP4.
+- The 5.1 s figure is `done` latency, not first-source latency. First-source timing was not recorded.
+
+### Corrections to the original plan
+
+- The player lives at `player/`, not `stream-backend/player`.
+- "First source plays immediately" is true only in the sense that the first provider response is emitted immediately; it is not guaranteed to be playable. Validation and ranking must be added.
+- The original plan did not make validation, ranking, or fast failover explicit. They are now P0 requirements.
+- The original validation step should measure first-source and first-playable separately; `done` latency is not time-to-first-frame.
+- `.gitignore` now excludes `utils/peak.db-shm`, `utils/peak.db-wal`, and `player/tsconfig.tsbuildinfo`.
+
+### Next work (ordered)
+
+**P0 — make the first emitted source playable**
+
+- [ ] Add a source-validation module (new `utils/sourceValidator.js`) with:
+  - HLS: fetch master, resolve variants, probe first segment.
+  - MP4: `Range: bytes=0-1023`; accept 200/206; reject HTML, Cloudflare challenges, 401/403/404/429/5xx.
+  - Return `{ ok, reason, contentType, status }`; cache results briefly.
+- [ ] Add `utils/sourceRanking.js` (or implement in `playerService.js`):
+  - HLS/adaptive first; H.264/AAC before HEVC; 1080p before 4K; provider health as tiebreaker.
+  - Detect `.mkv`/HEVC and never label them `mp4`.
+  - Use `sortSourcesHlsFirst` or remove it.
+- [ ] Emit only validated sources; keep diagnostics for rejected ones.
+- [ ] Update `Player.tsx`:
+  - Use `preferredSourceIndex` or the new ranking.
+  - Reduce failover delay from 2000 ms to 300–500 ms.
+  - Add the 1500 ms HLS fallback.
+- [ ] Cache validated/ranked results; use actual URL expiry instead of a blind 3600 s.
+- [ ] Fix deployment config:
+  - `player/src/app/api/[...path]/route.ts` default `API_URL` to `http://localhost:8787`.
+  - Set `PLAYER_PUBLIC_URL` in compose; document remote `PUBLIC_API_URL`.
+- [ ] Tests: progressive ordering, validation, ranking, failover, cache replay.
+
+**P1 — UI/UX**
+
+- [ ] Design tokens; replace Netflix red with Peak green; one display + one UI typeface.
+- [ ] Add Radix/shadcn primitives, `lucide-react`, and Vidstack (or Media Chrome).
+- [ ] Add resume/progress, episode selector, source picker, quality/audio menus.
+- [ ] Split `Player.tsx` into hooks; target <300 lines.
+- [ ] Accessibility: focus trap, `aria-modal`, keyboard, reduced motion.
+- [ ] Playwright screenshots at 320/768/1440/fullscreen.
+
+**P2 — Peak embed platform**
+
+- [ ] Separate player origin.
+- [ ] Partner session API with short-lived signed token.
+- [ ] `frame-ancestors` allowlist; deny unknown origins.
+- [ ] JS SDK + `postMessage`; no upstream URLs.
+- [ ] Per-partner analytics and rate limits.
+- [ ] No third-party embed proxying; optional direct iframe fallback only, off by default.
+
+### Acceptance gates
+
+- Fixture suite: first source event <100 ms after the first provider; first playable <300 ms; no unvalidated source emitted.
+- Live 20-title matrix: >95% first-play success; p75 TTFF <3 s; record p95 and failures.
+- No 2000 ms failover delay; seeking works through the proxy; MKV is never labeled MP4.
+- UI and embed gates: see `/tmp/opencode/peak-player-agent-handoff.md` sections 6 and Phase 3/4.
+
+---
+
 ## Goal
 
 Two connected pieces of work in peak-backend:
