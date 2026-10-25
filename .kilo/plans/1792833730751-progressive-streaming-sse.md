@@ -59,10 +59,10 @@ Live scrape (cacheHit false, TMDB 550):
 
 Practical order:
 
-1. **P0 fixes (days):** codec labels, failover counter/delay, cache order, public URLs.
-2. **Source quality (1–2 weeks):** validation, ranking, playback-session API, proxy hardening.
-3. **UI (2–4 weeks):** tokens, Radix/Vidstack, resume/episode/source picker, accessibility.
-4. **Peak embed platform (3–6 weeks):** separate origin, signed partner tokens, `frame-ancestors`, SDK/postMessage, analytics.
+1. **P0 fixes:** codec labels, failover counter/delay, cache order, public URLs.
+2. **Source quality:** validation, ranking, playback-session API, proxy hardening.
+3. **UI:** tokens, Radix/Vidstack, resume/episode/source picker, accessibility.
+4. **Peak embed platform:** separate origin, signed partner tokens, `frame-ancestors`, SDK/postMessage, analytics.
 
 A direct third-party iframe fallback is optional, off by default, never proxied, and only after checking headers/terms.
 
