@@ -1,4 +1,5 @@
 /* admin portal styles — thin importer */
+@import url('/admin/tokens.css');
 @import url('/admin/fonts.css');
 @import url('/admin/base.css');
 @import url('/admin/base-2.css');

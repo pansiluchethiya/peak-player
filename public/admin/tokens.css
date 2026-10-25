@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Peak Admin — design tokens (Vercel / Geist palette)
+   Variable NAMES are kept stable across the admin stylesheet; only the
+   VALUES below swap the old lime/forest palette for the Vercel blue +
+   neutral grays. :root  = light, [data-theme="dark"] = dark.
+   ========================================================================== */
+
+:root {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Neutral stack */
+  --canvas: #ffffff;
+  --canvas-deep: #f5f5f5;
+  --surface: #ffffff;
+  --surface-raised: #f8f9fa;
+  --surface-muted: #f0f0f0;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+  --ink: #171717;
+  --ink-soft: #666666;
+  --muted: #888888;
+  --faint: #bbbbbb;
+
+  /* Brand / accent — Vercel blue (constant) */
+  --brand: #0070f3;
+  --brand-hover: #0056b3;
+  --brand-soft: rgba(0, 112, 243, 0.12);
+  --brand-ink: #ffffff;
+  --accent: #0070f3;
+  --accent-strong: #0056b3;
+  --accent-ink: #ffffff;
+
+  /* Borders */
+  --border: #eaeaea;
+  --border-strong: #cccccc;
+  --border-soft: rgba(0, 0, 0, 0.05);
+
+  /* Status (success kept green; error Vercel red; warning semantic amber) */
+  --success: #17c964;
+  --success-soft: rgba(23, 201, 100, 0.12);
+  --success-ink: #12824f;
+  --warning: #b26a14;
+  --warning-soft: #fbf0dc;
+  --warning-ink: #8a500b;
+  --danger: #f31260;
+  --danger-soft: rgba(243, 18, 96, 0.12);
+  --danger-ink: #8c0023;
+  --info: #0070f3;
+  --info-soft: rgba(0, 112, 243, 0.12);
+  --info-ink: #171717;
+
+  /* Sidebar */
+  --sidebar: #f0f0f0;
+  --sidebar-deep: #e8e8e8;
+  --sidebar-line: rgba(0, 0, 0, 0.05);
+  --sidebar-ink: var(--ink);
+  --sidebar-muted: var(--muted);
+  --sidebar-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-active: #0070f3;
+  --sidebar-active-ink: #ffffff;
+
+  /* KPI cards — neutral Vercel grays */
+  --kpi-mint: linear-gradient(145deg, #f5f6f8 0%, #ffffff 100%);
+  --kpi-lemon: linear-gradient(145deg, #edf0f4 0%, #f6f8fb 100%);
+  --kpi-lavender: linear-gradient(145deg, #e8ecf3 0%, #eff3f9 100%);
+  --kpi-sky: linear-gradient(145deg, #e1e7f0 0%, #ecf2fb 100%);
+  --kpi-icon: rgba(0, 112, 243, 0.14);
+
+  /* Shadows — neutral */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 4px 14px -8px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 18px 38px -28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 34px 70px -40px rgba(0, 0, 0, 0.48);
+  --shadow-sidebar: 24px 0 60px -48px rgba(0, 0, 0, 0.7);
+
+  /* Shape + layout */
+  --radius-xl: 24px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 9px;
+  --sidebar-w: 276px;
+  --topbar-h: 72px;
+  --content-max: 1480px;
+  --focus-ring: 0 0 0 3px rgba(0, 112, 243, 0.25), 0 0 0 1px rgba(0, 112, 243, 0.4);
+  --focus-accent: 0 0 0 3px rgba(0, 112, 243, 0.25), 0 0 0 1px rgba(0, 112, 243, 0.4);
+  --ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+[data-theme="dark"] {
+  --canvas: #0a0a0a;
+  --canvas-deep: #0a0a0a;
+  --surface: #171717;
+  --surface-raised: #151515;
+  --surface-muted: #222222;
+  --surface-glass: rgba(10, 10, 10, 0.78);
+  --ink: #ededed;
+  --ink-soft: #999999;
+  --muted: #aaaaaa;
+  --faint: #888888;
+
+  --brand: #0070f3;
+  --brand-hover: #3291ff;
+  --brand-soft: rgba(0, 112, 243, 0.12);
+  --brand-ink: #ffffff;
+  --accent: #0070f3;
+  --accent-strong: #3291ff;
+  --accent-ink: #ffffff;
+
+  --border: #333333;
+  --border-strong: #444444;
+  --border-soft: rgba(255, 255, 255, 0.08);
+
+  --success: #17c964;
+  --success-soft: rgba(23, 201, 100, 0.12);
+  --success-ink: #12824f;
+  --warning: #f2b35c;
+  --warning-soft: rgba(242, 179, 92, 0.12);
+  --warning-ink: #ffd497;
+  --danger: #f31260;
+  --danger-soft: rgba(243, 18, 96, 0.12);
+  --danger-ink: #8c0023;
+  --info: #0070f3;
+  --info-soft: rgba(0, 112, 243, 0.12);
+  --info-ink: #ededed;
+
+  --sidebar: #151515;
+  --sidebar-deep: #0d0d0d;
+  --sidebar-line: rgba(255, 255, 255, 0.08);
+  --sidebar-ink: var(--ink);
+  --sidebar-muted: var(--muted);
+  --sidebar-hover: rgba(255, 255, 255, 0.055);
+  --sidebar-active: #0070f3;
+  --sidebar-active-ink: #ffffff;
+
+  --kpi-mint: linear-gradient(145deg, #15161a 0%, #1c1d22 100%);
+  --kpi-lemon: linear-gradient(145deg, #18191e 0%, #1f2026 100%);
+  --kpi-lavender: linear-gradient(145deg, #1a1b21 0%, #22232a 100%);
+  --kpi-sky: linear-gradient(145deg, #16171d 0%, #202128 100%);
+  --kpi-icon: rgba(50, 145, 255, 0.32);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-sm: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 22px 44px -30px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 36px 76px -40px rgba(0, 0, 0, 0.85);
+  --shadow-sidebar: 28px 0 70px -44px rgba(0, 0, 0, 0.9);
+  --focus-ring: 0 0 0 3px rgba(0, 112, 243, 0.25), 0 0 0 1px rgba(0, 112, 243, 0.4);
+  --focus-accent: 0 0 0 3px rgba(0, 112, 243, 0.25), 0 0 0 1px rgba(0, 112, 243, 0.4);
+}

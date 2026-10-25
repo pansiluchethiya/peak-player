@@ -109,7 +109,7 @@
   font-weight: 800;
   text-transform: uppercase;
 }
-[data-theme="dark"] .provider-glyph { color: var(--accent); background: rgba(185, 242, 106, 0.1); }
+[data-theme="dark"] .provider-glyph { color: var(--accent); background: rgba(0, 112, 243, 0.12); }
 .provider-name { min-width: 0; }
 .provider-name strong {
   display: block;

@@ -12,7 +12,7 @@
 }
 [data-theme="dark"] .auth-main {
   background:
-    radial-gradient(720px 480px at 100% 0%, rgba(185, 242, 106, 0.04), transparent 64%),
+    radial-gradient(720px 480px at 100% 0%, rgba(0, 112, 243, 0.06), transparent 64%),
     var(--canvas);
 }
 .auth-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
@@ -25,7 +25,7 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-xl);
   background: var(--surface);
-  box-shadow: 0 35px 80px -48px rgba(16, 36, 26, 0.45);
+  box-shadow: 0 35px 80px -48px rgba(0, 0, 0, 0.45);
 }
 [data-theme="dark"] .login-card { box-shadow: 0 40px 90px -46px rgba(0, 0, 0, 0.9); }
 .auth-mobile-brand { display: none; align-items: center; gap: 8px; margin-bottom: 26px; }
