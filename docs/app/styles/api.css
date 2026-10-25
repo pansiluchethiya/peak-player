@@ -1,0 +1,154 @@
+/* API reference ---------------------------------------------------------- */
+
+.peak-api {
+  display: grid;
+  gap: 18px;
+  margin: 28px 0 12px;
+}
+
+.peak-api-intro {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 14px;
+  background: var(--color-fd-card);
+}
+
+.peak-api-intro p {
+  margin: 0;
+  color: var(--color-fd-muted-foreground);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.peak-api-base {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.peak-api-base code {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-fd-muted);
+  font-size: 11px;
+}
+
+.peak-api-operation {
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 14px;
+  background: var(--color-fd-card);
+}
+
+.peak-api-operation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+.peak-api-method {
+  display: inline-flex;
+  align-items: center;
+  min-width: 54px;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.peak-api-method.get {
+  background: rgba(18, 81, 59, 0.14);
+  color: #0c4a34;
+}
+
+.dark .peak-api-method.get {
+  background: rgba(201, 242, 109, 0.13);
+  color: #c9f26d;
+}
+
+.peak-api-method.post {
+  background: rgba(214, 158, 46, 0.16);
+  color: #8a5c00;
+}
+
+.dark .peak-api-method.post {
+  background: rgba(214, 158, 46, 0.15);
+  color: #f0c96a;
+}
+
+.peak-api-path {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.peak-api-summary {
+  width: 100%;
+  color: var(--color-fd-muted-foreground);
+  font-size: 12px;
+}
+
+.peak-api-body {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.peak-api-body h4 {
+  margin: 0 0 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.peak-api-body p {
+  margin: 0;
+  color: var(--color-fd-muted-foreground);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.peak-api-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.peak-api-table th,
+.peak-api-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-fd-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.peak-api-table th {
+  color: var(--color-fd-muted-foreground);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.peak-api-table td code {
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+}
+
+.peak-api-table tr:last-child td {
+  border-bottom: 0;
+}
+

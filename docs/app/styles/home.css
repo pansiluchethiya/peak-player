@@ -1,0 +1,187 @@
+/* Docs home -------------------------------------------------------------- */
+
+.peak-docs-home {
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - var(--fd-nav-height, 0px));
+  background:
+    radial-gradient(circle at 12% -6%, color-mix(in srgb, #12513b 34%, transparent), transparent 32rem),
+    radial-gradient(circle at 96% 4%, rgba(214, 158, 46, 0.1), transparent 28rem);
+}
+
+.peak-docs-home::before {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(10, 26, 19, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 26, 19, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  content: '';
+  mask-image: radial-gradient(ellipse at 40% 12%, black, transparent 68%);
+  pointer-events: none;
+}
+
+.dark .peak-docs-home::before {
+  background-image:
+    linear-gradient(rgba(242, 239, 230, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(242, 239, 230, 0.045) 1px, transparent 1px);
+}
+
+.peak-docs-home-inner {
+  position: relative;
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(64px, 9vw, 120px) 0 96px;
+}
+
+.peak-docs-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 18px;
+  color: var(--color-fd-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.peak-docs-eyebrow::before {
+  width: 18px;
+  height: 1px;
+  background: currentColor;
+  content: '';
+}
+
+.peak-docs-home h1 {
+  max-width: 14ch;
+  margin: 0;
+  font-size: clamp(2.8rem, 6.4vw, 5.8rem);
+  font-weight: 680;
+  letter-spacing: -0.06em;
+  line-height: 0.92;
+}
+
+.peak-docs-home h1 em {
+  color: var(--color-fd-primary);
+  font-style: italic;
+  font-weight: 520;
+}
+
+.peak-docs-lede {
+  max-width: 54ch;
+  margin: 24px 0 0;
+  color: var(--color-fd-muted-foreground);
+  font-size: clamp(15px, 1.5vw, 18px);
+  line-height: 1.68;
+}
+
+.peak-docs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.peak-docs-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.peak-docs-button:hover {
+  transform: translateY(-2px);
+}
+
+.peak-docs-button.primary {
+  border-color: var(--color-fd-primary);
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+}
+
+.peak-docs-button.secondary {
+  background: color-mix(in srgb, var(--color-fd-card) 60%, transparent);
+  color: var(--color-fd-foreground);
+}
+
+.peak-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: clamp(44px, 6vw, 76px);
+}
+
+.peak-docs-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 190px;
+  padding: 22px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-fd-card) 82%, transparent);
+  text-decoration: none;
+  transition: border-color 180ms ease, transform 180ms var(--peak-ease, ease), background 180ms ease;
+}
+
+.peak-docs-card:hover {
+  border-color: color-mix(in srgb, var(--color-fd-primary) 40%, var(--color-fd-border));
+  background: var(--color-fd-card);
+  transform: translateY(-3px);
+}
+
+.peak-docs-card svg {
+  width: 20px;
+  height: 20px;
+  margin-bottom: auto;
+  color: var(--color-fd-primary);
+  stroke-width: 1.7;
+}
+
+.peak-docs-card strong {
+  margin-top: 24px;
+  font-family: var(--font-display), sans-serif;
+  font-size: 19px;
+  letter-spacing: -0.025em;
+}
+
+.peak-docs-card span {
+  margin-top: 6px;
+  color: var(--color-fd-muted-foreground);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.peak-docs-card small {
+  margin-top: 14px;
+  color: var(--color-fd-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.peak-docs-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 34px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+  font-size: 11px;
+}
+
+.peak-docs-meta code {
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+}
+
