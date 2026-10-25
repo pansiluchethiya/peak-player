@@ -134,8 +134,9 @@ We can execute A first (smallest, unblocks everything), then B, then C, D, E.
 
 **Recommendation: make it public** as an open-source streaming platform tool, but only after:
 - Remove/verify no secrets, `.env`, db files, or provider credentials in git history.
-- Add a `LICENSE` (MIT recommended), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
+- Add a `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 - Add a root `README.md` with clone, install, dev, and test commands.
+- Add a `NOTICE` file and a "Credits" section in the README/docs crediting the original creator (Pansilu Chethiya).
 
 **Suggested repo name:** `peak-player` (short, memorable) or `peak-player-embed-platform`
 (matches current worktree). Recommendation: `peak-player`.
@@ -143,6 +144,19 @@ We can execute A first (smallest, unblocks everything), then B, then C, D, E.
 **If public, docs must add:** GitHub clone URL, “Getting started” clone instructions, license
 badge, contributing link, issue/PR templates, and a “Star on GitHub” CTA on the docs home.
 The docs home Quickstart card meta should also drop the `5 MINUTES` duration estimate.
+
+## 15. Licensing
+
+- **License: AGPL-3.0** (GNU Affero General Public License v3.0).
+- **Copyright:** `Copyright (c) 2026 Pansilu Chethiya`.
+- Commercial use is permitted, but any derivative or hosted (SaaS) use must be released as open
+  source under the same license (AGPL closes the ASP loophole that GPL leaves open).
+- Copyright notices and the license text must be preserved in every copy (full credit to the
+  original creator).
+- Add `LICENSE` (full AGPL-3.0 text), a `NOTICE` file, and a "Credits" section in the README and
+  docs crediting Pansilu Chethiya as the original creator.
+- Consider a dual-licensing/commercial-license option for paying customers; decide before
+  publishing (document in `CONTRIBUTING.md` / `SECURITY.md`).
 
 ## 14. Risks
 
