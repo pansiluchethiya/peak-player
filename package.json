@@ -6,7 +6,9 @@
   "scripts": {
     "start": "nodemon --watch restart.trigger apiServer.js",
     "start:dev": "nodemon --watch restart.trigger --ignore providers/.cache --ignore **/cache apiServer.js",
-    "lint": "eslint . --ext .js"
+    "lint": "eslint . --ext .js",
+    "check:player": "npm --prefix player run lint && npm --prefix player run typecheck && npm --prefix player test && npm --prefix player run build",
+    "check": "npm run lint && npm run check:player"
   },
   "dependencies": {
     "aromanize": "^0.1.5",
