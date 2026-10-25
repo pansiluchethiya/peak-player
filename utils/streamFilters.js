@@ -46,4 +46,4 @@ function applyFilters(streams, providerName, minQualitiesConfig, excludeCodecsCo
   filtered = filterByCodecs(filtered, excludeCodecsConfig);
   return filtered;
 }
-module.exports = { applyFilters };
+module.exports = { applyFilters, filterByCodecs, filterByMinQuality, parseQuality };

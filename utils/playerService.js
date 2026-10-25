@@ -4,6 +4,8 @@
 const { listProviders, getProvider } = require('../providers/registry');
 const { getDetails, resolveImdbId } = require('./tmdb');
 const { applyFilters } = require('./streamFilters');
+const { buildPlayerSource } = require('./sourceMetadata');
+const { recordProviderResult } = require('./providerHealth');
 const { processStreamsForProxy } = require('../proxy/proxyServer');
 
 const DEFAULT_SOURCE = 'netmirror';
@@ -44,14 +46,6 @@ function aggregateCacheKey(tmdbType, tmdbId, seasonNumber, episodeNumber) {
   return `events:${tmdbType}:${tmdbId}:${seasonNumber || ''}:${episodeNumber || ''}`;
 }
 
-function sortSourcesHlsFirst(sources) {
-  return sources.sort((a, b) => {
-    if (a.adaptive && !b.adaptive) return -1;
-    if (!a.adaptive && b.adaptive) return 1;
-    return 0;
-  });
-}
-
 function normalizeType(type) {
   return String(type || '').toLowerCase() === 'movie' ? 'movie' : 'tv';
 }
@@ -65,26 +59,8 @@ function providerOrder() {
   return [...ordered, ...remaining.sort()];
 }
 
-function isHlsStream(stream) {
-  const url = String(stream?.url || '');
-  return (
-    stream?.codec === 'hls' ||
-    stream?.adaptive === true ||
-    /\.m3u8($|\?)/i.test(url) ||
-    /\/m3u8-proxy\?/i.test(url)
-  );
-}
-
-function playerSource(stream) {
-  const hls = isHlsStream(stream);
-  return {
-    url: stream.url,
-    quality: stream.quality || stream.title || 'auto',
-    codec: hls ? 'hls' : 'mp4',
-    provider: stream.provider || 'Peak',
-    adaptive: hls,
-    expiresIn: 3600,
-  };
+function playerSource(stream, options = {}) {
+  return buildPlayerSource(stream, { expiresIn: options.expiresIn ?? 900 });
 }
 
 function collectSubtitles(streams) {
@@ -134,20 +110,25 @@ async function fetchProvider(name, context) {
   }
   try {
     const streams = await withTimeout(provider.fetch(context), 4000, name);
+    const latencyMs = Date.now() - started;
+    recordProviderResult(name, { ok: true, latencyMs });
     return {
       name,
       streams: Array.isArray(streams) ? streams : [],
-      diagnostic: { provider: name, ok: true, latencyMs: Date.now() - started },
+      diagnostic: { provider: name, ok: true, latencyMs },
     };
   } catch (error) {
+    const latencyMs = Date.now() - started;
+    const message = error instanceof Error ? error.message : String(error);
+    recordProviderResult(name, { ok: false, latencyMs, error: message });
     return {
       name,
       streams: [],
       diagnostic: {
         provider: name,
         ok: false,
-        latencyMs: Date.now() - started,
-        error: error instanceof Error ? error.message : String(error),
+        latencyMs,
+        error: message,
       },
     };
   }
