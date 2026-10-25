@@ -35,14 +35,14 @@ body {
 body.app-body {
   overflow-x: hidden;
   background:
-    radial-gradient(1100px 660px at 102% -8%, rgba(0, 112, 243, 0.12), transparent 60%),
+    radial-gradient(1100px 660px at 102% -8%, rgba(51, 51, 51, 0.12), transparent 60%),
     radial-gradient(900px 600px at -10% 20%, rgba(0, 0, 0, 0.03), transparent 62%),
     var(--canvas);
 }
 
 [data-theme="dark"] body.app-body {
   background:
-    radial-gradient(1000px 660px at 104% -10%, rgba(0, 112, 243, 0.08), transparent 60%),
+    radial-gradient(1000px 660px at 104% -10%, rgba(229, 229, 229, 0.08), transparent 60%),
     radial-gradient(900px 700px at -10% 26%, rgba(0, 0, 0, 0.22), transparent 62%),
     var(--canvas);
 }

@@ -1,6 +1,7 @@
 /* ui/tokens.css
- * Vercel/Geist design-system tokens.
+ * Geist monochrome design-system tokens.
  * Light (default) values in :root; dark values under [data-theme="dark"] on <html>.
+ * Dark canvas is AMOLED #000000; accent is a neutral gray (no blue).
  * Spacing scale + radius re-express the existing peak-space / peak-radius ranges
  * as --space-* / --radius-* for convenience across the three apps.
  */
@@ -11,8 +12,8 @@
   --color-fg: #171717;
   --color-muted: #eaeaea;
   --color-border: #eaeaea;
-  --color-accent: #0070f3;
-  --color-accent-hover: #0056b3;
+  --color-accent: #333333;
+  --color-accent-hover: #171717;
   --color-success: #17c964;
   --color-error: #f31260;
 
@@ -40,11 +41,12 @@
   --radius-pill: 999px;
 }
 
-/* --- Dark theme: canvas flips to the dark palette (Vercel Blue is constant) --- */
+/* --- Dark theme: AMOLED #000000 canvas, monochrome gray accent --- */
 [data-theme="dark"] {
-  --color-bg: #0a0a0a;
+  --color-bg: #000000;
   --color-fg: #ededed;
   --color-muted: #333333;
   --color-border: #333333;
-  --color-accent-hover: #3291ff;
+  --color-accent: #e5e5e5;
+  --color-accent-hover: #ededed;
 }

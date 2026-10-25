@@ -47,7 +47,7 @@
       try { localStorage.setItem(STORAGE_KEY, next); } catch (_) { /* noop */ }
     }
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', next === 'dark' ? '#0a0a0a' : '#ffffff');
+    if (meta) meta.setAttribute('content', next === 'dark' ? '#000000' : '#ffffff');
     try {
       window.dispatchEvent(new CustomEvent('peak-themechange', { detail: { theme: next } }));
     } catch (_) { /* older browsers */ }

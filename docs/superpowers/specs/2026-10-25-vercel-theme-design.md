@@ -28,17 +28,18 @@ Status: pending user review
 
 ## 4. Vercel Geist design system (from UX architecture prompt)
 
-Design philosophy: clean Vercel Geist-inspired layout, strict monochrome base, Vercel Blue
-`#0070f3` used exclusively as a surgical interactive accent. Stark, flat, crisp typographic
-hierarchy. No secondary/tertiary branding colors unless instructed.
+Design philosophy: clean Geist-inspired layout, strict monochrome base (black, white, neutral
+grays). **AMOLED** dark canvas `#000000`. No blue anywhere — a neutral gray acts as the
+surgical interactive accent for monochrome harmony. Stark, flat, crisp typographic hierarchy.
+No secondary/tertiary branding colors unless instructed.
 
 ### Component themes
 
-1. **Streaming app** — 98% dark monochrome (`#0a0a0a` background). UI disappears to emphasize
-   video. Blue used only for player progress bars, active sliders, streaming indicators.
-2. **Docs & SDK** — hybrid light/dark monochrome, high legibility. Blue for hyperlinks, active
+1. **Streaming app** — 98% dark monochrome (`#000000` background). UI disappears to emphasize
+   video. Neutral gray used only for player progress bars, active sliders, streaming indicators.
+2. **Docs & SDK** — hybrid light/dark monochrome, high legibility. Gray for hyperlinks, active
    navigation states, code endpoints, syntax anchors.
-3. **Admin portal** — data-dense grid layout using subtle neutral grays for structure. Blue
+3. **Admin portal** — data-dense grid layout using subtle neutral grays for structure. Gray
    strictly for primary CTAs (Save, Edit), selections, interactive links. Add distinct green
    (success) and red (error) for system status.
 4. **Embed API / SDK widgets** — strict neutral monochrome (black, white, translucent grays) to
@@ -47,11 +48,14 @@ hierarchy. No secondary/tertiary branding colors unless instructed.
 
 ### Tailwind / CSS variables
 
-- Background: Light `#ffffff` | Dark `#0a0a0a`
+- Background: Light `#ffffff` | Dark `#000000` (AMOLED)
 - Foreground: Light `#171717` | Dark `#ededed`
 - Muted text / borders: Light `#eaeaea` | Dark `#333333`
-- Interactive accent (Vercel Blue): `#0070f3` (hover `#0056b3` light / `#3291ff` dark)
+- Interactive accent (monochrome gray): Light `#333333` (hover `#171717`) | Dark `#e5e5e5` (hover `#ededed`)
 - Status: success `#17c964`, error `#f31260` (admin only).
+
+> **Decision (2026-10-26):** User removed Vercel Blue (`#0070f3`); dark canvas is
+> AMOLED `#000000`; entire codebase uses a neutral gray accent for interactivity.
 
 ## 5. Shared `ui/` layer
 

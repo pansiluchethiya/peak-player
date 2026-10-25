@@ -16,8 +16,8 @@
 - Split first, test, then theme: this plan applies theme on top of the A modules; do not re-merge files.
 - Both light and dark themes must be fully styled on every surface (admin, player, embed, landing, docs). No leftover forest/ivory/lime/purple tokens.
 - Fonts: Geist Sans + Geist Mono everywhere. Remove Manrope/JetBrains Mono, Bricolage Grotesque, DM Sans.
-- Accent: `#0070f3` (links/focus/active). Status: success `#17c964`, error `#f31260` (admin only).
-- Light canvas `#ffffff`, dark canvas `#0a0a0a`; muted text/borders light `#eaeaea`, dark `#333333`; fg light `#171717`, dark `#ededed`.
+- Accent: `#333333` light / `#e5e5e5` dark (monochrome — NO blue `#0070f3`, per user directive 2026-10-26). Status: success `#17c964`, error `#f31260` (admin only).
+- Light canvas `#ffffff`, dark canvas `#000000`; muted/border light `#eaeaea`, dark `#333333`; fg light `#171717`, dark `#ededed`.
 - Theme switching via `data-theme="light"|"dark"` on `<html>`, defaulting to `prefers-color-scheme`.
 - Do not commit `.env`, `utils/peak.db*`, `node_modules`, `.next`, `.source`, `tsconfig.tsbuildinfo`, or secrets.
 - Player: `npm --prefix player test/typecheck/lint/build`. Docs: `npm --prefix docs test/build/check:links`. Root: `npm run check`.

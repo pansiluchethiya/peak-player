@@ -93,7 +93,7 @@
   background: var(--brand-soft);
   color: var(--brand);
 }
-[data-theme="dark"] .quick-icon { background: rgba(0, 112, 243, 0.12); color: var(--accent); }
+[data-theme="dark"] .quick-icon { background: rgba(229, 229, 229, 0.12); color: var(--accent); }
 .quick-icon .icon { width: 15px; height: 15px; }
 .quick-action > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
 .quick-action strong { color: var(--ink-soft); font-size: 11.5px; font-weight: 740; }

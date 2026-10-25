@@ -15,7 +15,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   background:
-    radial-gradient(540px 300px at 0% -8%, rgba(0, 112, 243, 0.10), transparent 64%),
+    radial-gradient(540px 300px at 0% -8%, rgba(51, 51, 51, 0.10), transparent 64%),
     linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-deep) 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--sidebar-ink);
@@ -63,7 +63,7 @@
   align-self: flex-start;
   margin-top: 3px;
   padding: 2px 6px;
-  border: 1px solid rgba(0, 112, 243, 0.35);
+  border: 1px solid rgba(51, 51, 51, 0.35);
   border-radius: 999px;
   color: var(--sidebar-active);
   font-size: 9px;
@@ -91,7 +91,7 @@
   flex: 0 0 auto;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(0, 112, 243, 0.22);
+  box-shadow: 0 0 0 4px rgba(51, 51, 51, 0.22);
 }
 .workspace-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
 .workspace-copy strong { font-size: 12.5px; font-weight: 750; }

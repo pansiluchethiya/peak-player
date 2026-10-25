@@ -21,7 +21,7 @@
 .provider-matrix-item:hover { border-color: var(--border-strong); }
 .provider-matrix-item:not(.is-enabled) { opacity: 0.58; background: var(--surface-muted); }
 .provider-matrix-item.is-default { border-color: color-mix(in srgb, var(--brand) 26%, var(--border)); background: var(--brand-soft); }
-[data-theme="dark"] .provider-matrix-item.is-default { border-color: rgba(0, 112, 243, 0.4); background: rgba(0, 112, 243, 0.12); }
+[data-theme="dark"] .provider-matrix-item.is-default { border-color: rgba(229, 229, 229, 0.4); background: rgba(229, 229, 229, 0.12); }
 .pm-identity { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
 .pm-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
 .pm-copy strong { overflow: hidden; color: var(--ink-soft); font-size: 11.5px; font-weight: 740; text-overflow: ellipsis; white-space: nowrap; }
