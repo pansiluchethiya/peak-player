@@ -1,4 +1,4 @@
-import { Player } from '@/components/Player';
+import { VideoJsEmbedPlayer } from '@/components/VideoJsPlayer';
 import { apiBase, embedConfig } from '@/lib/embedPage';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export default async function EmbedTvPage({
   const { poster } = await searchParams;
   const embed = await embedConfig();
   return (
-    <Player
+    <VideoJsEmbedPlayer
       apiBase={apiBase()}
       media={{ type: 'tv', id, season: positive(season), episode: positive(episode), poster }}
       embed={embed}

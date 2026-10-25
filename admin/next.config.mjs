@@ -15,6 +15,20 @@ const nextConfig = {
   // is optional for this scaffold; keep production builds green regardless.
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+
+  // Proxy auth + API requests to the backend API server (port 8787).
+  // When the admin app runs standalone on :3003, relative fetches like
+  // /auth/session and /api/config need to reach the Express API, not a
+  // Next.js route that doesn't exist. When accessed through the API server's
+  // /admin/* proxy, these rewrites are harmless (the request already hit the
+  // API server, but rewrites only apply to unmatched Next.js routes).
+  async rewrites() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8787';
+    return [
+      { source: '/auth/:path*', destination: `${API_URL}/auth/:path*` },
+      { source: '/api/:path*', destination: `${API_URL}/api/:path*` },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -1,4 +1,7 @@
-/* API reference ---------------------------------------------------------- */
+/* API reference — AMOLED monochrome
+   Replaced forest green (#0c4a34) / lime (#c9f26d) method colors
+   with grayscale badges that work in both light and dark.
+*/
 
 .peak-api {
   display: grid;
@@ -56,34 +59,38 @@
 .peak-api-method {
   display: inline-flex;
   align-items: center;
-  min-width: 54px;
   justify-content: center;
+  min-width: 54px;
   padding: 4px 8px;
   border-radius: 6px;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
+/* GET — neutral gray badge */
 .peak-api-method.get {
-  background: rgba(18, 81, 59, 0.14);
-  color: #0c4a34;
+  background: color-mix(in srgb, var(--color-fd-muted) 20%, transparent);
+  color: var(--color-fd-muted-foreground);
 }
 
-.dark .peak-api-method.get {
-  background: rgba(201, 242, 109, 0.13);
-  color: #c9f26d;
-}
-
+/* POST — neutral gray badge (was amber #d69e2e) */
 .peak-api-method.post {
-  background: rgba(214, 158, 46, 0.16);
-  color: #8a5c00;
+  background: color-mix(in srgb, var(--color-fd-muted) 25%, transparent);
+  color: var(--color-fd-muted-foreground);
 }
 
-.dark .peak-api-method.post {
-  background: rgba(214, 158, 46, 0.15);
-  color: #f0c96a;
+/* DELETE, PATCH */
+.peak-api-method.delete {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+.peak-api-method.patch {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
 }
 
 .peak-api-path {
@@ -151,4 +158,3 @@
 .peak-api-table tr:last-child td {
   border-bottom: 0;
 }
-

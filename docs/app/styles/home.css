@@ -1,20 +1,22 @@
-/* Docs home -------------------------------------------------------------- */
+/* Docs home — AMOLED monochrome */
 
 .peak-docs-home {
   position: relative;
   overflow: hidden;
   min-height: calc(100vh - var(--fd-nav-height, 0px));
   background:
-    radial-gradient(circle at 12% -6%, color-mix(in srgb, #12513b 34%, transparent), transparent 32rem),
-    radial-gradient(circle at 96% 4%, rgba(214, 158, 46, 0.1), transparent 28rem);
+    radial-gradient(circle at 12% -6%, color-mix(in srgb, var(--color-fd-background) 0%, transparent), transparent 32rem),
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--color-fd-muted) 12%, transparent), transparent 28rem),
+    var(--color-fd-background);
+  color: var(--color-fd-foreground);
 }
 
 .peak-docs-home::before {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(10, 26, 19, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10, 26, 19, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.045) 1px, transparent 1px);
   background-size: 64px 64px;
   content: '';
   mask-image: radial-gradient(ellipse at 40% 12%, black, transparent 68%);
@@ -23,8 +25,8 @@
 
 .dark .peak-docs-home::before {
   background-image:
-    linear-gradient(rgba(242, 239, 230, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(242, 239, 230, 0.045) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
 }
 
 .peak-docs-home-inner {
@@ -148,7 +150,7 @@
 
 .peak-docs-card strong {
   margin-top: 24px;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 19px;
   letter-spacing: -0.025em;
 }
@@ -184,4 +186,3 @@
   color: var(--color-fd-foreground);
   font-weight: 600;
 }
-

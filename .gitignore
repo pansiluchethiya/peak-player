@@ -3,6 +3,9 @@
 restart.trigger
 .vscode/
 .env
+**/.env.local
+**/.env.development
+**/.env.production
 utils/user-config.json
 utils/auth-users.json
 utils/peak.db

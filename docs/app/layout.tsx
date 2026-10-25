@@ -1,20 +1,20 @@
 import type { Metadata } from 'next';
-import { Bricolage_Grotesque, DM_Sans } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import { RootProvider } from 'fumadocs-ui/provider';
 import type { ReactNode } from 'react';
 import './global.css';
 
-const display = Bricolage_Grotesque({
+const geistSans = Geist({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-display',
+  variable: '--font-sans',
   weight: ['400', '500', '600', '700', '800'],
 });
 
-const ui = DM_Sans({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-ui',
+  variable: '--font-mono',
   weight: ['400', '500', '600', '700'],
 });
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: '%s · Peak Docs',
   },
   description:
-    'Integrate Peak’s embeddable player: signed sessions, source validation, failover, live TV, and the postMessage SDK.',
+    "Integrate Peak's embeddable player: signed sessions, source validation, failover, live TV, and the postMessage SDK.",
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${ui.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>
         <RootProvider
           theme={{ enabled: true, defaultTheme: 'system' }}
