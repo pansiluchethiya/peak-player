@@ -125,10 +125,31 @@ We can execute A first (smallest, unblocks everything), then B, then C, D, E.
 - Focus ring visible; reduced motion honored; no console errors.
 - Every CSS file <= 200 lines (enforced by a check script).
 
-## 12. Open questions
+## 12. Open questions (resolved 2026-10-25)
 
-- Repo name and public/private decision (see section 13).
-- Whether admin auth reuses the existing Express session or moves to NextAuth/iron-session.
+- Repo name and public/private decision: **public**, name `peak-player`, GitHub URL
+  `https://github.com/pansiluchethiya/peak-player` (repo not yet created; docs use this URL).
+- Admin auth: **reuse the existing Express session**, surfaced in Next.js middleware via the
+  API's session endpoint. Fastest, most reliable, and best for developers (no new auth
+  dependency, no migration, reuses tested code).
+
+## 16. Development tooling (MCPs)
+
+The implementing agent MUST use these MCP servers/libraries during development for easier,
+higher-quality work:
+
+- **Magic UI** (`magic-ui` MCP): use `searchRegistryItems`/`getRegistryItem` to find and
+  import polished components (marquee, bento grid, border beam, number ticker, hero video
+  dialog, etc.) for marketing/landing surfaces. Do not hand-roll what Magic UI already ships.
+- **shadcn/ui** (`shadcn-ui` MCP): use `get_project_registries`, `view_items_in_registries`,
+  and `get_add_command_for_items` to add accessible Radix-based primitives (button, card,
+  dialog, tabs, accordion, etc.) to the admin and player chrome. Do not hand-roll accessible
+  primitives.
+- **Chrome DevTools** (`chrome-devtools` MCP): use `list_pages`, `screencast_start/stop`,
+  and related tools to capture verification screenshots, record interactions, and inspect
+  console/network during visual QA.
+
+These are development-time aids; the shipped app must not depend on any MCP at runtime.
 
 ## 13. Repo public decision (answer now)
 
@@ -137,6 +158,9 @@ We can execute A first (smallest, unblocks everything), then B, then C, D, E.
 - Add a `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 - Add a root `README.md` with clone, install, dev, and test commands.
 - Add a `NOTICE` file and a "Credits" section in the README/docs crediting the original creator (Pansilu Chethiya).
+
+**Public GitHub URL (repo not yet created; update docs links to this URL):**
+`https://github.com/pansiluchethiya/peak-player`
 
 **Suggested repo name:** `peak-player` (short, memorable) or `peak-player-embed-platform`
 (matches current worktree). Recommendation: `peak-player`.
