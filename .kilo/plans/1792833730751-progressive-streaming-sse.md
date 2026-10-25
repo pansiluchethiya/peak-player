@@ -27,12 +27,19 @@
 | Deployment config | Partial | `player/src/app/api/[...path]/route.ts` still defaults `API_URL` to `http://localhost:3000`; compose still sets `PUBLIC_API_URL=http://localhost:8787` and does not set `PLAYER_PUBLIC_URL`. |
 | Tests | Partial | Only `player/tests/quality.test.ts` and `time.test.ts`; no SSE, validation, ranking, or failover tests. |
 
-### Current evidence (2026-10-25)
+### Current evidence (2026-10-25, reinvestigated)
 
-- TMDB 550: 13 sources from 5 providers, 13 diagnostics, 0 subtitles, 5.1 s to `done`; 3 providers timed out at 4 s.
-- Probes: Dahmer 403 Cloudflare, Vidlink 429, StreamFlix 500; VaPlayer/Vixsrc HLS 200.
-- Every probed MP4/MKV failed; every probed HLS worked. The first emitted source was a 2160p HEVC/HDR MKV mislabeled MP4.
-- The 5.1 s figure is `done` latency, not first-source latency. First-source timing was not recorded.
+Live scrape (cacheHit false, TMDB 550):
+
+- `meta` at 1.22 s; first `source` (VaPlayer HLS) at 2.17 s; `done` at 5.11 s.
+- 13 providers, 13 sources, 0 subtitles; 5 providers timed out at 4 s (`netmirror`, `zxcstreams`, `4khdhub`, `castletv`, `showbox`).
+- Source order: VaPlayer HLS x3, StreamFlix `.mkv` mislabeled `mp4`, Vixsrc HLS, DahmerMovies `.mkv`/MP4 x5, Vidlink MP4 x3.
+- Probes of the first five: VaPlayer HLS 200; StreamFlix `.mkv` 500; Vixsrc HLS 200. Earlier probes also saw Dahmer 403 Cloudflare and Vidlink 429.
+- Cached replay (`cacheHit:true`) emits all 13 sources in 0.5 ms in the **opposite** order: DahmerMovies MP4/MKV x5, Vidlink MP4 x3, StreamFlix `.mkv`, then VaPlayer/Vixsrc HLS. The first cached source is a 2160p HEVC/HDR MKV labeled `codec:"mp4"`.
+- `Player.tsx` failover has a double-counting bug (`failedCount + 1 + attemptedSourcesRef.size`) and gives up after about N/2 failures: with 13 sources it tries only ~7, never reaching HLS at #10-13. It also waits 2000 ms per failure.
+- The proxy is an unauthenticated open URL fetcher: arbitrary `url` and `headers`, no host allowlist/SSRF guard, `Access-Control-Allow-Origin: *`; it cannot proxy an HTML/JS app and returns HTML through `/m3u8-proxy` as `application/vnd.apple.mpegurl`.
+- `/api/embed` returns Peak's own player, but defaults to `http://127.0.0.1:3001`; compose sets `PUBLIC_API_URL=http://localhost:8787`, so an external embed is not practical until public URLs are configured.
+- Full read-only report: `/tmp/opencode/peak-embed-player-reinvestigation-2026-10-25.md`.
 
 ### Corrections to the original plan
 
@@ -40,12 +47,30 @@
 - "First source plays immediately" is true only in the sense that the first provider response is emitted immediately; it is not guaranteed to be playable. Validation and ranking must be added.
 - The original plan did not make validation, ranking, or fast failover explicit. They are now P0 requirements.
 - The original validation step should measure first-source and first-playable separately; `done` latency is not time-to-first-frame.
+- The live path is progressive, but the cached path is a synchronous burst and is deliberately MP4-first (`utils/playerService.js:349-357`). Fixing cache replay order is P0.
+- The player's failover bookkeeping is wrong (`Player.tsx:609-627`); it can give up after roughly half the sources. Fixing the counter is P0.
+- MKV/HEVC must be represented as container/codec metadata, not relabeled `mp4` (`utils/playerService.js:78-87`).
+- The proxy is a security surface, not just a playback detail: unauthenticated arbitrary URL fetch, encoded headers, no SSRF/host allowlist, and `Access-Control-Allow-Origin: *`.
 - `.gitignore` now excludes `utils/peak.db-shm`, `utils/peak.db-wal`, and `player/tsconfig.tsbuildinfo`.
+
+### Practicality verdict (2026-10-25)
+
+**Do not replace Peak's player with a third-party embed, and do not proxy a third-party embed app through Peak's proxy.** The player UI is already competent; the failures are in source validation/ranking, codec labeling, cache order, failover bookkeeping, and proxy/deployment. Proxying a full app would require a general reverse proxy (HTML/JS/CSS rewriting, cookies, CORS/CSP, WebSockets, anti-bot) and would put untrusted third-party JS at or near Peak's origin. Direct iframes are technically possible for Videasy/VidLink today but are not a stable contract, expose users to ads/trackers, and are already blocked by Mapple's `frame-ancestors`.
+
+Practical order:
+
+1. **P0 fixes (days):** codec labels, failover counter/delay, cache order, public URLs.
+2. **Source quality (1–2 weeks):** validation, ranking, playback-session API, proxy hardening.
+3. **UI (2–4 weeks):** tokens, Radix/Vidstack, resume/episode/source picker, accessibility.
+4. **Peak embed platform (3–6 weeks):** separate origin, signed partner tokens, `frame-ancestors`, SDK/postMessage, analytics.
+
+A direct third-party iframe fallback is optional, off by default, never proxied, and only after checking headers/terms.
 
 ### Next work (ordered)
 
 **P0 — make the first emitted source playable**
 
+- [ ] Preserve codec/container metadata in `playerSource` (`utils/playerService.js:78-87`): keep `stream.codec`, `stream.codecs`, extension, HDR/HEVC; add `container`/`videoCodec`; never label `.mkv`/HEVC as `mp4`.
 - [ ] Add a source-validation module (new `utils/sourceValidator.js`) with:
   - HLS: fetch master, resolve variants, probe first segment.
   - MP4: `Range: bytes=0-1023`; accept 200/206; reject HTML, Cloudflare challenges, 401/403/404/429/5xx.
@@ -54,16 +79,20 @@
   - HLS/adaptive first; H.264/AAC before HEVC; 1080p before 4K; provider health as tiebreaker.
   - Detect `.mkv`/HEVC and never label them `mp4`.
   - Use `sortSourcesHlsFirst` or remove it.
-- [ ] Emit only validated sources; keep diagnostics for rejected ones.
-- [ ] Update `Player.tsx`:
+- [ ] Fix cached replay ordering: remove the `mp4First`/`hlsFirst` split (`utils/playerService.js:349-357`); cache the validated/ranked list and replay it in the same order as the live path.
+- [ ] Fix `Player.tsx` failover bookkeeping (`Player.tsx:609-627`): replace `failedCount + 1 + attemptedSourcesRef.size` with one attempted set/count so every source is tried at most once.
+- [ ] Update `Player.tsx` selection/failover:
   - Use `preferredSourceIndex` or the new ranking.
   - Reduce failover delay from 2000 ms to 300–500 ms.
-  - Add the 1500 ms HLS fallback.
-- [ ] Cache validated/ranked results; use actual URL expiry instead of a blind 3600 s.
+  - Add the 1500 ms HLS fallback; replace the 8 s manifest timer with a shorter first-playable deadline.
+- [ ] Emit only validated sources; keep diagnostics for rejected ones.
+- [ ] Cache validated/ranked results; use actual URL expiry instead of a blind 3600 s; refresh/revalidate stale signed URLs on cache hit.
+- [ ] Add a playback-session API: one primary + 2–3 fallbacks, subtitles, audio, `expiresAt`, `sessionId`; signed proxy URLs; no raw upstream URLs to the client.
+- [ ] Harden the proxy: signed tokens/allowlist/rate limits, SSRF/private-IP protection, stop accepting arbitrary `headers` JSON, restrict CORS to player/partner origins, and do not strip `Range` for MP4/MKV.
 - [ ] Fix deployment config:
   - `player/src/app/api/[...path]/route.ts` default `API_URL` to `http://localhost:8787`.
   - Set `PLAYER_PUBLIC_URL` in compose; document remote `PUBLIC_API_URL`.
-- [ ] Tests: progressive ordering, validation, ranking, failover, cache replay.
+- [ ] Tests: progressive ordering, validation, ranking, failover bookkeeping, cache replay, proxy range/seek.
 
 **P1 — UI/UX**
 
@@ -86,9 +115,15 @@
 ### Acceptance gates
 
 - Fixture suite: first source event <100 ms after the first provider; first playable <300 ms; no unvalidated source emitted.
-- Live 20-title matrix: >95% first-play success; p75 TTFF <3 s; record p95 and failures.
-- No 2000 ms failover delay; seeking works through the proxy; MKV is never labeled MP4.
+- Live 20-title matrix: >95% first-play success; p75 TTFF <3 s; first-playable p75 <3.5 s; record p95 and failures.
+- Cached replay: same validated/ranked order as live; first source is never a dead MP4/MKV when an HLS source is available.
+- No 2000 ms failover delay; every source tried at most once; seeking works through the proxy; MKV is never labeled MP4.
+- Proxy: unauthenticated arbitrary URL fetches are rejected; private/link-local IPs blocked; CORS restricted; range requests preserved.
 - UI and embed gates: see `/tmp/opencode/peak-player-agent-handoff.md` sections 6 and Phase 3/4.
+
+### Next-agent prompt
+
+The copy-paste kickoff prompt is in `/tmp/opencode/peak-player-agent-handoff.md` §11 and `/tmp/opencode/peak-next-agent-prompt.md`. It tells the next agent to read this plan, create a worktree, implement P0/P1, and verify the gates.
 
 ---
 
