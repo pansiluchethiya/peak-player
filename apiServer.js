@@ -10,7 +10,9 @@ const { createProxyRoutes, processStreamsForProxy } = require('./proxy/proxyServ
 const { resolveImdbId } = require('./utils/tmdb');
 const { applyFilters } = require('./utils/streamFilters');
 const { getEmbed } = require('./utils/embed');
-const { getPlayerStream, getPlayerStreamEvents, getLiveTvStream, getBranding, getPlayerProviders } = require('./utils/playerService');
+const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders } = require('./utils/playerService');
+const { createPlaybackSession, getPlaybackSession } = require('./utils/playbackSession');
+const { getTelemetrySummary, recordPlaybackEvent } = require('./utils/telemetry');
 const iptvStore = require('./utils/iptvStore');
 const iptvSync = require('./utils/iptvSync');
 
@@ -453,6 +455,62 @@ app.get('/api/v1/stream/events/:type/:id', (req,res) => {
       res.write(`event: error\ndata: ${JSON.stringify({ error: 'INTERNAL_ERROR', message: safeMessage })}\n\n`);
       res.end();
     });
+});
+
+function validPlaybackTarget(type, id) {
+  const validTypes = ['movie', 'tv', 'series', 'live_tv'];
+  if (!validTypes.includes(type)) return 'type must be movie, tv, series, or live_tv';
+  if (type === 'live_tv') {
+    return /^channel_[a-z0-9-]+_[a-f0-9]+$/.test(String(id))
+      ? null
+      : 'id must be a channel id (channel_<slug>_<hash>)';
+  }
+  return /^\d+$/.test(String(id)) ? null : 'id must be a numeric TMDB id';
+}
+
+app.post('/api/v1/playback/sessions', async (req, res) => {
+  const type = String(req.body?.type || '');
+  const id = String(req.body?.id || '');
+  const validationError = validPlaybackTarget(type, id);
+  if (validationError) {
+    return res.status(400).json({ success: false, error: 'INVALID_TARGET', message: validationError });
+  }
+  try {
+    const session = await createPlaybackSession({
+      type,
+      id,
+      season: req.body?.season,
+      episode: req.body?.episode,
+      serverUrl: requestBaseUrl(req),
+      config,
+    });
+    res.json({ success: true, ...session });
+  } catch (error) {
+    metrics.lastError = error.message;
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: error.message });
+  }
+});
+
+app.get('/api/v1/playback/sessions/:id', (req, res) => {
+  const session = getPlaybackSession(req.params.id);
+  if (!session) {
+    return res.status(404).json({ success: false, error: 'SESSION_NOT_FOUND' });
+  }
+  res.json({ success: true, ...session });
+});
+
+app.post('/api/v1/playback/events', (req, res) => {
+  const payload = req.body;
+  const entries = Array.isArray(payload) ? payload : [payload];
+  const recorded = entries.map(recordPlaybackEvent).filter(Boolean);
+  if (!recorded.length) {
+    return res.status(400).json({ success: false, error: 'INVALID_EVENT' });
+  }
+  res.json({ success: true, recorded: recorded.length });
+});
+
+app.get('/api/v1/telemetry/summary', (req, res) => {
+  res.json({ success: true, ...getTelemetrySummary() });
 });
 
 // Backend embed API. Returns the custom Peak player URL for the frontend iframe.

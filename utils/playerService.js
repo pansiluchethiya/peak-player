@@ -5,6 +5,8 @@ const { listProviders, getProvider } = require('../providers/registry');
 const { getDetails, resolveImdbId } = require('./tmdb');
 const { applyFilters } = require('./streamFilters');
 const { buildPlayerSource } = require('./sourceMetadata');
+const { rankSources } = require('./sourceRanking');
+const { validateSource } = require('./sourceValidator');
 const { recordProviderResult } = require('./providerHealth');
 const { processStreamsForProxy } = require('../proxy/proxyServer');
 
@@ -13,7 +15,8 @@ const PREFERRED_ORDER = ['netmirror','zxcstreams','vaplayer','vixsrc','dahmermov
 const PLAYER_LOGO = '/logo.svg';
 const PLAYER_ACCENT = '#2f6b4f';
 
-const EVENT_CACHE_TTL_MS = 3600 * 1000;
+const DEFAULT_CACHE_TTL_MS = 15 * 60 * 1000;
+const MAX_CACHE_TTL_MS = 30 * 60 * 1000;
 const eventCache = new Map();
 
 function lazyIptvStore() {
@@ -24,14 +27,21 @@ function lazyIptvStore() {
   }
 }
 
-function isCacheEnabled(cfg) {
-  return !cfg?.disableCache;
+function cacheTtlMs(cfg) {
+  if (cfg?.disableCache) return 0;
+  const raw = cfg?.playerCacheTtlMs ?? process.env.PLAYER_CACHE_TTL_MS;
+  if (raw === undefined || raw === null || raw === '') return DEFAULT_CACHE_TTL_MS;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return DEFAULT_CACHE_TTL_MS;
+  if (value <= 0) return 0;
+  return Math.min(Math.floor(value), MAX_CACHE_TTL_MS);
 }
 
-function getCachedAggregate(cacheKey) {
+function getCachedAggregate(cacheKey, ttlMs = cacheTtlMs()) {
+  if (ttlMs <= 0) return null;
   const entry = eventCache.get(cacheKey);
   if (!entry) return null;
-  if (Date.now() - entry.ts > EVENT_CACHE_TTL_MS) {
+  if (Date.now() - entry.ts > ttlMs) {
     eventCache.delete(cacheKey);
     return null;
   }
@@ -40,6 +50,10 @@ function getCachedAggregate(cacheKey) {
 
 function setCachedAggregate(cacheKey, data) {
   eventCache.set(cacheKey, { data, ts: Date.now() });
+}
+
+function clearEventCache() {
+  eventCache.clear();
 }
 
 function aggregateCacheKey(tmdbType, tmdbId, seasonNumber, episodeNumber) {
@@ -59,8 +73,62 @@ function providerOrder() {
   return [...ordered, ...remaining.sort()];
 }
 
-function playerSource(stream, options = {}) {
-  return buildPlayerSource(stream, { expiresIn: options.expiresIn ?? 900 });
+async function mapLimit(items, limit, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
+function proxyForPlayer(stream, serverUrl) {
+  if (!serverUrl) return stream;
+  const proxied = processStreamsForProxy([stream], serverUrl);
+  return proxied[0] || stream;
+}
+
+async function prepareStreams(streams, options = {}) {
+  const {
+    serverUrl,
+    config,
+    order,
+    allowPrivate = false,
+    validate = validateSource,
+    expiresIn,
+    onRejected,
+  } = options;
+  const ttlMs = cacheTtlMs(config);
+  const expires = Number.isFinite(expiresIn)
+    ? expiresIn
+    : Math.max(60, Math.floor((ttlMs || DEFAULT_CACHE_TTL_MS) / 1000));
+  const candidates = (Array.isArray(streams) ? streams : []).filter(
+    (stream) => stream?.url && stream.codec !== 'html5' && stream.type !== 'embed',
+  );
+
+  const prepared = await mapLimit(candidates, 6, async (stream) => {
+    let result;
+    try {
+      result = await validate(stream, { allowPrivate });
+    } catch (error) {
+      result = { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    }
+    if (!result?.ok) {
+      if (typeof onRejected === 'function') onRejected(stream, result);
+      return null;
+    }
+    const source = buildPlayerSource(proxyForPlayer(stream, serverUrl), { expiresIn: expires });
+    if (Number.isFinite(stream._order)) source._order = stream._order;
+    else if (Number.isFinite(order)) source._order = order;
+    return source;
+  });
+
+  return rankSources(prepared.filter(Boolean));
 }
 
 function collectSubtitles(streams) {
@@ -145,27 +213,35 @@ async function getPlayerStream({ type, id, season, episode, serverUrl, config })
   const episodeNumber = tmdbType === 'tv' ? Number(episode) || 1 : null;
   const started = Date.now();
   const cacheKey = aggregateCacheKey(tmdbType, tmdbId, seasonNumber, episodeNumber);
+  const ttlMs = cacheTtlMs(config);
+  const allowPrivate = config?.allowPrivateSources === true;
 
-  if (isCacheEnabled(config)) {
-    const cached = getCachedAggregate(cacheKey);
+  if (ttlMs > 0) {
+    const cached = getCachedAggregate(cacheKey, ttlMs);
     if (cached) {
-      const proxied = processStreamsForProxy(cached.streams, serverUrl);
-      const sources = proxied.map(playerSource);
-      return {
-        id: tmdbId,
-        type: tmdbType,
-        title: cached.meta.title,
-        year: cached.meta.year,
-        sources,
-        subtitles: cached.subtitles,
-        meta: {
-          latencyMs: Date.now() - started,
-          providers: cached.providers,
-          sources: sources.length,
-          cacheHit: true,
-        },
-        diagnostics: cached.diagnostics,
-      };
+      const sources = await prepareStreams(cached.streams, {
+        serverUrl,
+        config,
+        allowPrivate,
+      });
+      if (sources.length) {
+        return {
+          id: tmdbId,
+          type: tmdbType,
+          title: cached.meta.title,
+          year: cached.meta.year,
+          sources,
+          subtitles: cached.subtitles,
+          meta: {
+            latencyMs: Date.now() - started,
+            providers: cached.providers,
+            sources: sources.length,
+            cacheHit: true,
+          },
+          diagnostics: cached.diagnostics,
+        };
+      }
+      eventCache.delete(cacheKey);
     }
   }
 
@@ -180,8 +256,9 @@ async function getPlayerStream({ type, id, season, episode, serverUrl, config })
     filters: {},
   };
 
+  const order = providerOrder();
   const providerResults = await Promise.all(
-    providerOrder().map((name) => fetchProvider(name, context)),
+    order.map((name) => fetchProvider(name, context)),
   );
 
   let streams = providerResults.flatMap((result) => result.streams);
@@ -194,22 +271,44 @@ async function getPlayerStream({ type, id, season, episode, serverUrl, config })
     config?.minQualities,
     config?.excludeCodecs,
   );
+  const orderIndex = new Map(order.map((name, index) => [name, index]));
+  streams = streams.map((stream) => ({
+    ...stream,
+    _order: orderIndex.get(String(stream.provider || '').toLowerCase()) ?? 999,
+  }));
 
+  const sourceDiagnostics = [];
   const originalStreams = streams.map((stream) => ({ ...stream }));
-  const proxied = processStreamsForProxy(originalStreams, serverUrl);
-  const sources = proxied.map(playerSource);
+  const sources = await prepareStreams(streams, {
+    serverUrl,
+    config,
+    allowPrivate,
+    onRejected: (stream, result) => {
+      sourceDiagnostics.push({
+        provider: stream.provider || 'aggregate',
+        ok: false,
+        latencyMs: 0,
+        error: `source rejected: ${result?.reason || result?.status || 'invalid'}`,
+        kind: 'source',
+      });
+    },
+  });
   const subtitles = collectSubtitles(originalStreams);
+  const diagnostics = [
+    ...providerResults.map((result) => result.diagnostic),
+    ...sourceDiagnostics,
+  ];
   const details = await detailsPromise;
   const title = details?.title || details?.name || 'Peak';
   const releaseDate = details?.release_date || details?.first_air_date || '';
   const year = releaseDate ? Number(String(releaseDate).slice(0, 4)) || undefined : undefined;
 
-  if (isCacheEnabled(config)) {
+  if (ttlMs > 0) {
     setCachedAggregate(cacheKey, {
       meta: { title, year },
       streams: originalStreams,
       subtitles,
-      diagnostics: providerResults.map((result) => result.diagnostic),
+      diagnostics,
       providers: providerResults.length,
     });
   }
@@ -226,7 +325,7 @@ async function getPlayerStream({ type, id, season, episode, serverUrl, config })
       providers: providerResults.length,
       sources: sources.length,
     },
-    diagnostics: providerResults.map((result) => result.diagnostic),
+    diagnostics,
   };
 }
 
@@ -277,7 +376,23 @@ function getLiveTvStream({ id, serverUrl }) {
   };
 }
 
-async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, config, onEvent, cancelled, invalidate }) {
+async function getPlayerStreamEvents({
+  type,
+  id,
+  season,
+  episode,
+  serverUrl,
+  config,
+  onEvent,
+  cancelled,
+  invalidate,
+  deps = {},
+}) {
+  const fetchProviderImpl = deps.fetchProvider || fetchProvider;
+  const providerOrderImpl = deps.providerOrder || providerOrder;
+  const prepareStreamsImpl = deps.prepareStreams || prepareStreams;
+  const getDetailsImpl = deps.getDetails || getDetails;
+  const resolveImdbIdImpl = deps.resolveImdbId || resolveImdbId;
   const emit = (event, data) => {
     if (cancelled && cancelled.value) return;
     onEvent(event, data);
@@ -313,48 +428,46 @@ async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, con
    const episodeNumber = tmdbType === 'tv' ? Number(episode) || 1 : null;
   const started = Date.now();
   const cacheKey = aggregateCacheKey(tmdbType, tmdbId, seasonNumber, episodeNumber);
+  const ttlMs = cacheTtlMs(config);
+  const allowPrivate = config?.allowPrivateSources === true;
 
-  if (isCacheEnabled(config)) {
+  if (ttlMs > 0) {
     if (invalidate) {
       eventCache.delete(cacheKey);
     }
-    const cached = getCachedAggregate(cacheKey);
+    const cached = getCachedAggregate(cacheKey, ttlMs);
     if (cached) {
-      emit('meta', cached.meta);
-      const proxied = processStreamsForProxy(cached.streams, serverUrl);
-      const order = providerOrder();
-      const sources = proxied.map(playerSource).map((s) => ({
-        ...s,
-        _order: order.indexOf(s.provider?.toLowerCase()) ?? -1,
-      }));
-      const mp4First = sources
-        .filter((s) => s.codec === 'mp4')
-        .sort((a, b) => (a._order === -1 ? 999 : a._order) - (b._order === -1 ? 999 : b._order));
-      const hlsFirst = sources
-        .filter((s) => s.codec !== 'mp4')
-        .sort((a, b) => (a._order === -1 ? 999 : a._order) - (b._order === -1 ? 999 : b._order));
-      for (const source of [...mp4First, ...hlsFirst]) {
-        const { _order, ...s } = source;
-        emit('source', s);
-      }
-      for (const subtitle of cached.subtitles) emit('subtitle', subtitle);
-      for (const diag of cached.diagnostics) emit('diagnostic', diag);
-      emit('done', {
-        meta: {
-          providers: cached.providers,
-          sources: sources.length,
-          subtitles: cached.subtitles.length,
-          latencyMs: Date.now() - started,
-          cacheHit: true,
-        },
-        diagnostics: cached.diagnostics,
+      const sources = await prepareStreamsImpl(cached.streams, {
+        serverUrl,
+        config,
+        allowPrivate,
       });
-      return;
+      if (sources.length) {
+        emit('meta', cached.meta);
+        for (const source of sources) {
+          const { _order, ...publicSource } = source;
+          emit('source', publicSource);
+        }
+        for (const subtitle of cached.subtitles) emit('subtitle', subtitle);
+        for (const diag of cached.diagnostics) emit('diagnostic', diag);
+        emit('done', {
+          meta: {
+            providers: cached.providers,
+            sources: sources.length,
+            subtitles: cached.subtitles.length,
+            latencyMs: Date.now() - started,
+            cacheHit: true,
+          },
+          diagnostics: cached.diagnostics,
+        });
+        return;
+      }
+      eventCache.delete(cacheKey);
     }
   }
 
-  const detailsPromise = getDetails(tmdbType, tmdbId).catch(() => null);
-  const imdbId = await resolveImdbId(tmdbType, tmdbId).catch(() => null);
+  const detailsPromise = getDetailsImpl(tmdbType, tmdbId).catch(() => null);
+  const imdbId = await resolveImdbIdImpl(tmdbType, tmdbId).catch(() => null);
 
   const context = {
     tmdbId,
@@ -365,7 +478,7 @@ async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, con
     filters: {},
   };
 
-  const order = providerOrder();
+  const order = providerOrderImpl();
   const allOriginalStreams = [];
   const allSources = [];
   const diagnostics = [];
@@ -374,7 +487,7 @@ async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, con
   let metaEmitted = false;
 
   const scrapePromises = order.map(async (name) => {
-    const result = await fetchProvider(name, context);
+    const result = await fetchProviderImpl(name, context);
     if (cancelled && cancelled.value) return;
 
     diagnostics.push(result.diagnostic);
@@ -396,14 +509,30 @@ async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, con
 
     const originalStreams = streams.map((stream) => ({ ...stream }));
     allOriginalStreams.push(...originalStreams);
-    const proxied = processStreamsForProxy(originalStreams, serverUrl);
-    const sources = proxied.map(playerSource);
-
     const providerOrderIdx = order.indexOf(name);
+    const sources = await prepareStreamsImpl(originalStreams, {
+      serverUrl,
+      config,
+      allowPrivate,
+      order: providerOrderIdx,
+      onRejected: (stream, validation) => {
+        const diagnostic = {
+          provider: name,
+          ok: false,
+          latencyMs: 0,
+          error: `source rejected: ${validation?.reason || validation?.status || 'invalid'}`,
+          kind: 'source',
+        };
+        diagnostics.push(diagnostic);
+        emit('diagnostic', diagnostic);
+      },
+    });
+    if (cancelled && cancelled.value) return;
+
     for (const source of sources) {
-      const withOrder = { ...source, _order: providerOrderIdx };
-      allSources.push(withOrder);
-      emit('source', source);
+      allSources.push(source);
+      const { _order, ...publicSource } = source;
+      emit('source', publicSource);
     }
   });
 
@@ -418,7 +547,7 @@ async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, con
 
   await Promise.all(scrapePromises);
 
-  if (cancelled && !cancelled.value) {
+  if (ttlMs > 0 && !(cancelled && cancelled.value)) {
     setCachedAggregate(cacheKey, {
       meta: { title, year },
       streams: allOriginalStreams,
@@ -433,7 +562,7 @@ async function getPlayerStreamEvents({ type, id, season, episode, serverUrl, con
   emit('done', {
     meta: {
       providers: order.length,
-      sources: allOriginalStreams.length,
+      sources: allSources.length,
       subtitles: collectedSubtitles.length,
       latencyMs,
       cacheHit: false,
@@ -464,11 +593,14 @@ function getPlayerProviders() {
 
 module.exports = {
   DEFAULT_SOURCE,
+  cacheTtlMs,
+  clearEventCache,
   getBranding,
   getPlayerProviders,
   getPlayerStream,
   getPlayerStreamEvents,
   getLiveTvStream,
   normalizeType,
+  prepareStreams,
   providerOrder,
 };
