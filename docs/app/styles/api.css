@@ -1,0 +1,160 @@
+/* API reference — AMOLED monochrome
+   Replaced forest green (#0c4a34) / lime (#c9f26d) method colors
+   with grayscale badges that work in both light and dark.
+*/
+
+.peak-api {
+  display: grid;
+  gap: 18px;
+  margin: 28px 0 12px;
+}
+
+.peak-api-intro {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 14px;
+  background: var(--color-fd-card);
+}
+
+.peak-api-intro p {
+  margin: 0;
+  color: var(--color-fd-muted-foreground);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.peak-api-base {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.peak-api-base code {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-fd-muted);
+  font-size: 11px;
+}
+
+.peak-api-operation {
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 14px;
+  background: var(--color-fd-card);
+}
+
+.peak-api-operation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-fd-border);
+}
+
+.peak-api-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* GET — neutral gray badge */
+.peak-api-method.get {
+  background: color-mix(in srgb, var(--color-fd-muted) 20%, transparent);
+  color: var(--color-fd-muted-foreground);
+}
+
+/* POST — neutral gray badge (was amber #d69e2e) */
+.peak-api-method.post {
+  background: color-mix(in srgb, var(--color-fd-muted) 25%, transparent);
+  color: var(--color-fd-muted-foreground);
+}
+
+/* DELETE, PATCH */
+.peak-api-method.delete {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+.peak-api-method.patch {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+}
+
+.peak-api-path {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.peak-api-summary {
+  width: 100%;
+  color: var(--color-fd-muted-foreground);
+  font-size: 12px;
+}
+
+.peak-api-body {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.peak-api-body h4 {
+  margin: 0 0 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+}
+
+.peak-api-body p {
+  margin: 0;
+  color: var(--color-fd-muted-foreground);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.peak-api-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.peak-api-table th,
+.peak-api-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-fd-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.peak-api-table th {
+  color: var(--color-fd-muted-foreground);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.peak-api-table td code {
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+}
+
+.peak-api-table tr:last-child td {
+  border-bottom: 0;
+}

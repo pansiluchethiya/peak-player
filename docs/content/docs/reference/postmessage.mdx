@@ -1,0 +1,141 @@
+---
+title: postMessage protocol
+description: The exact command and event messages exchanged between the host page and the Peak player.
+---
+
+The SDK wraps this protocol, but the wire format is stable and documented for teams that need to
+integrate without the helper script.
+
+## Channel
+
+Every message uses:
+
+```json
+{
+  "channel": "peak-player"
+}
+```
+
+Messages from other channels are ignored. The player also ignores messages that do not come from its
+parent window or whose origin is not in the signed allowlist.
+
+## Commands
+
+Host → player:
+
+```json
+{
+  "channel": "peak-player",
+  "type": "command",
+  "command": "seek",
+  "value": 90
+}
+```
+
+| Command | Value | Validation |
+| --- | --- | --- |
+| `play` | none | — |
+| `pause` | none | — |
+| `seek` | number | finite, `>= 0` |
+| `setVolume` | number | finite, `0..1` |
+| `setSubtitle` | number or string | integer `>= -1`, or non-empty string up to 100 chars |
+| `setQuality` | string | non-empty, up to 100 chars |
+
+Invalid commands are dropped. The player does not throw into the host page.
+
+## Events
+
+Player → host:
+
+```json
+{
+  "channel": "peak-player",
+  "type": "event",
+  "event": "ready",
+  "payload": {
+    "type": "movie",
+    "id": "27205",
+    "title": "Inception"
+  }
+}
+```
+
+| Event | Payload |
+| --- | --- |
+| `ready` | `{ type, id, title }` |
+| `play` | none |
+| `pause` | none |
+| `ended` | `{ currentTime, duration }` |
+| `timeupdate` | `{ currentTime, duration }` |
+| `sourcechange` | `{ index, quality, provider, codec }` |
+| `error` | `{ code, message }` |
+
+## Origin rules
+
+The player sends events only to the first configured origin for the session. The SDK listens only
+for messages from the iframe’s exact origin.
+
+```js
+window.addEventListener('message', (event) => {
+  if (event.origin !== playerOrigin) return;
+  if (event.source !== iframe.contentWindow) return;
+  if (event.data?.channel !== 'peak-player') return;
+  // safe to inspect event.data
+});
+```
+
+<Callout type="error" title="Never use a wildcard target">
+  `postMessage(message, '*')` would leak playback events to any window that can observe them. Always
+  pass the exact player origin.
+</Callout>
+
+## Timing
+
+- `ready` fires after the first playable source is attached and the player is ready to accept
+  commands.
+- `timeupdate` is throttled to about 250 ms.
+- `sourcechange` fires whenever the active source index changes, including failover.
+- `error` is terminal for the current attempt. Create a new session or retry at the host level.
+
+## Manual integration
+
+```html
+<iframe
+  id="peak"
+  src="https://player.example.com/embed/movie/27205?token=..."
+  title="Inception"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+  allowfullscreen
+></iframe>
+
+<script>
+  const iframe = document.getElementById('peak');
+  const origin = new URL(iframe.src).origin;
+
+  window.addEventListener('message', (event) => {
+    if (event.origin !== origin) return;
+    if (event.source !== iframe.contentWindow) return;
+    if (event.data?.channel !== 'peak-player') return;
+    if (event.data.type === 'event') {
+      console.log(event.data.event, event.data.payload);
+    }
+  });
+
+  iframe.addEventListener('load', () => {
+    iframe.contentWindow.postMessage(
+      { channel: 'peak-player', type: 'command', command: 'play' },
+      origin,
+    );
+  });
+</script>
+```
+
+## Versioning
+
+The channel and message shape are versioned with the player. Additive payload fields are
+non-breaking. Do not depend on undocumented fields or on provider diagnostics being present.
+
+## Next
+
+- [SDK reference](/docs/reference/sdk)
+- [Security](/docs/security)

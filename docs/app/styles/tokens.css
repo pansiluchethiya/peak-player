@@ -1,0 +1,49 @@
+/* Docs tokens — AMOLED monochrome palette (no blue, no green accent)
+   Replaces the old forest-green (#0c4a34) / lime (#c9f26d) palette.
+   Light: white canvas, gray accent. Dark: AMOLED #000000, gray accent.
+   Font stacks reference Geist Sans + Geist Mono via next/font/google in layout.tsx.
+*/
+
+:root {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Light theme: white canvas, monochrome gray */
+  --color-fd-background: #ffffff;
+  --color-fd-foreground: #0a0a0a;
+  --color-fd-muted: #eaeaea;
+  --color-fd-muted-foreground: #737373;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #0a0a0a;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #0a0a0a;
+  --color-fd-border: #e5e5e5;
+  --color-fd-primary: #333333;
+  --color-fd-primary-foreground: #0a0a0a;
+  --color-fd-secondary: #f5f5f5;
+  --color-fd-secondary-foreground: #0a0a0a;
+  --color-fd-accent: #e5e5e5;
+  --color-fd-accent-foreground: #0a0a0a;
+  --color-fd-ring: #333333;
+}
+
+/* Dark theme: AMOLED #000000 canvas */
+[data-theme="dark"],
+.dark {
+  --color-fd-background: #000000;
+  --color-fd-foreground: #ededed;
+  --color-fd-muted: #262626;
+  --color-fd-muted-foreground: #a3a3a3;
+  --color-fd-popover: #0a0a0a;
+  --color-fd-popover-foreground: #ededed;
+  --color-fd-card: #0a0a0a;
+  --color-fd-card-foreground: #ededed;
+  --color-fd-border: #333333;
+  --color-fd-primary: #e5e5e5;
+  --color-fd-primary-foreground: #000000;
+  --color-fd-secondary: #111111;
+  --color-fd-secondary-foreground: #ededed;
+  --color-fd-accent: #333333;
+  --color-fd-accent-foreground: #ededed;
+  --color-fd-ring: #e5e5e5;
+}

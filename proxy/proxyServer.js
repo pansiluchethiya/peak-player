@@ -2,14 +2,189 @@
 // Adapted from external project (user supplied) to fit CommonJS style and existing config system.
 // Provides conditional route registration via enableProxy flag.
 
-const cors = require('cors');
-const fetch = require('node-fetch');
+const { signProxyUrl, verifyProxyRequest } = require('../utils/proxySigner');
+const { safeFetch } = require('../utils/ssrfGuard');
+const { sanitizeHeaders } = require('../utils/sourceValidator');
 
-const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const FETCH_TIMEOUT_MS = 15000;
+const MAX_PLAYLIST_BYTES = 5 * 1024 * 1024;
+
+function proxyAllowPrivate() {
+    return process.env.PROXY_ALLOW_PRIVATE === '1';
+}
 
 function fetchWithTimeout(url, options = {}) {
-    return fetch(url, { ...options, timeout: FETCH_TIMEOUT_MS });
+    return safeFetch(
+        url,
+        { ...options, timeout: FETCH_TIMEOUT_MS },
+        { allowPrivate: proxyAllowPrivate() },
+    );
+}
+
+function parseHeaders(raw) {
+    try {
+        return JSON.parse(raw || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function proxyHeaders(raw) {
+    return sanitizeHeaders(parseHeaders(raw));
+}
+
+function proxyUrlFor(path, baseProxyUrl, targetUrl, headers) {
+    const signed = signProxyUrl(path, {
+        url: targetUrl,
+        headers: JSON.stringify(headers || {}),
+    });
+    return `${baseProxyUrl}${signed}`;
+}
+
+function publicBaseUrl(req) {
+    const configured = String(process.env.PUBLIC_API_URL || '').trim().replace(/\/$/, '');
+    if (configured) return configured;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    return `${protocol}://${req.get('host')}`;
+}
+
+function allowedOrigins() {
+    const origins = new Set(['http://localhost:3001', 'http://127.0.0.1:3001']);
+    const configured = String(process.env.PLAYER_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+    for (const origin of configured) origins.add(origin);
+    const publicUrl = String(process.env.PLAYER_PUBLIC_URL || '').trim();
+    if (publicUrl) {
+        try {
+            origins.add(new URL(publicUrl).origin);
+        } catch {
+            // Ignore malformed configuration.
+        }
+    }
+    return origins;
+}
+
+function applyCors(req, res) {
+    const origin = req.headers.origin;
+    if (!origin) return true;
+    if (!allowedOrigins().has(origin)) return false;
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+    return true;
+}
+
+function corsGuard(req, res) {
+    if (applyCors(req, res)) return true;
+    res.status(403).json({ error: 'ORIGIN_NOT_ALLOWED' });
+    return false;
+}
+
+function createRateLimiter({ windowMs = 60 * 1000, max = 120 } = {}) {
+    const hits = new Map();
+    const limit = (key) => {
+        const now = Date.now();
+        let entry = hits.get(key);
+        if (!entry || now - entry.start >= windowMs) {
+            entry = { start: now, count: 0 };
+            hits.set(key, entry);
+        }
+        entry.count += 1;
+        if (entry.count > max) {
+            return {
+                ok: false,
+                retryAfter: Math.max(1, Math.ceil((entry.start + windowMs - now) / 1000)),
+            };
+        }
+        return { ok: true };
+    };
+    limit.reset = () => hits.clear();
+    return limit;
+}
+
+const playlistLimiter = createRateLimiter({
+    max: Number(process.env.PROXY_RATE_LIMIT_PLAYLISTS || 120),
+});
+const segmentLimiter = createRateLimiter({
+    max: Number(process.env.PROXY_RATE_LIMIT_SEGMENTS || 2400),
+});
+
+function enforceRate(req, res, limiter, bucket) {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    const result = limiter(`${ip}:${bucket}`);
+    if (result.ok) return true;
+    res.setHeader('Retry-After', String(result.retryAfter));
+    res.status(429).json({ error: 'RATE_LIMITED' });
+    return false;
+}
+
+function resetProxyRateLimits() {
+    playlistLimiter.reset();
+    segmentLimiter.reset();
+}
+
+function requireSignature(req, res) {
+    if (process.env.PROXY_ALLOW_UNSIGNED === '1') return true;
+    const result = verifyProxyRequest(req.path, req.query);
+    if (result.ok) return true;
+    res.status(403).json({ error: 'INVALID_SIGNATURE', reason: result.reason });
+    return false;
+}
+
+function handleProxyError(res, error, debug) {
+    if (debug) console.log('[proxy] request failed', error.code || error.message);
+    if (['PRIVATE_HOST', 'INVALID_URL', 'INVALID_PROTOCOL'].includes(error.code)) {
+        return res.status(400).json({ error: 'UNSAFE_URL' });
+    }
+    if (error.code === 'TOO_MANY_REDIRECTS') {
+        return res.status(502).json({ error: 'TOO_MANY_REDIRECTS' });
+    }
+    return res.status(502).json({ error: 'PROXY_ERROR' });
+}
+
+function isHtmlBody(text) {
+    const value = String(text || '').trimStart().toLowerCase();
+    return (
+        value.startsWith('<!doctype') ||
+        value.startsWith('<html') ||
+        value.startsWith('<head') ||
+        value.startsWith('<body') ||
+        value.startsWith('<!--')
+    );
+}
+
+function isChallengeBody(text) {
+    const value = String(text || '').toLowerCase();
+    return (
+        value.includes('attention required') ||
+        value.includes('just a moment') ||
+        value.includes('enable javascript and cookies') ||
+        value.includes('ddos-guard') ||
+        value.includes('cf-challenge') ||
+        value.includes('cloudflare')
+    );
+}
+
+function parseByteRange(rangeHeader, size) {
+    const match = /^bytes=(\d*)-(\d*)$/i.exec(String(rangeHeader || '').trim());
+    if (!match || (!match[1] && !match[2]) || !Number.isFinite(size) || size <= 0) return null;
+    let start;
+    let end;
+    if (!match[1]) {
+        const suffix = Number.parseInt(match[2], 10);
+        if (!Number.isFinite(suffix) || suffix <= 0) return null;
+        start = Math.max(0, size - suffix);
+        end = size - 1;
+    } else {
+        start = Number.parseInt(match[1], 10);
+        end = match[2] ? Number.parseInt(match[2], 10) : size - 1;
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) return null;
+    return { start, end: Math.min(end, size - 1) };
 }
 
 const CACHE_MAX_SIZE = 2000;
@@ -71,7 +246,7 @@ async function prefetchSegment(url, headers) {
     const existing = segmentCache.get(url);
     if (existing && Date.now() - existing.timestamp <= CACHE_EXPIRY_MS) return;
     try {
-        const resp = await fetchWithTimeout(url, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+        const resp = await fetchWithTimeout(url, { headers: sanitizeHeaders(headers) });
         if (!resp.ok) return;
         const data = new Uint8Array(await resp.arrayBuffer());
         const responseHeaders = {};
@@ -83,7 +258,9 @@ async function prefetchSegment(url, headers) {
 function inferContentType(upstreamCT, targetUrl) {
     if (/\.m3u8(\?|$)/i.test(targetUrl)) return 'application/vnd.apple.mpegurl';
     if (/\.ts(\?|$)/i.test(targetUrl)) return 'video/mp2t';
-    if (/\.html?(\?|$)/i.test(targetUrl)) return 'video/mp2t';
+    if (/\.html?(\?|$)/i.test(targetUrl)) {
+        return upstreamCT && /text\/html/i.test(upstreamCT) ? 'text/html' : 'video/mp2t';
+    }
     if (/\.mp4(\?|$)/i.test(targetUrl)) return 'video/mp4';
     if (/\.mkv(\?|$)/i.test(targetUrl)) return 'video/x-matroska';
     const bad = !upstreamCT || /application\/octet-stream/i.test(upstreamCT) || /application\/(x-)?zip/i.test(upstreamCT);
@@ -106,7 +283,7 @@ function extractOriginalUrl(proxyUrl) {
                 return proxyUrl;
             }
         }
-        if (url.searchParams.has('url')) return decodeURIComponent(url.searchParams.get('url'));
+        if (url.searchParams.has('url')) return url.searchParams.get('url');
         const patterns = [
             /\/api\/[^/]+\/proxy\?url=(.+)$/,
             /\/proxy\?.*url=([^&]+)/,
@@ -128,7 +305,7 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
             if (line.startsWith('#EXT-X-KEY:')) {
                 const regex = /https?:\/\/[^""\s]+/g; const keyUrl = regex.exec(line)?.[0];
                 if (keyUrl) {
-                    const proxyUrl = `${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(keyUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                    const proxyUrl = proxyUrlFor('/ts-proxy', baseProxyUrl, keyUrl, headers);
                     out.push(line.replace(keyUrl, proxyUrl));
                     if (!isCacheDisabled()) prefetchSegment(keyUrl, headers);
                 } else out.push(line);
@@ -137,7 +314,7 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
                 if (uriMatch) {
                     try {
                         const mediaUrl = new URL(uriMatch[1], targetUrl).href;
-                        const proxyUrl = `${baseProxyUrl}/m3u8-proxy?url=${encodeURIComponent(mediaUrl)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                        const proxyUrl = proxyUrlFor('/m3u8-proxy', baseProxyUrl, mediaUrl, headers);
                         out.push(line.replace(uriMatch[1], proxyUrl));
                     } catch { out.push(line); }
                 } else out.push(line);
@@ -146,16 +323,16 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
             try {
                 const abs = new URL(line, targetUrl).href;
                 if (/\.m3u8(\?|$)/i.test(abs)) {
-                    out.push(`${baseProxyUrl}/m3u8-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+                    out.push(proxyUrlFor('/m3u8-proxy', baseProxyUrl, abs, headers));
                 } else if (/\.ts(\?|$)/i.test(abs)) {
                     segmentUrls.push(abs);
-                    out.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+                    out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
                 } else if (/\.html?(\?|$)/i.test(abs)) {
                     segmentUrls.push(abs);
-                    out.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+                    out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
                 } else if (/\.m4s(\?|$)/i.test(abs) || /\.aac(\?|$)/i.test(abs) || /\.mp4(\?|$)/i.test(abs)) {
                     segmentUrls.push(abs);
-                    out.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+                    out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
                 } else out.push(line);
             } catch { out.push(line); }
         } else out.push(line);
@@ -167,33 +344,57 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
 }
 
 function createProxyRoutes(app) {
+    app.options(['/m3u8-proxy', '/ts-proxy', '/sub-proxy'], (req, res) => {
+        if (!corsGuard(req, res)) return;
+        res.status(204).end();
+    });
+
     // m3u8 playlist proxy
-    app.get('/m3u8-proxy', cors(), async (req, res) => {
-        const targetUrl = req.query.url; if (!targetUrl) return res.status(400).json({ error: 'URL parameter required' });
-        let headers = {};
-        try { headers = JSON.parse(req.query.headers || '{}'); } catch {
-            // Ignore URL parsing errors
-        }
+    app.get('/m3u8-proxy', async (req, res) => {
+        if (!corsGuard(req, res)) return;
+        if (!requireSignature(req, res)) return;
+        if (!enforceRate(req, res, playlistLimiter, 'playlist')) return;
+        const targetUrl = String(req.query.url || '');
+        if (!targetUrl) return res.status(400).json({ error: 'URL parameter required' });
+        const headers = proxyHeaders(req.query.headers);
         try {
-            const response = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+            const response = await fetchWithTimeout(targetUrl, { headers });
             if (!response.ok) return res.status(response.status).json({ error: `M3U8 fetch failed: ${response.status}` });
+            const length = Number(response.headers.get('content-length'));
+            if (Number.isFinite(length) && length > MAX_PLAYLIST_BYTES) {
+                return res.status(413).json({ error: 'PLAYLIST_TOO_LARGE' });
+            }
             const text = await response.text();
-            const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-            const baseProxyUrl = `${protocol}://${req.get('host')}`;
+            if (text.length > MAX_PLAYLIST_BYTES) {
+                return res.status(413).json({ error: 'PLAYLIST_TOO_LARGE' });
+            }
+            if (isHtmlBody(text) || isChallengeBody(text)) {
+                return res.status(502).json({ error: 'INVALID_PLAYLIST', reason: 'html_response' });
+            }
+            if (!text.replace(/^\uFEFF/, '').trimStart().startsWith('#EXTM3U')) {
+                return res.status(502).json({ error: 'INVALID_PLAYLIST', reason: 'not_hls' });
+            }
+            const baseProxyUrl = publicBaseUrl(req);
             const rewritten = rewriteM3u8(text, targetUrl, baseProxyUrl, headers);
             res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            res.setHeader('Access-Control-Allow-Origin', '*');
             res.send(rewritten);
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) {
+            handleProxyError(res, e, req.query.debug === '1');
+        }
     });
 
     // ts / key segment proxy
-    app.get('/ts-proxy', cors(), async (req, res) => {
-        const targetUrl = req.query.url; if (!targetUrl) return res.status(400).json({ error: 'URL parameter required' });
+    app.get('/ts-proxy', async (req, res) => {
+        if (!corsGuard(req, res)) return;
+        if (!requireSignature(req, res)) return;
+        if (!enforceRate(req, res, segmentLimiter, 'segment')) return;
+        const targetUrl = String(req.query.url || '');
+        if (!targetUrl) return res.status(400).json({ error: 'URL parameter required' });
         const debug = req.query.debug === '1';
         const noSynth = req.query.noSynth === '1';
-        const force200 = req.query.force200 === '1';
+        const isDirectFile = /\.(mp4|mkv)(\?|$)/i.test(targetUrl);
+        const force200 = req.query.force200 === '1' && !isDirectFile;
         const clampOpen = req.query.clampOpen !== '0';
         const progressiveOpen = req.query.progressiveOpen !== '0';
         const tailPrefetchEnabled = req.query.tailPrefetch !== '0';
@@ -206,9 +407,7 @@ function createProxyRoutes(app) {
         let initChunkKB = parseInt(req.query.initChunkKB || '512', 10);
         if (isNaN(initChunkKB) || initChunkKB < 64) initChunkKB = 512;
         if (initChunkKB > 2048) initChunkKB = 2048; // hard cap 2MB
-        let headers = {}; try { headers = JSON.parse(req.query.headers || '{}'); } catch {
-            // Ignore URL parsing errors
-        }
+        const headers = proxyHeaders(req.query.headers);
         // Pass through Range header for progressive playback / seeking
         const range = req.headers['range'];
         let appliedClamp = false;
@@ -253,13 +452,23 @@ function createProxyRoutes(app) {
         if (!isCacheDisabled()) {
             const cached = getCachedSegment(targetUrl);
             if (cached) {
+                const body = Buffer.from(cached.data);
                 const ct = inferContentType(cached.headers['content-type'], targetUrl);
                 res.setHeader('Content-Type', ct);
                 res.setHeader('Cache-Control', 'public, max-age=3600');
-                res.setHeader('Access-Control-Allow-Origin', '*');
                 res.setHeader('Accept-Ranges', 'bytes');
+                const cachedRange = parseByteRange(range, body.length);
+                if (cachedRange) {
+                    const slice = body.subarray(cachedRange.start, cachedRange.end + 1);
+                    res.status(206);
+                    res.setHeader('Content-Range', `bytes ${cachedRange.start}-${cachedRange.end}/${body.length}`);
+                    res.setHeader('Content-Length', String(slice.length));
+                    if (debug) console.log('[ts-proxy] cache hit (range)', cachedRange);
+                    return res.end(slice);
+                }
+                res.setHeader('Content-Length', String(body.length));
                 if (debug) console.log('[ts-proxy] cache hit');
-                return res.send(Buffer.from(cached.data));
+                return res.end(body);
             }
         }
         try {
@@ -281,7 +490,6 @@ function createProxyRoutes(app) {
                             res.setHeader('Content-Length', slice.length.toString());
                             res.setHeader('Content-Range', `bytes ${startReq}-${endByte}/${tailEntry.size}`);
                             res.setHeader('Cache-Control', 'public, max-age=3600');
-                            res.setHeader('Access-Control-Allow-Origin', '*');
                             if (debug) console.log('[ts-proxy] tail serve hit', { startReq, cachedStart: tailEntry.start, cachedEnd: tailEntry.end, size: tailEntry.size });
                             return res.end(slice);
                         }
@@ -294,7 +502,7 @@ function createProxyRoutes(app) {
             let upstreamAcceptRanges = null;
             if (!effectiveRange) {
                 try {
-                    const headResp = await fetchWithTimeout(targetUrl, { method: 'HEAD', headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+                    const headResp = await fetchWithTimeout(targetUrl, { method: 'HEAD', headers: { ...headers } });
                     if (headResp.ok) {
                         contentLength = headResp.headers.get('content-length');
                         upstreamAcceptRanges = headResp.headers.get('accept-ranges');
@@ -310,7 +518,7 @@ function createProxyRoutes(app) {
                 try {
                     const probeRange = 'bytes=0-0';
                     if (debug) console.log('[ts-proxy] probe range');
-                    const probeResp = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, 'Range': probeRange } });
+                    const probeResp = await fetchWithTimeout(targetUrl, { headers: { ...headers, 'Range': probeRange } });
                     if (probeResp.status === 206) {
                         const cr = probeResp.headers.get('content-range');
                         if (cr) {
@@ -337,7 +545,7 @@ function createProxyRoutes(app) {
                     (async () => {
                         try {
                             if (debug) console.log('[ts-proxy] tail prefetch start', { tailRange });
-                            const tr = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, Range: tailRange } });
+                            const tr = await fetchWithTimeout(targetUrl, { headers: { ...headers, Range: tailRange } });
                             if (tr.status === 206) {
                                 const buf = Buffer.from(await tr.arrayBuffer());
                                 const cr = tr.headers.get('content-range');
@@ -365,7 +573,7 @@ function createProxyRoutes(app) {
                 const desired = initChunkKB * 1024;
                 const chunkSize = Math.min(desired, Math.max(0, total - 1));
                 const syntheticRange = `bytes=0-${chunkSize}`;
-                const resp = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, 'Range': syntheticRange } });
+                const resp = await fetchWithTimeout(targetUrl, { headers: { ...headers, 'Range': syntheticRange } });
                 if (resp.status === 206) {
                     if (debug) console.log('[ts-proxy] synthetic 206', syntheticRange);
                     const upstreamCT = inferContentType(resp.headers.get('content-type'), targetUrl);
@@ -376,16 +584,15 @@ function createProxyRoutes(app) {
                     if (contentRange) res.setHeader('Content-Range', contentRange);
                     const cl = resp.headers.get('content-length'); if (cl) res.setHeader('Content-Length', cl);
                     res.setHeader('Cache-Control', 'public, max-age=3600');
-                    res.setHeader('Access-Control-Allow-Origin', '*');
                     // Pipe first chunk then leave connection open? Simpler: end after chunk; player will request next range.
                     return resp.body.pipe(res);
                 }
                 // If server ignored range (e.g., returned 200), fall through to normal logic below.
             }
 
-            const upstreamOptions = { headers: { 'User-Agent': DEFAULT_UA, ...headers } };
             // If client supplied a suffix range like bytes=0- we pass it; force200 strips Range
             if (force200 && headers.Range) delete headers.Range;
+            const upstreamOptions = { headers: { ...headers } };
             const resp = await fetchWithTimeout(targetUrl, upstreamOptions);
             if (!resp.ok && resp.status !== 206) {
                 if (debug) console.log('[ts-proxy] upstream error', resp.status);
@@ -415,51 +622,71 @@ function createProxyRoutes(app) {
             if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges); else res.setHeader('Accept-Ranges', 'bytes');
             const contentRange = resp.headers.get('content-range'); if (contentRange && !force200) res.setHeader('Content-Range', contentRange);
             res.setHeader('Cache-Control', 'public, max-age=3600');
-            res.setHeader('Access-Control-Allow-Origin', '*');
             if (debug) console.log('[ts-proxy] streaming body', { status: resp.status, ct: upstreamCT, cl, contentRange: force200 ? undefined : contentRange });
             resp.body.pipe(res);
-        } catch (e) { if (debug) console.log('[ts-proxy] exception', e.message); res.status(500).json({ error: e.message }); }
+        } catch (e) {
+            handleProxyError(res, e, debug);
+        }
     });
 
     // subtitle proxy
-    app.get('/sub-proxy', cors(), async (req, res) => {
-        const targetUrl = req.query.url; if (!targetUrl) return res.status(400).json({ error: 'url parameter required' });
-        let headers = {}; try { headers = JSON.parse(req.query.headers || '{}'); } catch {
-            // Ignore URL parsing errors
-        }
+    app.get('/sub-proxy', async (req, res) => {
+        if (!corsGuard(req, res)) return;
+        if (!requireSignature(req, res)) return;
+        if (!enforceRate(req, res, playlistLimiter, 'subtitle')) return;
+        const targetUrl = String(req.query.url || '');
+        if (!targetUrl) return res.status(400).json({ error: 'url parameter required' });
+        const headers = proxyHeaders(req.query.headers);
         try {
-            const resp = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+            const resp = await fetchWithTimeout(targetUrl, { headers });
             if (!resp.ok) return res.status(resp.status).json({ error: `subtitle fetch failed: ${resp.status}` });
-            res.setHeader('Access-Control-Allow-Origin', '*');
+            const length = Number(resp.headers.get('content-length'));
+            if (Number.isFinite(length) && length > MAX_PLAYLIST_BYTES) {
+                return res.status(413).json({ error: 'SUBTITLE_TOO_LARGE' });
+            }
+            const text = await resp.text();
+            if (text.length > MAX_PLAYLIST_BYTES) {
+                return res.status(413).json({ error: 'SUBTITLE_TOO_LARGE' });
+            }
+            if (isHtmlBody(text)) {
+                return res.status(502).json({ error: 'INVALID_SUBTITLE', reason: 'html_response' });
+            }
             res.setHeader('Cache-Control', 'public, max-age=3600');
             res.setHeader('Content-Type', resp.headers.get('content-type') || 'text/vtt');
-            resp.body.pipe(res);
-        } catch (e) { res.status(500).json({ error: e.message }); }
+            res.send(text);
+        } catch (e) {
+            handleProxyError(res, e, req.query.debug === '1');
+        }
     });
 }
 
 function processStreamsForProxy(streams, serverUrl) {
     if (!Array.isArray(streams)) return streams;
+    const base = String(serverUrl || '').trim().replace(/\/$/, '');
+    if (!base) return streams;
     return streams.map(s => {
         if (!s || !s.url || typeof s.url !== 'string') return s;
         const original = extractOriginalUrl(s.url);
-        const headers = s.headers || {};
-        const hParam = Object.keys(headers).length ? `&headers=${encodeURIComponent(JSON.stringify(headers))}` : '';
+        const headers = sanitizeHeaders(s.headers || {});
+        const query = { url: original, headers: JSON.stringify(headers) };
         let host = '';
         try {
             host = new URL(original).hostname.toLowerCase();
         } catch {
             // Ignore errors
         }
-        // Force specific hosts through ts-proxy (direct file style) even without extension
+        // Some direct-file hosts ignore Range or return unusable partial responses.
         if (host.includes('pixeldrain.') || host === 'video-downloads.googleusercontent.com') {
-            return { ...s, url: `${serverUrl}/ts-proxy?url=${encodeURIComponent(original)}${hParam}&force200=1&clampOpen=0` };
+            return { ...s, url: `${base}${signProxyUrl('/ts-proxy', { ...query, force200: '1', clampOpen: '0' })}` };
         }
         if (/\.(mp4|mkv)(\?|$)/i.test(original)) {
-            return { ...s, url: `${serverUrl}/ts-proxy?url=${encodeURIComponent(original)}${hParam}&force200=1&clampOpen=0` };
+            return {
+                ...s,
+                url: `${base}${signProxyUrl('/ts-proxy', { ...query, clampOpen: '0', progressiveOpen: '0' })}`,
+            };
         }
-        return { ...s, url: `${serverUrl}/m3u8-proxy?url=${encodeURIComponent(original)}${hParam}` };
+        return { ...s, url: `${base}${signProxyUrl('/m3u8-proxy', query)}` };
     });
 }
 
-module.exports = { createProxyRoutes, processStreamsForProxy };
+module.exports = { createProxyRoutes, processStreamsForProxy, resetProxyRateLimits };

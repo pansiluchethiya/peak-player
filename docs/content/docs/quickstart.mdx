@@ -1,0 +1,176 @@
+---
+title: Quickstart
+description: Mint a signed embed session, mount the Peak player, and listen for playback events.
+---
+
+This walkthrough creates a signed embed session from a trusted backend, mounts the player in a
+partner page, and wires up the core events. You need a Peak deployment, a partner API key, and a
+page where you can run JavaScript.
+
+## Before you start
+
+- Peak API reachable from your backend.
+- Peak player reachable from the browser.
+- A partner API key configured in `EMBED_PARTNERS`.
+- The partner origin registered exactly, for example `https://app.example.com`.
+
+<Callout type="warn" title="Keep the API key server-side">
+  Never put the partner API key in browser JavaScript. The browser only receives the short-lived
+  embed token returned by your backend.
+</Callout>
+
+## 1. Create a session on your server
+
+<Steps>
+  <Step>
+    ### Call the session endpoint
+
+    ```bash
+    curl -X POST http://localhost:3000/api/v1/embed/sessions \
+      -H 'content-type: application/json' \
+      -H 'x-api-key: YOUR_PARTNER_KEY' \
+      -d '{
+        "type": "movie",
+        "id": "27205",
+        "ttlSeconds": 900
+      }'
+    ```
+  </Step>
+  <Step>
+    ### Read the signed URL
+
+    A successful response looks like this:
+
+    ```json
+    {
+      "success": true,
+      "token": "eyJ2IjoxLCJwYXJ0bmVySWQiOiJkZW1vIiwidHlwZSI6Im1vdmllIiwiaWQiOiIyNzIwNSIsIm9yaWdpbnMiOlsiaHR0cHM6Ly9hcHAuZXhhbXBsZS5jb20iXSwiaWF0IjoxNzYxNDAwMDAwMDAwLCJleHAiOjE3NjE0MDA5MDAwMDB9.signature",
+      "expiresAt": "2026-10-25T16:30:00.000Z",
+      "url": "http://localhost:3001/embed/movie/27205?token=...",
+      "embedUrl": "http://localhost:3001/embed/movie/27205?token=...",
+      "partner": { "id": "demo", "name": "Demo partner" },
+      "origins": ["https://app.example.com"],
+      "type": "movie",
+      "id": "27205",
+      "season": null,
+      "episode": null,
+      "poster": "/abc123.jpg",
+      "source": "netmirror"
+    }
+    ```
+  </Step>
+  <Step>
+    ### Return only what the browser needs
+
+    Send `embedUrl` and `expiresAt` to the browser. Do not send the partner API key or the token
+    separately unless your client needs to refresh the session.
+
+    ```js
+    // server: Express example
+    app.post('/peak/session', async (req, res) => {
+      const response = await fetch(`${PEAK_API}/api/v1/embed/sessions`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': process.env.PEAK_PARTNER_KEY,
+        },
+        body: JSON.stringify({ type: 'movie', id: req.body.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) return res.status(response.status).json(data);
+      res.json({ embedUrl: data.embedUrl, expiresAt: data.expiresAt });
+    });
+    ```
+  </Step>
+</Steps>
+
+## 2. Load the SDK
+
+The SDK is a single script that exposes `window.PeakEmbed`. Serve it from the player origin so the
+browser can load it without cross-origin surprises.
+
+```html
+<script src="http://localhost:3001/peak-embed.js" defer></script>
+```
+
+The SDK has no dependencies and is safe to load on any page. It only accepts messages whose
+`event.source` is the iframe it created and whose `event.origin` matches the embed URL origin.
+
+## 3. Mount the player
+
+```html
+<div id="player" style="aspect-ratio: 16 / 9; max-width: 960px"></div>
+
+<script>
+  window.addEventListener('DOMContentLoaded', async () => {
+    const session = await fetch('/peak/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: '27205' }),
+    }).then((response) => response.json());
+
+    const player = window.PeakEmbed.mount({
+      target: '#player',
+      url: session.embedUrl,
+      title: 'Inception',
+      width: '100%',
+      height: '100%',
+    });
+
+    player.on('ready', ({ title }) => console.log('ready:', title));
+    player.on('play', () => console.log('playing'));
+    player.on('pause', () => console.log('paused'));
+    player.on('ended', () => console.log('ended'));
+    player.on('error', ({ code, message }) => console.error(code, message));
+  });
+</script>
+```
+
+<Callout type="success" title="You should see the player">
+  The player requests sources over SSE, validates the first ranked candidate, and begins playback
+  when the browser allows it. If autoplay is blocked, the player shows a play affordance instead of
+  failing silently.
+</Callout>
+
+## 4. Control playback
+
+```js
+player.play();
+player.pause();
+player.seek(90);            // seconds
+player.setVolume(0.6);      // 0..1
+player.setSubtitle('en');   // label or language
+player.setQuality('1080p'); // quality label
+player.destroy();           // remove the iframe and listeners
+```
+
+Commands are validated in the player. `seek` must be a finite non-negative number, `setVolume` must
+be between 0 and 1, and subtitle/quality values must be short strings.
+
+## 5. Handle expiry
+
+Tokens are short-lived by design. A default session lives for **900 seconds** (15 minutes); the
+minimum is **60 seconds** and the maximum is **86400 seconds**. Create a fresh session when the
+current one is close to expiry.
+
+```js
+const refreshAt = new Date(session.expiresAt).getTime() - 60_000;
+setTimeout(async () => {
+  const next = await fetch('/peak/session', { /* ... */ }).then((r) => r.json());
+  player.destroy();
+  mountPlayer(next.embedUrl);
+}, Math.max(0, refreshAt - Date.now()));
+```
+
+<Callout type="warn" title="Expired tokens fail closed">
+  An expired or invalid token is rejected before the player document is served. The response is a
+  `401` and the browser will not receive a player shell.
+</Callout>
+
+## Next steps
+
+- [Movies guide](/docs/guides/movies) for poster handling and source selection.
+- [TV guide](/docs/guides/tv) for seasons and episodes.
+- [Live TV guide](/docs/guides/live-tv) for channel catalogs.
+- [SDK reference](/docs/reference/sdk) for the complete API.
+- [Security model](/docs/security) for the token and origin boundary.

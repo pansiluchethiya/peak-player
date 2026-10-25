@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 function apiBase(): string {
-  return (process.env.API_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+  return (process.env.API_URL ?? 'http://localhost:8787').replace(/\/+$/, '');
 }
 
 function shouldPassthroughSSE(target: string): boolean {
@@ -56,8 +56,6 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     responseHeaders.delete('content-length');
     responseHeaders.delete('transfer-encoding');
   }
-
-  responseHeaders.set('access-control-allow-origin', '*');
 
   return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
 }

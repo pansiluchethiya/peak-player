@@ -1,0 +1,54 @@
+---
+title: Changelog
+description: Release notes for the Peak player, embed platform, and documentation.
+---
+
+## Unreleased
+
+### Player and source pipeline
+
+- Added source metadata normalization for container, video codec, audio codec, HDR, and browser
+  playability.
+- Added deterministic source ranking with provider health signals.
+- Added source validation before playback, including manifest and segment checks.
+- Added progressive SSE source delivery with a first-playable path.
+- Added failover across ranked sources.
+- Hardened the media proxy with signed URLs, SSRF protection, header allowlisting, CORS, rate
+  limiting, and Range preservation.
+
+### Embed platform
+
+- Added HMAC-signed embed sessions with partner, media, and origin scoping.
+- Added exact-origin `frame-ancestors` middleware.
+- Added `/embed/movie`, `/embed/tv`, `/embed/live`, and `/embed/demo` routes.
+- Added the dependency-free `window.PeakEmbed` SDK.
+- Added postMessage command/event validation.
+- Added embed-mode filtering for external live sources.
+- Added the embed landing page and this documentation site.
+
+### Documentation
+
+- Added guides for movies, TV, live TV, auth, theming, playback, and errors.
+- Added SDK, URL, and postMessage references.
+- Added an OpenAPI 3.1 reference and link checker.
+- Added architecture, source pipeline, security, self-hosting, and troubleshooting pages.
+
+## 1.0.0
+
+- Initial custom Hls.js player.
+- Movie, TV, and live TV routes.
+- Provider aggregation and playback health.
+- Admin configuration and IPTV catalog.
+- Branding endpoint and player chrome.
+
+## Versioning
+
+The player and SDK follow semantic versioning for public APIs. The postMessage channel is stable;
+additive payload fields are non-breaking. Internal provider adapters and diagnostics are not part of
+the public contract.
+
+## Next
+
+- [Status](/docs/status)
+- [Architecture](/docs/architecture)
+- [FAQ](/docs/faq)

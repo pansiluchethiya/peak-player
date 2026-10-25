@@ -1,0 +1,82 @@
+---
+title: FAQ
+description: Short answers to the questions partners ask before integrating Peak.
+---
+
+## Is Peak a third-party embed?
+
+No. Peak ships its own Hls.js-based player. It resolves and validates sources itself and keeps
+provider URLs server-side. A direct external iframe fallback exists only for exceptional non-embed
+cases and is off by default.
+
+## Can I use my own player?
+
+The supported integration is the Peak player through the SDK. The API can return source metadata,
+but the player is where validation, failover, embed filtering, and the postMessage contract live.
+Replacing the player means reimplementing those guarantees.
+
+## Do I need a server?
+
+Yes, for the partner API key and session creation. The key must never be placed in browser code.
+Your server calls `POST /api/v1/embed/sessions` and returns the signed URL to the browser.
+
+## How long does a token last?
+
+Fifteen minutes by default. The minimum is 60 seconds and the maximum is 24 hours. Keep it short and
+refresh when needed.
+
+## Can a token be reused?
+
+A token is scoped to one partner, one media item, and a set of exact origins. It can be reused from
+those origins until it expires. It cannot be used for another title or another origin.
+
+## Can I frame the player on multiple domains?
+
+Yes, if all domains are exact origins in the partner record. Wildcards and subdomain matching are
+not supported. Mint a new session after changing the origin list.
+
+## Why is my iframe blank?
+
+The most common causes are an expired token, a missing token, an origin not in `frame-ancestors`, or
+a proxy/CSP configuration that blocks the player document. Check the HTTP status and the browser
+console first.
+
+## Why does the player show a play button instead of autoplaying?
+
+Browser autoplay policy. Muted autoplay may work; audible autoplay usually requires a user gesture.
+The player shows a play affordance instead of failing silently.
+
+## What happens when a source fails?
+
+The player advances to the next ranked, validated source and emits `sourcechange`. If every source
+fails, it emits `error` with `STREAM_UNAVAILABLE`.
+
+## Are upstream URLs exposed to the browser?
+
+No. Source URLs are signed Peak proxy URLs. Embed responses filter external iframe URLs, and the
+player never receives provider credentials. The proxy fetches upstream media server-side.
+
+## Does live TV work in embeds?
+
+HLS live channels do. External-only channels return `NO_EMBEDDABLE_SOURCE` in embed mode.
+
+## Can I theme the player?
+
+The current build exposes a server-side branding contract (`name`, `logoUrl`, `accentColor`,
+`tagline`). It is not yet a per-partner runtime setting. The host page controls the iframe container
+styling.
+
+## How do I monitor health?
+
+Use `/api/health` for process health and `/api/v1/playback/health` for provider and playback health.
+Publish aggregates, not provider URLs or diagnostics.
+
+## Where are the docs for the SDK?
+
+[SDK reference](/docs/reference/sdk) and [postMessage protocol](/docs/reference/postmessage).
+
+## Next
+
+- [Quickstart](/docs/quickstart)
+- [Security](/docs/security)
+- [Troubleshooting](/docs/troubleshooting)

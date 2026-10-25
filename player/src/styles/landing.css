@@ -1,0 +1,182 @@
+/* ==========================================================================
+   Peak Landing — forest observatory
+   ========================================================================== */
+
+.peak-site {
+  --peak-max: 1320px;
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+  background:
+    radial-gradient(circle at 8% -4%, rgba(0, 0, 0, 0.55), transparent 34rem),
+    radial-gradient(circle at 96% 8%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 30rem),
+    var(--color-fg);
+  color: var(--color-fg);
+  font-family: var(--font-mono), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.peak-site *,
+.peak-site *::before,
+.peak-site *::after {
+  box-sizing: border-box;
+}
+
+.peak-site ::selection {
+  background: var(--color-accent);
+  color: var(--color-fg);
+}
+
+.peak-site a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.peak-site button,
+.peak-site summary {
+  font: inherit;
+}
+
+.peak-site a:focus-visible,
+.peak-site button:focus-visible,
+.peak-site summary:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.peak-skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 300;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-fg);
+  font-size: 13px;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+}
+
+.peak-skip:focus {
+  transform: translateY(0);
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.peak-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 14px clamp(20px, 4.5vw, 72px);
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+.peak-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  min-width: max-content;
+}
+
+.peak-brand img {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+
+.peak-brand span {
+  display: grid;
+  gap: 1px;
+  font-family: var(--font-sans), var(--font-mono), sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.peak-brand small {
+  color: var(--color-muted);
+  font-family: var(--font-mono), sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.peak-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.4vw, 34px);
+  margin-left: auto;
+}
+
+.peak-nav a {
+  position: relative;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: color 160ms ease;
+}
+
+.peak-nav a::after {
+  position: absolute;
+  right: 0;
+  bottom: -6px;
+  left: 0;
+  height: 1px;
+  background: var(--color-accent);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms var(--peak-ease);
+}
+
+.peak-nav a:hover {
+  color: var(--color-fg);
+}
+
+.peak-nav a:hover::after {
+  transform: scaleX(1);
+}
+
+.peak-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.peak-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.peak-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent), 0 0 12px color-mix(in srgb, var(--color-accent) 5%, transparent);
+}
+

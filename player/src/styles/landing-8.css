@@ -1,0 +1,195 @@
+.peak-event-head,
+.peak-event-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  color: var(--color-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.peak-event-head {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.peak-event-head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-accent);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.peak-event-head svg,
+.peak-event-footer svg {
+  width: 13px;
+  height: 13px;
+}
+
+.peak-event-head > span:last-child {
+  color: color-mix(in srgb, var(--color-fg) 35%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+}
+
+.peak-event-card pre {
+  margin: 0;
+  padding: 18px 16px;
+  overflow-x: auto;
+  color: var(--color-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.72;
+}
+
+.peak-event-footer {
+  justify-content: flex-start;
+  border-top: 1px solid var(--color-border);
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+  font-size: 10px;
+}
+
+.peak-event-footer svg {
+  color: var(--color-accent);
+}
+
+/* Partner auth ------------------------------------------------------------ */
+
+.peak-auth {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: center;
+  gap: clamp(36px, 6vw, 88px);
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.peak-auth-art {
+  position: relative;
+  display: grid;
+  min-height: 430px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.55), transparent 56%),
+    linear-gradient(160deg, color-mix(in srgb, var(--color-fg) 3%, transparent), transparent),
+    var(--color-fg);
+}
+
+.peak-auth-orbit {
+  position: relative;
+  width: min(76%, 340px);
+  aspect-ratio: 1;
+  animation: peak-orbit-breathe 8s ease-in-out infinite;
+}
+
+.peak-orbit-ring {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 40px color-mix(in srgb, var(--color-accent) 4%, transparent),
+    0 0 0 32px color-mix(in srgb, var(--color-accent) 2.5%, transparent);
+}
+
+.peak-orbit-ring::before,
+.peak-orbit-ring::after {
+  position: absolute;
+  border-radius: 50%;
+  content: "";
+}
+
+.peak-orbit-ring::before {
+  inset: 18%;
+  border: 1px dashed color-mix(in srgb, var(--color-fg) 14%, transparent);
+}
+
+.peak-orbit-ring::after {
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--color-accent);
+  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.peak-orbit-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  width: 78px;
+  height: 78px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 3%, transparent);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--color-accent);
+  box-shadow: 0 0 48px color-mix(in srgb, var(--color-accent) 16%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.peak-orbit-core svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.4;
+}
+
+.peak-orbit-node {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.94);
+  color: var(--color-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+}
+
+.peak-orbit-node.a {
+  top: 3%;
+  left: 50%;
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-accent);
+  transform: translateX(-50%);
+}
+
+.peak-orbit-node.b {
+  right: 2%;
+  bottom: 17%;
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-accent-hover);
+}
+
+.peak-orbit-node.c {
+  bottom: 17%;
+  left: 2%;
+  border-color: rgba(0, 0, 0, 0.6);
+}
+
+@keyframes peak-orbit-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+

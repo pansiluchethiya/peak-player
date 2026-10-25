@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Peak Admin — design tokens (Geist monochrome palette)
+   Variable NAMES are kept stable across the admin stylesheet; only the
+   VALUES swap the old lime/forest palette for the monochrome gray palette.
+   :root  = light, [data-theme="dark"] = dark (AMOLED #000000).
+   ========================================================================== */
+
+:root {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Neutral stack */
+  --canvas: #ffffff;
+  --canvas-deep: #f5f5f5;
+  --surface: #ffffff;
+  --surface-raised: #f8f9fa;
+  --surface-muted: #f0f0f0;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+  --ink: #0a0a0a;
+  --ink-soft: #666666;
+  --muted: #888888;
+  --faint: #bbbbbb;
+
+  /* Brand / accent — monochrome gray (no blue) */
+  --brand: #333333;
+  --brand-hover: #171717;
+  --brand-soft: rgba(51, 51, 51, 0.12);
+  --brand-ink: #ffffff;
+  --accent: #333333;
+  --accent-strong: #171717;
+  --accent-ink: #ffffff;
+
+  /* Borders */
+  --border: #eaeaea;
+  --border-strong: #cccccc;
+  --border-soft: rgba(0, 0, 0, 0.05);
+
+  /* Status (success kept green; error system red; warning semantic amber) */
+  --success: #17c964;
+  --success-soft: rgba(23, 201, 100, 0.12);
+  --success-ink: #12824f;
+  --warning: #b26a14;
+  --warning-soft: #fbf0dc;
+  --warning-ink: #8a500b;
+  --danger: #f31260;
+  --danger-soft: rgba(243, 18, 96, 0.12);
+  --danger-ink: #8c0023;
+  --info: #333333;
+  --info-soft: rgba(51, 51, 51, 0.12);
+  --info-ink: #0a0a0a;
+
+  /* Sidebar */
+  --sidebar: #f0f0f0;
+  --sidebar-deep: #e8e8e8;
+  --sidebar-line: rgba(0, 0, 0, 0.05);
+  --sidebar-ink: var(--ink);
+  --sidebar-muted: var(--muted);
+  --sidebar-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-active: #333333;
+  --sidebar-active-ink: #ffffff;
+
+  /* KPI cards — neutral grays */
+  --kpi-mint: linear-gradient(145deg, #f5f6f8 0%, #ffffff 100%);
+  --kpi-lemon: linear-gradient(145deg, #edf0f4 0%, #f6f8fb 100%);
+  --kpi-lavender: linear-gradient(145deg, #e8ecf3 0%, #eff3f9 100%);
+  --kpi-sky: linear-gradient(145deg, #e1e7f0 0%, #ecf2fb 100%);
+  --kpi-icon: rgba(51, 51, 51, 0.14);
+
+  /* Shadows — neutral */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 4px 14px -8px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 18px 38px -28px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 34px 70px -40px rgba(0, 0, 0, 0.48);
+  --shadow-sidebar: 24px 0 60px -48px rgba(0, 0, 0, 0.7);
+
+  /* Shape + layout */
+  --radius-xl: 24px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 9px;
+  --sidebar-w: 276px;
+  --topbar-h: 72px;
+  --content-max: 1480px;
+  --focus-ring: 0 0 0 3px rgba(51, 51, 51, 0.25), 0 0 0 1px rgba(51, 51, 51, 0.4);
+  --focus-accent: 0 0 0 3px rgba(51, 51, 51, 0.25), 0 0 0 1px rgba(51, 51, 51, 0.4);
+  --ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+[data-theme="dark"] {
+  --canvas: #000000;
+  --canvas-deep: #000000;
+  --surface: #171717;
+  --surface-raised: #151515;
+  --surface-muted: #222222;
+  --surface-glass: rgba(0, 0, 0, 0.78);
+  --ink: #ededed;
+  --ink-soft: #999999;
+  --muted: #aaaaaa;
+  --faint: #888888;
+
+  --brand: #e5e5e5;
+  --brand-hover: #ededed;
+  --brand-soft: rgba(229, 229, 229, 0.12);
+  --brand-ink: #000000;
+  --accent: #e5e5e5;
+  --accent-strong: #ededed;
+  --accent-ink: #000000;
+
+  --border: #333333;
+  --border-strong: #444444;
+  --border-soft: rgba(255, 255, 255, 0.08);
+
+  --success: #17c964;
+  --success-soft: rgba(23, 201, 100, 0.12);
+  --success-ink: #12824f;
+  --warning: #f2b35c;
+  --warning-soft: rgba(242, 179, 92, 0.12);
+  --warning-ink: #ffd497;
+  --danger: #f31260;
+  --danger-soft: rgba(243, 18, 96, 0.12);
+  --danger-ink: #8c0023;
+  --info: #e5e5e5;
+  --info-soft: rgba(229, 229, 229, 0.12);
+  --info-ink: #ededed;
+
+  --sidebar: #151515;
+  --sidebar-deep: #0d0d0d;
+  --sidebar-line: rgba(255, 255, 255, 0.08);
+  --sidebar-ink: var(--ink);
+  --sidebar-muted: var(--muted);
+  --sidebar-hover: rgba(255, 255, 255, 0.055);
+  --sidebar-active: #e5e5e5;
+  --sidebar-active-ink: #000000;
+
+  --kpi-mint: linear-gradient(145deg, #15161a 0%, #1c1d22 100%);
+  --kpi-lemon: linear-gradient(145deg, #18191e 0%, #1f2026 100%);
+  --kpi-lavender: linear-gradient(145deg, #1a1b21 0%, #22232a 100%);
+  --kpi-sky: linear-gradient(145deg, #16171d 0%, #202128 100%);
+  --kpi-icon: rgba(229, 229, 229, 0.32);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-sm: 0 6px 18px -10px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 22px 44px -30px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 36px 76px -40px rgba(0, 0, 0, 0.85);
+  --shadow-sidebar: 28px 0 70px -44px rgba(0, 0, 0, 0.9);
+  --focus-ring: 0 0 0 3px rgba(229, 229, 229, 0.25), 0 0 0 1px rgba(229, 229, 229, 0.4);
+  --focus-accent: 0 0 0 3px rgba(229, 229, 229, 0.25), 0 0 0 1px rgba(229, 229, 229, 0.4);
+}

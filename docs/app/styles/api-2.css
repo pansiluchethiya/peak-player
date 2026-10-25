@@ -1,0 +1,56 @@
+.peak-api-schema {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.peak-api-field {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(80px, 0.6fr) minmax(0, 1.6fr);
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-fd-border);
+  font-size: 11px;
+}
+
+.peak-api-field:last-child {
+  border-bottom: 0;
+}
+
+.peak-api-field code {
+  font-weight: 650;
+}
+
+.peak-api-field span {
+  color: var(--color-fd-muted-foreground);
+  line-height: 1.5;
+}
+
+.peak-api-response {
+  display: grid;
+  gap: 8px;
+}
+
+.peak-api-response-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.peak-api-status {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(51, 51, 51, 0.13);
+  color: #333333;
+  font-weight: 800;
+}
+
+.dark .peak-api-status {
+  background: rgba(229, 229, 229, 0.12);
+  color: #e5e5e5;
+}
+

@@ -1,0 +1,130 @@
+.peak-border-beam {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  padding: 1px;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.peak-border-beam::before {
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--peak-beam-from, var(--color-accent)) 24deg,
+    var(--peak-beam-to, var(--color-accent)) 44deg,
+    transparent 74deg
+  );
+  content: "";
+  animation: peak-border-beam var(--peak-beam-duration, 8s) linear infinite;
+  animation-delay: var(--peak-beam-delay, 0s);
+}
+
+@keyframes peak-border-beam {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Number ticker ----------------------------------------------------------- */
+
+.peak-ticker {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Responsive -------------------------------------------------------------- */
+
+@media (max-width: 1120px) {
+  .peak-hero-grid,
+  .peak-quickstart-grid,
+  .peak-integration,
+  .peak-auth,
+  .peak-docs-card,
+  .peak-status {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .peak-hero-copy {
+    max-width: 760px;
+  }
+
+  .peak-hero h1 {
+    max-width: 14ch;
+  }
+
+  .peak-hero-artifact {
+    width: min(760px, 100%);
+    margin: 0 auto;
+  }
+
+  .peak-bento-card {
+    grid-column: span 6;
+  }
+
+  .peak-bento-wide {
+    grid-column: span 12;
+  }
+
+  .peak-bento-tall {
+    grid-column: span 6;
+    grid-row: auto;
+  }
+
+  .peak-stats {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .peak-stat-intro {
+    max-width: 52ch;
+  }
+
+  .peak-auth-art {
+    min-height: 380px;
+  }
+
+  .peak-docs-card {
+    gap: 34px;
+  }
+
+  .peak-docs-index {
+    border-top: 0;
+  }
+}
+
+@media (max-width: 920px) {
+  .peak-nav {
+    display: none;
+  }
+
+  .peak-header-actions {
+    margin-left: auto;
+  }
+
+  .peak-provider-band {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .peak-dialog-screen {
+    grid-template-columns: 1fr;
+  }
+
+  .peak-dialog-rail {
+    display: none;
+  }
+}
+

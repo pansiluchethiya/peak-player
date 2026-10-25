@@ -6,7 +6,16 @@
   "scripts": {
     "start": "nodemon --watch restart.trigger apiServer.js",
     "start:dev": "nodemon --watch restart.trigger --ignore providers/.cache --ignore **/cache apiServer.js",
-    "lint": "eslint . --ext .js"
+    "dev:admin": "npm --prefix admin run dev",
+    "dev": "concurrently \"npm --prefix admin run dev\" \"npm --prefix player run dev\" \"npm --prefix docs run dev\" \"npm run start\"",
+    "lint": "eslint . --ext .js",
+    "check:player": "npm --prefix player run lint && npm --prefix player run typecheck && npm --prefix player test && npm --prefix player run build",
+    "check:docs": "npm --prefix docs test && npm --prefix docs run check:links",
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:build": "npm --prefix docs run build",
+    "docs:check": "npm run check:docs",
+    "check:css": "node scripts/check-css-size.mjs",
+    "check": "npm run lint && npm run check:player && npm run check:docs && npm run check:css"
   },
   "dependencies": {
     "aromanize": "^0.1.5",
@@ -33,6 +42,7 @@
     "node": ">=14.0.0"
   },
   "devDependencies": {
+    "concurrently": "^9.1.4",
     "eslint": "^8.57.0",
     "nodemon": "^3.1.10"
   }

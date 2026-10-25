@@ -1,7 +1,51 @@
 // Embed URL builder for Peak's custom player.
 // The player UI is served separately and reads streams from Peak's /api/v1 API.
+const { findPartnerByApiKey } = require('./embedPartners');
+const {
+  normalizeTtlSeconds,
+  signEmbedToken,
+  verifyEmbedToken,
+} = require('./embedToken');
+
 const DEFAULT_SOURCE = 'netmirror';
-const DEFAULT_PLAYER_URL = 'http://127.0.0.1:3001';
+const DEFAULT_PLAYER_URL = 'http://localhost:3001';
+
+function configError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function normalizeBaseUrl(value, { required = false } = {}) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    if (required) {
+      throw configError(
+        'PLAYER_PUBLIC_URL is required in production',
+        'PLAYER_PUBLIC_URL_REQUIRED',
+      );
+    }
+    return DEFAULT_PLAYER_URL;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw configError('PLAYER_PUBLIC_URL must be a valid URL', 'INVALID_PLAYER_PUBLIC_URL');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw configError('PLAYER_PUBLIC_URL must use http or https', 'INVALID_PLAYER_PUBLIC_URL');
+  }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw configError(
+      'PLAYER_PUBLIC_URL must not contain credentials, a query, or a fragment',
+      'INVALID_PLAYER_PUBLIC_URL',
+    );
+  }
+  const pathname = parsed.pathname.replace(/\/+$/, '');
+  return `${parsed.origin}${pathname}`;
+}
 
 function normalizeType(type) {
   const value = String(type || '').toLowerCase();
@@ -17,22 +61,38 @@ function normalizePositiveInt(value, fallback) {
 }
 
 function playerBaseUrl() {
-  return (process.env.PLAYER_PUBLIC_URL || DEFAULT_PLAYER_URL).replace(/\/+$/, '');
+  const configured = String(process.env.PLAYER_PUBLIC_URL || '').trim();
+  return normalizeBaseUrl(configured, {
+    required: !configured && process.env.NODE_ENV === 'production',
+  });
+}
+
+function mediaPath(media, prefix = '') {
+  if (media.type === 'tv') {
+    return `${prefix}/tv/${encodeURIComponent(media.id)}/${media.season}/${media.episode}`;
+  }
+  if (media.type === 'live_tv') {
+    return `${prefix}/live/${encodeURIComponent(media.id)}`;
+  }
+  return `${prefix}/movie/${encodeURIComponent(media.id)}`;
 }
 
 function buildPlayerUrl(media) {
-  const base = playerBaseUrl();
   const params = new URLSearchParams();
   if (media.poster) params.set('poster', media.poster);
   const qs = params.toString();
   const suffix = qs ? `?${qs}` : '';
-  if (media.type === 'tv') {
-    return `${base}/tv/${encodeURIComponent(media.id)}/${media.season}/${media.episode}${suffix}`;
-  }
-  if (media.type === 'live_tv') {
-    return `${base}/live/${encodeURIComponent(media.id)}${suffix}`;
-  }
-  return `${base}/movie/${encodeURIComponent(media.id)}${suffix}`;
+  return `${playerBaseUrl()}${mediaPath(media)}${suffix}`;
+}
+
+function buildEmbedUrl(media, token, { baseUrl } = {}) {
+  const base = baseUrl ? normalizeBaseUrl(baseUrl) : playerBaseUrl();
+  const params = new URLSearchParams();
+  if (token) params.set('token', token);
+  if (media.poster) params.set('poster', media.poster);
+  const qs = params.toString();
+  const suffix = qs ? `?${qs}` : '';
+  return `${base}${mediaPath(media, '/embed')}${suffix}`;
 }
 
 async function getEmbed({ type, id, season, episode, source, poster: posterOverride } = {}) {
@@ -91,7 +151,17 @@ async function getEmbed({ type, id, season, episode, source, poster: posterOverr
     } catch { /* ignore */ }
   }
   if (poster) media.poster = poster;
-  const url = buildPlayerUrl(media);
+
+  let url;
+  try {
+    url = buildPlayerUrl(media);
+  } catch (error) {
+    return {
+      status: 500,
+      error: error.code || 'INVALID_PLAYER_URL',
+      message: error.message,
+    };
+  }
 
   return {
     status: 200,
@@ -107,9 +177,75 @@ async function getEmbed({ type, id, season, episode, source, poster: posterOverr
   };
 }
 
+async function createEmbedSession({
+  apiKey,
+  type,
+  id,
+  season,
+  episode,
+  source,
+  poster,
+  ttlSeconds,
+  now,
+} = {}) {
+  const partner = findPartnerByApiKey(apiKey);
+  if (!partner) {
+    return {
+      status: 401,
+      error: 'INVALID_API_KEY',
+      message: 'a valid x-api-key header is required',
+    };
+  }
+
+  const embed = await getEmbed({ type, id, season, episode, source, poster });
+  if (embed.error) return embed;
+
+  const issuedAt = Number.isFinite(now) ? now : Date.now();
+  const token = signEmbedToken(
+    {
+      v: 1,
+      partnerId: partner.id,
+      type: embed.type,
+      id: embed.id,
+      season: embed.season,
+      episode: embed.episode,
+      origins: partner.origins,
+    },
+    { ttlSeconds: normalizeTtlSeconds(ttlSeconds), now: issuedAt },
+  );
+
+  const verified = verifyEmbedToken(token, { now: issuedAt });
+  if (!verified.ok) {
+    return {
+      status: 500,
+      error: 'TOKEN_SIGNING_FAILED',
+      message: 'could not create a signed embed token',
+    };
+  }
+
+  const url = buildEmbedUrl(embed, token);
+  return {
+    status: 200,
+    token,
+    expiresAt: new Date(verified.payload.exp * 1000).toISOString(),
+    url,
+    embedUrl: url,
+    partner: { id: partner.id, name: partner.name },
+    origins: partner.origins,
+    type: embed.type,
+    id: embed.id,
+    season: embed.season,
+    episode: embed.episode,
+    poster: embed.poster,
+    source: embed.source,
+  };
+}
+
 module.exports = {
   DEFAULT_SOURCE,
   DEFAULT_PLAYER_URL,
+  buildEmbedUrl,
   buildPlayerUrl,
+  createEmbedSession,
   getEmbed,
 };

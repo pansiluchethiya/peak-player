@@ -1,0 +1,23 @@
+/* Docs shell ------------------------------------------------------------- */
+
+#nd-nav {
+  border-bottom-color: var(--color-fd-border);
+  background: color-mix(in srgb, var(--color-fd-background) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+#nd-sidebar {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--color-fd-primary) 8%, transparent), transparent 22rem),
+    var(--color-fd-background);
+}
+
+#nd-sidebar a[data-active='true'] {
+  color: var(--color-fd-primary);
+  font-weight: 650;
+}
+
+#nd-page {
+  scroll-margin-top: 5rem;
+}
+

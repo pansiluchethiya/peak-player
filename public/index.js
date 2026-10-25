@@ -146,7 +146,7 @@
       button.setAttribute('title', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
     });
     document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-      meta.setAttribute('content', theme === 'dark' ? '#07130E' : '#E7F0E3');
+      meta.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#ffffff');
     });
   }
 

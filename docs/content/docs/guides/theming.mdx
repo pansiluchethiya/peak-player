@@ -1,0 +1,101 @@
+---
+title: Theming and branding
+description: How the player’s visual identity is resolved and where to change it safely.
+---
+
+Peak’s player is designed to feel like part of the host product, not a generic third-party widget.
+The current build exposes a small branding contract through the player API.
+
+## Branding contract
+
+The player fetches:
+
+```http
+GET /api/v1/branding
+```
+
+The response shape is:
+
+```json
+{
+  "name": "Peak",
+  "logoUrl": "/logo.svg",
+  "accentColor": "#2f6b4f",
+  "tagline": "Cinema, elevated."
+}
+```
+
+| Field | Used for |
+| --- | --- |
+| `name` | Player header label and document metadata |
+| `logoUrl` | Header mark and loading state |
+| `accentColor` | Focus rings, active controls, progress accent |
+| `tagline` | Supporting label in the player chrome |
+
+The player merges the response over safe defaults. If the branding request fails, it keeps the
+default Peak branding rather than blocking playback.
+
+## Current limits
+
+Branding is resolved server-side in `getBranding()` and is not yet exposed as a per-partner setting.
+To change it for a deployment, update the branding source or add a configuration layer in front of
+the player. Do not accept arbitrary branding values from an untrusted query string: they end up in
+CSS and markup.
+
+<Callout type="warn" title="Treat logo URLs as untrusted">
+  If you make `logoUrl` configurable, allowlist its origin or proxy it. The player renders it in an
+  `<img>`; a malicious URL can leak viewer IPs or tracking data.
+</Callout>
+
+## Styling the embed container
+
+The SDK only creates an iframe. The host page owns the container:
+
+```html
+<div class="peak-frame">
+  <div id="player"></div>
+</div>
+```
+
+```css
+.peak-frame {
+  width: min(100%, 1080px);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(242, 239, 230, 0.14);
+  border-radius: 18px;
+  background: #040a08;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+.peak-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+```
+
+Always reserve the aspect ratio before the iframe loads. This prevents layout shift and gives the
+player a stable size for quality decisions.
+
+## Accessibility
+
+- Keep the iframe `title` meaningful; the SDK defaults to `Peak player`, but a media-specific title
+  is better.
+- Do not remove focus outlines around the frame.
+- Provide an accessible name for any custom play button that mounts the player.
+- Respect `prefers-reduced-motion` in your surrounding UI. The player reduces non-essential motion
+  when the preference is set.
+
+## Embed demo
+
+The repository includes a demo page at `/embed/demo`. It is useful for visual checks, but it is not
+a partner integration: it mints a session server-side using `EMBED_DEMO_API_KEY` and should be
+disabled or keyed separately before public deployment.
+
+## Next
+
+- [SDK reference](/docs/reference/sdk)
+- [Security](/docs/security)
+- [Self-hosting](/docs/self-hosting)

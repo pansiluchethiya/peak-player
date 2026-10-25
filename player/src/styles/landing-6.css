@@ -1,0 +1,192 @@
+.peak-step-number {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 5.5%, transparent);
+  color: var(--color-accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.peak-steps h3 {
+  margin: 4px 0 5px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.peak-steps p {
+  max-width: 44ch;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.peak-code-stack {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.peak-code-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-fg) 2.8%, transparent);
+}
+
+.peak-code-card-dark {
+  border-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  background: var(--color-bg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.peak-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.peak-code-head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.peak-code-head svg {
+  width: 13px;
+  height: 13px;
+  color: var(--color-accent);
+}
+
+.peak-code-head > span:last-child {
+  color: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.peak-code-card pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  color: var(--color-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+
+/* Bento features ---------------------------------------------------------- */
+
+.peak-features {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.24), transparent 34rem),
+    transparent;
+}
+
+.peak-bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(218px, auto);
+  gap: 14px;
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+}
+
+.peak-bento-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  grid-column: span 4;
+  min-width: 0;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--color-fg) 4.5%, transparent), transparent 55%),
+    rgba(0, 0, 0, 0.56);
+  transition: border-color 220ms ease, transform 220ms var(--peak-ease), background 220ms ease;
+}
+
+.peak-bento-card::after {
+  position: absolute;
+  right: -20%;
+  bottom: -50%;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 68%);
+  content: "";
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.peak-bento-card:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--color-fg) 6.5%, transparent), transparent 55%),
+    rgba(0, 0, 0, 0.74);
+  transform: translateY(-3px);
+}
+
+.peak-bento-card > svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: auto;
+  color: var(--color-accent);
+  stroke-width: 1.6;
+}
+
+.peak-bento-card h3 {
+  margin: 28px 0 8px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.peak-bento-card p {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.peak-bento-wide {
+  grid-column: span 8;
+}
+
+.peak-bento-tall {
+  grid-column: span 4;
+  grid-row: span 2;
+}
+
+.peak-bento-wide h3 {
+  max-width: 26ch;
+  font-size: 25px;
+}
+
+.peak-health-graphic {
+  display: grid;
+  gap: 8px;
+  width: min(340px, 78%);
+  margin-top: 22px;
+}
+

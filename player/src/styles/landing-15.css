@@ -1,0 +1,132 @@
+@media (max-width: 460px) {
+  .peak-header-cta span {
+    display: none;
+  }
+
+  .peak-header-cta {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .peak-hero {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .peak-hero h1 {
+    font-size: clamp(2.55rem, 13.6vw, 3.5rem);
+  }
+
+  .peak-hero-actions {
+    display: grid;
+    justify-items: stretch;
+  }
+
+  .peak-hero-actions .peak-button,
+  .peak-hero-actions .peak-hero-dialog {
+    width: 100%;
+  }
+
+  .peak-hero-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .peak-hero-facts li:last-child {
+    grid-column: auto;
+  }
+
+  .peak-artifact-topline {
+    font-size: 8px;
+  }
+
+  .peak-player-controls {
+    grid-template-columns: auto 1fr;
+  }
+
+  .peak-player-time {
+    display: none;
+  }
+
+  .peak-provider-band {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .peak-quickstart,
+  .peak-features,
+  .peak-integration,
+  .peak-auth,
+  .peak-docs,
+  .peak-faq,
+  .peak-status,
+  .peak-stats {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .peak-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .peak-auth-art {
+    min-height: 280px;
+  }
+
+  .peak-orbit-node {
+    width: 38px;
+    height: 38px;
+  }
+
+  .peak-final-cta {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .peak-footer {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .peak-preview-title {
+    bottom: 36px;
+    font-size: 20px;
+  }
+
+  .peak-preview-sub {
+    bottom: 20px;
+  }
+
+  .peak-preview-controls {
+    bottom: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .peak-site *,
+  .peak-site *::before,
+  .peak-site *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .peak-marquee-track {
+    animation: none;
+  }
+
+  .peak-auth-orbit {
+    animation: none;
+  }
+
+  .peak-border-beam::before {
+    animation: none;
+    opacity: 0.35;
+  }
+
+  .peak-backlight::before {
+    transition: none;
+  }
+}

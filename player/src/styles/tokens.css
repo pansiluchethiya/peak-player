@@ -1,0 +1,83 @@
+/* player/src/styles/tokens.css
+ * Peak player — Vercel/Geist monochrome (AMOLED dark-first).
+ * Light values live in :root; dark values override under [data-theme="dark"].
+ * A blocking script in layout.tsx sets data-theme="dark" by default so the
+ * canvas renders AMOLED #000000 until the user opts into light mode.
+ *
+ * Color tokens (--color-*) are theme-aware and replace the retired
+ * --peak-{forest,ink,ivory,amber,lime,line,surface}* palette.
+ * Functional (non-color) --peak-* vars are retained: max, pointer-*,
+ * backlight-*, beam-*, marquee-*, ease, fast/medium/slow, shadow.
+ */
+
+:root {
+  /* --- Color palette: light theme (fallback) --- */
+  --color-bg: #ffffff;
+  --color-fg: #0a0a0a;
+  --color-muted: #eaeaea;
+  --color-border: #eaeaea;
+  --color-accent: #333333;
+  --color-accent-hover: #171717;
+  --color-success: #17c964;
+  --color-error: #f31260;
+  --color-surface: rgba(0, 0, 0, 0.045);
+  --color-surface-strong: rgba(0, 0, 0, 0.075);
+  --accent: var(--color-accent);
+
+  /* --- Font families (next/font/google Geist in layout.tsx) --- */
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* --- Spacing scale --- */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+  --space-6: 64px;
+  --space-7: 96px;
+  --space-8: 128px;
+
+  /* --- Border radius --- */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+
+  /* --- Layout + functional animation vars (retained, non-color) --- */
+  --peak-max: 1320px;
+  --peak-pointer-x: 58%;
+  --peak-pointer-y: 34%;
+  --peak-backlight-size: 420px;
+  --peak-backlight-color: rgba(0, 0, 0, 0.16);
+  --peak-beam-from: var(--color-accent);
+  --peak-beam-to: var(--color-accent);
+  --peak-beam-delay: 0s;
+  --peak-beam-duration: 8s;
+  --peak-beam-size: 180px;
+  --peak-marquee-direction: normal;
+  --peak-marquee-duration: 34s;
+  --peak-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --peak-fast: 180ms var(--peak-ease);
+  --peak-medium: 360ms var(--peak-ease);
+  --peak-slow: 700ms var(--peak-ease);
+  --peak-shadow: 0 32px 90px rgba(0, 0, 0, 0.48);
+}
+
+/* --- Dark theme: AMOLED #000000 canvas, monochrome gray accent --- */
+[data-theme="dark"] {
+  --color-bg: #000000;
+  --color-fg: #ededed;
+  --color-muted: #333333;
+  --color-border: #333333;
+  --color-accent: #e5e5e5;
+  --color-accent-hover: #ededed;
+  --color-success: #17c964;
+  --color-error: #f31260;
+  --color-surface: rgba(255, 255, 255, 0.045);
+  --color-surface-strong: rgba(255, 255, 255, 0.075);
+  --peak-backlight-color: rgba(255, 255, 255, 0.16);
+}

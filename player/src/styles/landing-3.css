@@ -1,0 +1,192 @@
+.peak-backlight::before {
+  position: absolute;
+  top: var(--peak-pointer-y, 34%);
+  left: var(--peak-pointer-x, 58%);
+  width: var(--peak-backlight-size, 420px);
+  height: var(--peak-backlight-size, 420px);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--peak-backlight-color, color-mix(in srgb, var(--color-accent) 16%, transparent)), transparent 68%);
+  content: "";
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: top 240ms ease-out, left 240ms ease-out;
+}
+
+.peak-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  align-items: center;
+  gap: clamp(36px, 5vw, 76px);
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+}
+
+.peak-hero-copy {
+  position: relative;
+  z-index: 2;
+}
+
+.peak-hero h1 {
+  max-width: 12ch;
+  margin: 0;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(3.2rem, 6.2vw, 6.35rem);
+  font-weight: 680;
+  letter-spacing: -0.062em;
+  line-height: 0.9;
+}
+
+.peak-hero h1 em {
+  color: var(--color-accent);
+  font-style: italic;
+  font-weight: 520;
+}
+
+.peak-hero-copy > p {
+  max-width: 50ch;
+  margin: 26px 0 0;
+  color: var(--color-muted);
+  font-size: clamp(15px, 1.4vw, 18px);
+  line-height: 1.68;
+}
+
+.peak-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 22px;
+  margin-top: 34px;
+}
+
+.peak-hero-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 38px 0 0;
+  padding: 22px 0 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.peak-hero-facts li {
+  display: grid;
+  gap: 5px;
+}
+
+.peak-hero-facts strong {
+  color: var(--color-fg);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.peak-hero-facts span {
+  color: var(--color-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+/* Hero player artifact ---------------------------------------------------- */
+
+.peak-hero-artifact {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.peak-artifact-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 4px 12px;
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.peak-artifact-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.peak-artifact-kicker::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 6%, transparent);
+  content: "";
+}
+
+.peak-artifact-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+}
+
+.peak-player-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
+  border-radius: 22px;
+  background: var(--color-bg);
+  box-shadow:
+    0 42px 100px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 0 90px rgba(0, 0, 0, 0.22);
+}
+
+.peak-player-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 8%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-fg) 5.5%, transparent), transparent);
+}
+
+.peak-chrome-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.peak-chrome-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-fg) 18%, transparent);
+}
+
+.peak-chrome-dots span:first-child {
+  background: var(--color-accent);
+}
+
+.peak-chrome-dots span:nth-child(2) {
+  background: var(--color-accent);
+}
+
+.peak-player-badge {
+  color: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.peak-player-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 68% 36%, color-mix(in srgb, var(--color-accent) 2%, transparent), transparent 32%),
+    linear-gradient(180deg, var(--color-muted) 0%, var(--color-muted) 62%, var(--color-muted) 100%);
+}
+

@@ -1,0 +1,185 @@
+.peak-health-graphic span {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-muted), var(--color-accent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.peak-health-graphic span:nth-child(2) {
+  background: linear-gradient(90deg, var(--color-muted), var(--color-accent));
+}
+
+.peak-health-graphic span:nth-child(3) {
+  background: linear-gradient(90deg, var(--color-muted), var(--color-accent));
+}
+
+.peak-health-graphic span:nth-child(4) {
+  background: linear-gradient(90deg, var(--color-muted), color-mix(in srgb, var(--color-accent) 55%, transparent));
+}
+
+.peak-auth-diagram {
+  display: grid;
+  gap: 6px;
+  margin-top: 22px;
+}
+
+.peak-auth-diagram span {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.42);
+  color: var(--color-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.01em;
+}
+
+.peak-auth-diagram span:nth-of-type(2),
+.peak-auth-diagram span:nth-of-type(3) {
+  border-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: var(--color-accent);
+}
+
+.peak-auth-diagram i {
+  display: block;
+  width: 1px;
+  height: 8px;
+  margin-left: 18px;
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+/* Stats ------------------------------------------------------------------- */
+
+.peak-stats {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.78fr) minmax(0, 1.22fr);
+  align-items: end;
+  gap: clamp(32px, 5vw, 72px);
+  padding: clamp(64px, 7vw, 96px) clamp(20px, 5vw, 80px);
+  border-block: 1px solid var(--color-border);
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--color-accent) 1%, transparent), transparent 26rem),
+    var(--color-muted);
+}
+
+.peak-stat-intro {
+  max-width: 42ch;
+}
+
+.peak-stat-intro h2 {
+  margin: 0;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(2rem, 3.4vw, 3.2rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.peak-stat-intro p {
+  margin: 18px 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.64;
+}
+
+.peak-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 1%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--color-fg) 1%, transparent);
+}
+
+.peak-stat-grid > div {
+  display: grid;
+  gap: 8px;
+  padding: 22px 18px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.peak-stat-grid dt {
+  color: var(--color-accent);
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(1.7rem, 2.7vw, 2.65rem);
+  font-weight: 680;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.peak-stat-grid dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+}
+
+/* Integration ------------------------------------------------------------- */
+
+.peak-integration {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 76px);
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+}
+
+.peak-integration-copy h2 {
+  max-width: 17ch;
+  margin: 0;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(2rem, 3.4vw, 3.25rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.peak-integration-copy > p {
+  max-width: 46ch;
+  margin: 18px 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.peak-integration-points {
+  display: grid;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.peak-integration-points > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.peak-integration-points svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  color: var(--color-accent);
+}
+
+.peak-integration-points strong {
+  color: var(--color-fg);
+  font-weight: 700;
+}
+
+.peak-event-card {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 15%, transparent);
+  border-radius: 18px;
+  background: var(--color-bg);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.38);
+}
+

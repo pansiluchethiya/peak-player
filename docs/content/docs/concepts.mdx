@@ -1,0 +1,178 @@
+---
+title: How Peak works
+description: A tour of the source pipeline, the player, the signed proxy, and the partner boundary.
+---
+
+Peak has four moving parts: a source resolver, a validator, a ranker, and a custom player. The
+embed platform adds a fifth: a signed partner boundary. This page explains how the pieces fit
+together and which guarantees belong to each layer.
+
+## The pipeline at a glance
+
+```text
+request
+  │
+  ├─▶ provider fan-out ──▶ candidate sources
+  │                            │
+  │                            ├─▶ metadata normalization
+  │                            ├─▶ validation (protocol, manifest, segment)
+  │                            └─▶ ranking (container, codec, quality, health)
+  │
+  ├─▶ SSE: meta, source, subtitle, diagnostic, done
+  │
+  └─▶ player: first playable source ──▶ Hls.js / video element
+                                         │
+                                         └─▶ signed proxy ──▶ upstream
+```
+
+### 1. Fan-out
+
+For movies and TV, Peak asks the enabled providers for sources. Providers run in a controlled
+fan-out, and each response is normalized into a common shape. A provider can be slow, rate-limited,
+or broken without blocking the rest of the request.
+
+For live TV, Peak reads the configured IPTV catalog and resolves the requested channel. Live
+sources are marked as either browser-playable HLS or external iframe URLs.
+
+### 2. Metadata normalization
+
+Raw provider metadata is noisy. Peak infers:
+
+- **Container:** `hls`, `mp4`, `webm`, `mkv`, `ogv`, or `unknown`.
+- **Video codec:** `h264`, `hevc`, `av1`, `vp9`, or `unknown`.
+- **Audio codec:** `aac`, `ac3`, `eac3`, `atmos`, `dts`, `opus`, or `unknown`.
+- **HDR:** explicit HDR flags plus markers such as HDR10 and Dolby Vision.
+- **Browser playability:** HLS is preferred; MKV and unknown containers are not treated as
+  browser-playable.
+
+Peak never relabels an MKV or HEVC source as MP4. The metadata is used for ranking and for
+diagnostics, and the player only attempts sources that are actually playable.
+
+### 3. Validation
+
+A source is not exposed just because a provider returned a URL. Validation checks:
+
+- URL protocol and host safety, including private-address blocking.
+- HLS manifest reachability and shape.
+- A representative media segment where the source type requires it.
+- Deadline and size limits so one bad provider cannot stall the request.
+
+Validation failures become diagnostics. They are visible to operators, but never to embed clients
+as upstream URLs.
+
+### 4. Ranking
+
+Surviving sources are scored. The current model rewards:
+
+| Signal | Effect |
+| --- | --- |
+| HLS container | Strong positive |
+| MP4 / WebM | Positive, below HLS |
+| MKV | Low |
+| H.264 video | Strong positive |
+| HEVC video | Negative for browser compatibility |
+| 1080p / 720p | Positive quality signal |
+| Provider health | Small positive or negative adjustment |
+| Original provider order | Small tie-breaker |
+
+The exact weights live in `utils/sourceRanking.js`. The important property is deterministic
+ordering: equal scores fall back to provider order, so the same inputs produce the same queue.
+
+### 5. Progressive delivery
+
+The stream endpoint has two modes:
+
+- `GET /api/v1/stream/:type/:id` waits for the aggregate result and returns JSON.
+- `GET /api/v1/stream/events/:type/:id` emits SSE events as sources become ready.
+
+The player uses SSE. It can begin on the first validated source without waiting for every provider.
+The event sequence is:
+
+```text
+event: meta
+data: {"title":"Inception","year":"2010"}
+
+event: source
+data: {"url":"/api/proxy/...","quality":"1080p","provider":"netmirror",...}
+
+event: subtitle
+data: {"label":"English","url":"/api/proxy/...","language":"en"}
+
+event: diagnostic
+data: {"provider":"slow-provider","ok":false,"error":"timeout"}
+
+event: done
+data: {"meta":{"providers":5,"sources":3,"latencyMs":1840,"cacheHit":false}}
+```
+
+The `done` event is terminal. An `error` event is also terminal and carries a stable code and a
+safe message.
+
+### 6. Playback and failover
+
+The player attaches the first playable source to Hls.js (or the native video element for progressive
+formats). If the source fails before or during playback, the player advances to the next ranked
+source, shows a brief source-change indicator, and retries. It does not reload the page or lose the
+embed session.
+
+The player caps quality based on measured bandwidth and device hints, exposes manual quality
+selection, and reports source changes to the parent page.
+
+### 7. The embed boundary
+
+An embed session is a signed statement:
+
+> Partner `P` may play media `M` inside origins `O` until time `T`.
+
+The token payload contains `v`, `partnerId`, `type`, `id`, `season`, `episode`, `origins`, `iat`, and
+`exp`. It is signed with HMAC-SHA256 and encoded as `base64url(payload).base64url(signature)`.
+
+The player document is served with:
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+No wildcard is ever emitted. If a partner origin is not in the token, the browser refuses to frame
+the player even if the token itself is valid.
+
+## What stays server-side
+
+- Provider URLs and provider credentials.
+- Partner API keys.
+- Proxy signing secrets.
+- Full diagnostics with upstream error details.
+- TMDB API credentials.
+
+Embed clients see signed Peak proxy URLs, public source metadata, and safe error codes. They never
+see the upstream URL that the proxy is fetching.
+
+## Design constraints
+
+<Accordions>
+  <Accordion title="Why not proxy a third-party embed?">
+    A full third-party embed would move playback, source selection, and failure handling outside
+    Peak's control. Peak keeps its own player so validation, failover, telemetry, and the partner
+    boundary remain enforceable. A direct external iframe is available only as an explicit,
+    off-by-default fallback for sources that cannot be played any other way.
+  </Accordion>
+  <Accordion title="Why SSE instead of one large JSON response?">
+    Provider latency is uneven. Waiting for the slowest provider makes time-to-first-play worse for
+    every viewer. SSE lets the player start on the first validated source while the rest of the
+    queue fills in.
+  </Accordion>
+  <Accordion title="Why signed proxy URLs?">
+    The proxy is the enforcement point for SSRF protection, header allowlisting, CORS, rate limits,
+    and Range preservation. Signing the URL prevents clients from using Peak as an open proxy.
+  </Accordion>
+  <Accordion title="Why exact origins?">
+    Origin allowlists are only meaningful when they are exact. Wildcards, `null`, and substring
+    matches are rejected. The token and the CSP must agree.
+  </Accordion>
+</Accordions>
+
+## Next
+
+- [Source pipeline](/docs/source-pipeline) for the validation and ranking details.
+- [Security](/docs/security) for the threat model and controls.
+- [Architecture](/docs/architecture) for deployment topology.

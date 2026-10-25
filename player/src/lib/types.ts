@@ -10,6 +10,11 @@ export interface Media {
   poster?: string;
 }
 
+export interface EmbedConfig {
+  partnerId?: string;
+  origins: string[];
+}
+
 export interface Source {
   url: string;
   quality: string;
@@ -17,6 +22,11 @@ export interface Source {
   provider: string;
   adaptive?: boolean;
   expiresIn: number;
+  container?: string;
+  videoCodec?: string;
+  audioCodec?: string;
+  hdr?: boolean;
+  browserPlayable?: boolean;
 }
 
 export interface Subtitle {
@@ -56,7 +66,7 @@ export interface Branding {
 export const DEFAULT_BRANDING: Branding = {
   name: 'Peak',
   logoUrl: '/logo.svg',
-  accentColor: '#2f6b4f',
+  accentColor: 'var(--color-accent)',
   tagline: 'Cinema, elevated.',
 };
 

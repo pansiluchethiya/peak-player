@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Server Switcher (Source Failover Animation)
+   ========================================================================== */
+
+.server-switcher {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.server-switcher-label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  opacity: 0.85;
+}
+
+.server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(320px, 80vw);
+}
+
+.server-item {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0.35;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: color-mix(in srgb, var(--color-fg) 5%, transparent);
+  transform: translateY(12px);
+  transition: all 450ms ease;
+}
+
+.server-item.active {
+  opacity: 1;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--accent) 40%, transparent);
+  transform: translateY(0);
+  animation: serverActive 0.6s ease forwards;
+}
+
+.server-item.exiting {
+  opacity: 0;
+  transform: translateY(-16px);
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+
+@keyframes serverActive {
+  0% {
+    opacity: 0.5;
+    transform: translateY(-6px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

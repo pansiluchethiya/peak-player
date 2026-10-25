@@ -1,0 +1,190 @@
+.peak-faq-item p {
+  max-width: 80ch;
+  margin: -6px 0 0;
+  padding: 0 4px 24px;
+  color: var(--color-muted);
+  font-size: 13.5px;
+  line-height: 1.68;
+}
+
+/* Status ------------------------------------------------------------------ */
+
+.peak-status {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 72px);
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.peak-status-copy h2 {
+  max-width: 15ch;
+  margin: 0;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(2rem, 3.4vw, 3.25rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.peak-status-copy p {
+  max-width: 44ch;
+  margin: 18px 0 22px;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.peak-status-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.56);
+}
+
+.peak-status-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.peak-status-card-head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-accent);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.peak-status-card-head > span:last-child {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+}
+
+.peak-status-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+
+.peak-status-row:last-child {
+  border-bottom: 0;
+}
+
+.peak-status-row > svg:first-child {
+  width: 15px;
+  height: 15px;
+  color: var(--color-accent);
+}
+
+.peak-status-row > span {
+  display: grid;
+  gap: 2px;
+}
+
+.peak-status-row strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.peak-status-row small {
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+  font-size: 9px;
+}
+
+.peak-status-check {
+  width: 14px;
+  height: 14px;
+  color: var(--color-accent);
+}
+
+/* Final CTA and footer ---------------------------------------------------- */
+
+.peak-final-cta {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+  padding: clamp(80px, 11vw, 150px) clamp(20px, 5vw, 80px);
+  overflow: hidden;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.peak-final-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(64rem, 120vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 62%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.peak-final-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.peak-final-copy h2 {
+  max-width: 16ch;
+  margin: 0 auto;
+  font-family: var(--font-sans), sans-serif;
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-weight: 670;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.peak-final-copy p {
+  max-width: 48ch;
+  margin: 20px auto 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.peak-final-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+.peak-footer {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 20px 40px;
+  padding: 26px clamp(20px, 5vw, 80px);
+  border-top: 1px solid var(--color-border);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.peak-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+

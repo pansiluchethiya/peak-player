@@ -1,0 +1,141 @@
+---
+title: Troubleshooting
+description: Diagnose embed, token, source, and playback failures with concrete checks.
+---
+
+Start with the layer that failed. A browser error is often a symptom of a session or source problem,
+not a player bug.
+
+## The player never appears
+
+### Check the HTTP status of the embed URL
+
+```bash
+curl -i 'http://localhost:3001/embed/movie/27205?token=...'
+```
+
+| Status | Meaning | Fix |
+| --- | --- | --- |
+| 200 | Player document served | Check browser console and CSP |
+| 401 | Token missing, invalid, expired, or wrong secret | Mint a new session |
+| 404 | Wrong route or media path | Check `/embed/movie/:id` shape |
+| 500 | Player server error | Check player logs |
+
+### Check the CSP
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+If your origin is not listed, the browser blocks the frame. Register the exact origin and mint a
+new token.
+
+### Check the console
+
+Common messages:
+
+- `Refused to frame ... because an ancestor violates frame-ancestors` → origin mismatch.
+- `Failed to load resource: 401` → expired or invalid token.
+- `Blocked autoplay` → expected; show a play control.
+- `CORS` on a proxy URL → origin configuration or expired proxy signature.
+
+## `INVALID_API_KEY`
+
+- Confirm the header is `x-api-key`, not `Authorization`.
+- Confirm the key matches the partner entry exactly.
+- Confirm `EMBED_PARTNERS` is valid JSON and the partner was not dropped for invalid origins.
+- Check for trailing whitespace in the environment value.
+
+## `INVALID_ID` or `INVALID_TYPE`
+
+- Movie/TV ids must be numeric TMDB ids.
+- `type` must be `movie`, `tv`, `series`, `live_tv`, or `live`.
+- Live ids must be channel ids from the catalog.
+- Season and episode must be positive integers if provided.
+
+## No sources
+
+### Inspect the stream response
+
+```bash
+curl -N 'http://localhost:8787/api/v1/stream/events/movie/27205' \
+  -H 'accept: text/event-stream'
+```
+
+Look for `diagnostic` events. They explain which providers failed and why.
+
+### Check provider health
+
+```bash
+curl http://localhost:8787/api/v1/playback/health
+```
+
+A provider can be temporarily rate-limited, blocked, or returning malformed manifests. Retry later
+or fail over to a title carried by another provider.
+
+### Check the title
+
+Some titles are region-locked or simply not carried by the enabled providers. Try a known-good id
+such as `27205` to separate a title problem from a platform problem.
+
+## Playback starts then stalls
+
+- Inspect the browser network panel for proxy requests.
+- Check whether the proxy returns `206` for Range requests.
+- Check the source’s container and codec in the stream response.
+- If one source fails, the player should emit `sourcechange` and try the next.
+- If every source fails, the player emits `STREAM_UNAVAILABLE`.
+
+## SSE does not stream
+
+- Confirm the proxy does not buffer `text/event-stream`.
+- Confirm the request sends `Accept: text/event-stream`.
+- Disable compression for SSE if your proxy buffers compressed responses.
+- Check that the API process is not behind a cache.
+
+## Live TV problems
+
+| Symptom | Check |
+| --- | --- |
+| `NO_EMBEDDABLE_SOURCE` | Channel has only external sources |
+| Channel missing | Catalog sync and playlist state |
+| Logo broken | Playlist logo URL or image proxy |
+| Stream stalls | Upstream HLS health and proxy logs |
+
+## CORS problems
+
+- The proxy only allows configured player origins.
+- `PLAYER_ALLOWED_ORIGINS` is comma-separated and exact.
+- Do not include a trailing slash in an origin.
+- A `null` origin (sandboxed iframe or `file://`) is rejected.
+
+## Build and test failures
+
+```bash
+npm --prefix player test
+npm --prefix player run typecheck
+npm --prefix player run lint
+npm --prefix player run build
+npm --prefix docs test
+npm --prefix docs run build
+npm --prefix docs run check:links
+```
+
+If a Next build fails while another `next start` or `next build` is running, stop the other process
+and rebuild. Concurrent builds can race on `.next` manifests.
+
+## Getting help
+
+Collect:
+
+- The error code and HTTP status.
+- The media type and id (never the token).
+- The partner id (never the API key).
+- A timestamp with timezone.
+- The player version and browser.
+
+## Next
+
+- [Errors](/docs/guides/errors)
+- [Status](/docs/status)
+- [Security](/docs/security)

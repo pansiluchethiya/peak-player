@@ -1,0 +1,177 @@
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 26px;
+}
+.eyebrow {
+  margin-bottom: 6px;
+  color: var(--brand);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+[data-theme="dark"] .eyebrow { color: var(--accent); }
+.page-head h1 {
+  color: var(--ink);
+  font-size: clamp(29px, 3vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+.page-subtitle {
+  max-width: 640px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.page-head-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+
+.card {
+  min-width: 0;
+  padding: clamp(18px, 2vw, 24px);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.card-head.compact { align-items: center; margin-bottom: 17px; }
+.card-kicker {
+  margin-bottom: 4px;
+  color: var(--faint);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.card h2, .card-head h2 {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 780;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+.card-subtitle { margin-top: 5px; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+
+.note-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--info) 16%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--info-ink);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.note-callout .icon { width: 17px; height: 17px; margin-top: 2px; }
+.note-callout p { max-width: 70ch; }
+.note-callout.warning-note { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning-ink); }
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 18px;
+  align-items: start;
+}
+.settings-grid-febbox { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
+
+/* --------------------------------------------------------------------------
+   Quality presets and editor reveal
+   -------------------------------------------------------------------------- */
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.preset-grid-codec { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.preset-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 61px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: background 150ms var(--ease), border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+}
+.preset-card:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+.preset-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.preset-card:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+[data-theme="dark"] .preset-card:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(51, 51, 51, 0.08);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.preset-card:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+.preset-strong { color: var(--ink-soft); font-size: 12px; font-weight: 750; letter-spacing: -0.01em; }
+.preset-meta { color: var(--faint); font-size: 9px; font-weight: 600; }
+.preset-card:has(input:checked) .preset-strong { color: var(--brand); }
+[data-theme="dark"] .preset-card:has(input:checked) .preset-strong { color: var(--accent); }
+.preset-card.preset-custom { border-style: dashed; }
+
+.editor-reveal {
+  display: none;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-soft);
+}
+.editor-reveal.is-visible { display: block; animation: panel-in 180ms var(--ease); }
+.editor-reveal .field-label { display: block; margin-bottom: 7px; }
+
+.json-editor {
+  background: var(--surface-muted);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+.json-editor:not(:disabled) { background: var(--surface); }
+.json-viewer {
+  max-width: 100%;
+  max-height: 540px;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  tab-size: 2;
+  white-space: pre;
+}
+
+/* --------------------------------------------------------------------------
+   FebBox guide
+   -------------------------------------------------------------------------- */
+

@@ -1,0 +1,195 @@
+.peak-source-row.is-active {
+  margin: 2px -4px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+.peak-source-index {
+  color: color-mix(in srgb, var(--color-fg) 28%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+}
+
+.peak-source-row.is-active .peak-source-index {
+  color: var(--color-accent);
+}
+
+.peak-source-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.peak-source-name small {
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.peak-source-state {
+  color: var(--color-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.peak-source-row.is-active .peak-source-state {
+  color: var(--color-accent);
+}
+
+/* Provider band ----------------------------------------------------------- */
+
+.peak-provider-band {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 64px);
+  padding: 26px clamp(20px, 5vw, 80px);
+  border-block: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-fg) 1.8%, transparent);
+  overflow: hidden;
+}
+
+.peak-provider-intro {
+  display: grid;
+  gap: 4px;
+}
+
+.peak-provider-intro span {
+  color: var(--color-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.peak-provider-intro p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.peak-provider-marquee {
+  min-width: 0;
+}
+
+.peak-provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+  padding: 9px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-fg) 2.5%, transparent);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.peak-provider-chip > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-muted);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+}
+
+.peak-provider-chip:nth-child(3n) > span {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 7%, transparent);
+}
+
+.peak-provider-chip:nth-child(4n) > span {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+/* Marquee primitive ------------------------------------------------------- */
+
+.peak-marquee {
+  --peak-marquee-direction: normal;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+.peak-marquee-track {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0;
+  width: max-content;
+  animation: peak-marquee var(--peak-marquee-duration, 34s) linear infinite;
+  animation-direction: var(--peak-marquee-direction);
+}
+
+.peak-marquee-pause:hover .peak-marquee-track {
+  animation-play-state: paused;
+}
+
+.peak-marquee-group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+@keyframes peak-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Quick start ------------------------------------------------------------- */
+
+.peak-quickstart,
+.peak-features,
+.peak-integration,
+.peak-auth,
+.peak-docs,
+.peak-faq,
+.peak-status {
+  position: relative;
+  padding: clamp(72px, 9vw, 124px) clamp(20px, 5vw, 80px);
+}
+
+.peak-quickstart {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.peak-quickstart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  align-items: start;
+  gap: clamp(32px, 5vw, 72px);
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+}
+
+.peak-steps {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.peak-steps li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 18px;
+  padding: 24px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.peak-steps li:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+

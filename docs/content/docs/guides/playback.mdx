@@ -1,0 +1,174 @@
+---
+title: Playback and failover
+description: How the player selects sources, starts quickly, and recovers from failures.
+---
+
+Peak’s player is built around one rule: never emit an unvalidated source. Speed matters, but not at
+the cost of handing the video element a URL that will fail immediately.
+
+## Source selection
+
+The player opens an SSE stream:
+
+```http
+GET /api/v1/stream/events/:type/:id?embed=1
+Accept: text/event-stream
+```
+
+Sources arrive in ranked order. The player takes the first playable candidate and starts loading it.
+It does not wait for the terminal `done` event.
+
+```text
+meta ──▶ source #1 ──▶ playable? ──▶ yes ──▶ attach to Hls.js
+                         │
+                         └─ no ──▶ source #2 ──▶ ...
+```
+
+Each source includes public metadata:
+
+```json
+{
+  "url": "/api/proxy/...signature...",
+  "quality": "1080p",
+  "provider": "netmirror",
+  "codec": "hls",
+  "container": "hls",
+  "videoCodec": "h264",
+  "audioCodec": "aac",
+  "hdr": false,
+  "browserPlayable": true
+}
+```
+
+`url` is a signed Peak proxy URL. It is not the upstream URL.
+
+## Failover
+
+Failover can happen at three points:
+
+1. **Before playback.** A source fails its manifest or segment check and is skipped.
+2. **During startup.** Hls.js cannot attach or the first segment stalls.
+3. **During playback.** The media element errors or stalls past the recovery window.
+
+In all three cases, the player advances to the next ranked source, updates the source indicator, and
+emits a `sourcechange` event. If every source fails, the player enters its error state and emits:
+
+```json
+{
+  "event": "error",
+  "payload": {
+    "code": "STREAM_UNAVAILABLE",
+    "message": "The stream could not be played."
+  }
+}
+```
+
+The player does not reload the page, and the partner does not need to re-mint a session for a
+failover within the same playback attempt.
+
+## Quality selection
+
+- Initial quality is capped using a conservative bandwidth estimate and device hints.
+- Hls.js adaptive switching remains enabled unless the viewer chooses a level.
+- Manual quality options are the levels exposed by the manifest, sorted by height.
+- The player avoids switching to a level that cannot be sustained just because it is listed.
+
+## Timing budget
+
+The platform is tested against these acceptance targets:
+
+| Measure | Target |
+| --- | --- |
+| First source emitted after the first provider response | under 100 ms |
+| First playable source after the first provider response | under 300 ms |
+| Unvalidated sources emitted | zero |
+| First-play success across a 20-title matrix | above 95% |
+| p75 time to first frame across the matrix | under 3 seconds |
+
+These are verification targets, not a promise that every provider will be fast. Provider health,
+network conditions, and title availability still matter.
+
+## Playback sessions
+
+For server-side analytics and support, create a playback session:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/playback/sessions \
+  -H 'content-type: application/json' \
+  -d '{"type":"movie","id":"27205"}'
+```
+
+A playback session stores up to four public sources, subtitles, diagnostics, and metadata for **10
+minutes**. It is separate from an embed token. Embed sessions control access; playback sessions
+correlate events.
+
+```http
+GET /api/v1/playback/sessions/:sessionId
+```
+
+## Telemetry
+
+Record playback events with:
+
+```http
+POST /api/v1/playback/events
+POST /api/v1/playback/telemetry
+```
+
+Both accept a single event or an array. Invalid events are ignored; if none are valid, the endpoint
+returns `INVALID_EVENT`.
+
+```json
+{
+  "sessionId": "…",
+  "event": "first_play",
+  "ttffMs": 1240,
+  "sourceIndex": 0,
+  "provider": "netmirror"
+}
+```
+
+## Health
+
+```http
+GET /api/v1/playback/health
+```
+
+```json
+{
+  "success": true,
+  "providers": [
+    {
+      "name": "netmirror",
+      "state": "healthy",
+      "successRate": 0.97,
+      "latencyMs": 820,
+      "lastCheckedAt": "2026-10-25T16:20:00.000Z"
+    }
+  ],
+  "telemetry": {
+    "sessions": 184,
+    "firstPlaySuccessRate": 0.96,
+    "ttffP75Ms": 2180,
+    "sourceChanges": 31
+  }
+}
+```
+
+Health feeds ranking with a small adjustment. It is not a hard gate: a provider marked degraded can
+still be tried if it returns a valid source.
+
+## Embed behaviour
+
+In embed mode:
+
+- Autoplay is attempted, but browser policy wins. The player shows a play affordance if blocked.
+- `timeupdate` is throttled to roughly four events per second.
+- TV embeds do not auto-advance to the next episode.
+- External iframe sources are filtered out.
+
+## Next
+
+- [Errors](/docs/guides/errors)
+- [SDK reference](/docs/reference/sdk)
+- [Source pipeline](/docs/source-pipeline)

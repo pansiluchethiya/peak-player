@@ -4,7 +4,7 @@ interface Props {
   accentColor?: string;
 }
 
-export function AmbientBackground({ accentColor = '#6366f1' }: Props) {
+export function AmbientBackground({ accentColor = 'var(--color-accent)' }: Props) {
   return (
     <div className="ambient-background" aria-hidden="true">
       <div

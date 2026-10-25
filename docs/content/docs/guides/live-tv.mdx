@@ -1,0 +1,115 @@
+---
+title: Live TV
+description: Browse the channel catalog, create live embeds, and handle external-only channels.
+---
+
+Live TV uses Peak channel ids from the IPTV catalog. Live playback is handled by the same player, but
+the source pipeline is different: there is no TMDB lookup and no provider fan-out.
+
+## List channels
+
+```bash
+curl 'http://localhost:3000/api/v1/live/tv/channels?group=News&search=bbc'
+```
+
+```json
+{
+  "success": true,
+  "channels": [
+    {
+      "id": "channel_bbc_news_ab12cd34",
+      "name": "BBC News",
+      "group": "News",
+      "logo": "https://example.com/bbc-news.png"
+    }
+  ]
+}
+```
+
+Channel ids are stable for the lifetime of the playlist entry. Use the id exactly as returned.
+
+## List groups
+
+```bash
+curl http://localhost:3000/api/v1/live/tv/groups
+```
+
+Groups are useful for building a channel picker. The player itself does not render a catalog.
+
+## Create a live embed session
+
+```bash
+curl -X POST http://localhost:3000/api/v1/embed/sessions \
+  -H 'content-type: application/json' \
+  -H 'x-api-key: YOUR_PARTNER_KEY' \
+  -d '{
+    "type": "live_tv",
+    "id": "channel_bbc_news_ab12cd34"
+  }'
+```
+
+The response uses the live player route:
+
+```text
+/embed/live/channel_bbc_news_ab12cd34?token=...
+```
+
+`live` is accepted as an alias for `live_tv`. The response returns `source: null` because live
+channels are not tied to a movie/TV provider.
+
+## Embeddable vs external channels
+
+The IPTV catalog can contain two kinds of live sources:
+
+- **HLS sources** — browser-playable and served through the signed proxy.
+- **External iframe sources** — a third-party player URL that cannot be embedded safely.
+
+Embed mode filters external iframe sources out. If a channel has only external sources, the stream
+returns:
+
+```json
+{
+  "error": "NO_EMBEDDABLE_SOURCE",
+  "message": "This live channel needs an external player and is unavailable in embeds."
+}
+```
+
+<Callout type="warn" title="This is intentional">
+  Peak does not expose raw external iframe URLs to embed clients. A direct external iframe fallback
+  exists for non-embed player deployments only, behind
+  `NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED=1`, and is off by default.
+</Callout>
+
+## Channel logos
+
+The `logo` field is presentation metadata from the playlist. Treat it as untrusted input if you
+render it in your own UI: use a safe image proxy or an allowlist. The Peak player renders the logo
+inside its own chrome.
+
+## Refreshing the catalog
+
+The catalog is populated by the IPTV sync process. If a channel is missing or its id changed, run a
+playlist sync from the admin API and reload the catalog. Channel ids can change when the upstream
+playlist changes; do not persist them as permanent identifiers without a fallback lookup by name.
+
+## Live playback behaviour
+
+- There is no duration or seek bar in the usual sense.
+- The player shows a live indicator and does not offer next-episode navigation.
+- Failover still applies when multiple HLS sources exist for the channel.
+- Autoplay policies still apply. If the browser blocks autoplay, the player shows a play control.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `NO_EMBEDDABLE_SOURCE` | Channel is external-only | Choose an HLS channel |
+| Channel not found | Catalog changed or playlist not synced | Re-sync and reload the catalog |
+| Stream stalls | Upstream HLS issue | Check diagnostics and provider health |
+| CORS or CSP error | Partner origin mismatch | Register the exact origin in `EMBED_PARTNERS` |
+
+## Next
+
+- [Auth and origins](/docs/guides/auth)
+- [Playback and failover](/docs/guides/playback)
+- [Errors](/docs/guides/errors)

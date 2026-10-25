@@ -1,0 +1,13 @@
+.prose code:not(pre code) {
+  border: 1px solid var(--color-fd-border);
+  border-radius: 5px;
+  background: var(--color-fd-muted);
+  padding: 0.12em 0.34em;
+  font-size: 0.86em;
+  font-weight: 600;
+}
+
+.prose table {
+  font-size: 0.9rem;
+}
+

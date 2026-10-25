@@ -15,12 +15,30 @@ import {
   sortLevelsDescending,
   type HlsLevelLike,
 } from '../lib/quality';
+import {
+  createEmbedEvent,
+  isAllowedOrigin,
+  parseEmbedCommand,
+  postToParent,
+  type EmbedEventName,
+} from '../lib/embedBridge';
+import { isPlayableSource, nextSourceIndex, sourceKey } from '../lib/playback';
 import { calculateBufferedRanges, clamp, type BufferedRange } from '../lib/time';
-import { DEFAULT_BRANDING, type Branding, type Diagnostic, type Media, type Source, type StreamResponse, type Subtitle } from '../lib/types';
+import {
+  DEFAULT_BRANDING,
+  type Branding,
+  type Diagnostic,
+  type EmbedConfig,
+  type Media,
+  type Source,
+  type StreamResponse,
+  type Subtitle,
+} from '../lib/types';
 import { AmbientBackground } from './AmbientBackground';
 import { CenterFeedback } from './CenterFeedback';
 import { ControlBar, type QualityOption } from './ControlBar';
 import { ErrorState } from './ErrorState';
+import { ExternalEmbed } from './ExternalEmbed';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { MobileGestureLayer } from './MobileGestureLayer';
 import { MobilePlayerControls } from './MobilePlayerControls';
@@ -30,20 +48,30 @@ import { SkipFeedback } from './SkipFeedback';
 interface Props {
   apiBase: string;
   media: Media;
+  embed?: EmbedConfig;
 }
 
 type Status = 'loading' | 'ready' | 'error';
+
+const FIRST_PLAYABLE_TIMEOUT_MS = 1500;
+const EMBED_TIMEUPDATE_INTERVAL_MS = 250;
 
 interface LevelOption extends HlsLevelLike {
   index: number;
 }
 
-export function Player({ apiBase, media }: Props) {
+export function Player({ apiBase, media, embed }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const pendingSeekRef = useRef<number | null>(null);
+  const embedRef = useRef(embed);
+  embedRef.current = embed;
+  const parentOriginRef = useRef('');
+  const embedReadyRef = useRef(false);
+  const wasPlayingRef = useRef(false);
+  const lastTimeUpdateRef = useRef(0);
 
   const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
   const [payload, setPayload] = useState<StreamResponse | null>(null);
@@ -53,7 +81,6 @@ export function Player({ apiBase, media }: Props) {
 
   const [sourceIndex, setSourceIndex] = useState(0);
   const [sourceNonce, setSourceNonce] = useState(0);
-  const [failedCount, setFailedCount] = useState(0);
   const [reloadCount, setReloadCount] = useState(0);
   const [switching, setSwitching] = useState<{ from: number; to: number; servers: string[] } | null>(null);
 
@@ -87,6 +114,8 @@ export function Player({ apiBase, media }: Props) {
   const firstSourceTsRef = useRef<number | null>(null);
   const selectedIndexRef = useRef(0);
   const attemptedSourcesRef = useRef<Set<string>>(new Set());
+  const tryAnotherSourceRef = useRef<() => void>(() => {});
+  const switchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Inactivity / Auto-hide controls state
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -115,6 +144,39 @@ export function Player({ apiBase, media }: Props) {
 
   const source = payload?.sources[sourceIndex];
   const isEmbedSource = source?.codec === 'html5';
+  const embedOriginsKey = embed?.origins.join('|') ?? '';
+  const sourceDescriptor = source
+    ? JSON.stringify([sourceIndex, source.quality, source.provider, source.codec])
+    : '';
+
+  const sendEmbedEvent = useCallback((event: EmbedEventName, data?: Record<string, unknown>) => {
+    if (!embedRef.current) return;
+    const origin = parentOriginRef.current;
+    if (!origin) return;
+    postToParent(window.parent, origin, createEmbedEvent(event, data));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const configured = embedRef.current?.origins?.[0];
+    const ancestor =
+      window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0
+        ? window.location.ancestorOrigins[0]
+        : '';
+    const candidate = configured || ancestor;
+    try {
+      parentOriginRef.current = candidate ? new URL(candidate).origin : '';
+    } catch {
+      parentOriginRef.current = '';
+    }
+    embedReadyRef.current = false;
+  }, [embedOriginsKey]);
+
+  useEffect(() => {
+    return () => {
+      if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+    };
+  }, []);
 
   // Auto-hide controls helper
   const resetInactivityTimer = useCallback(() => {
@@ -158,7 +220,6 @@ export function Player({ apiBase, media }: Props) {
     setError(null);
     setPayload(null);
     setSourceIndex(0);
-    setFailedCount(0);
     setSubtitleIndex(-1);
     setNextCountdown(null);
     setSelectedLevel(null);
@@ -205,8 +266,13 @@ export function Player({ apiBase, media }: Props) {
 
       if (firstSourceTsRef.current === null) {
         firstSourceTsRef.current = Date.now();
-        selectedIndexRef.current = newIndex;
-        setSourceIndex(newIndex);
+        const preferred = preferredSourceIndex(accumulatedRef.current.sources, connectionHint());
+        const playable = isPlayableSource(accumulatedRef.current.sources[preferred])
+          ? preferred
+          : accumulatedRef.current.sources.findIndex(isPlayableSource);
+        const index = playable >= 0 ? playable : newIndex;
+        selectedIndexRef.current = index;
+        setSourceIndex(index);
       }
     };
 
@@ -223,9 +289,22 @@ export function Player({ apiBase, media }: Props) {
     const handleDone = () => {
       accumulatedRef.current.done = true;
       setPayload(buildPayload());
-      if (accumulatedRef.current.sources.length === 0) {
+      const sources = accumulatedRef.current.sources;
+      if (sources.length === 0) {
         setStatus('error');
         setError('No playable sources were returned for this title.');
+        return;
+      }
+      if (!isPlayableSource(sources[selectedIndexRef.current])) {
+        const preferred = preferredSourceIndex(sources, connectionHint());
+        const candidate = isPlayableSource(sources[preferred])
+          ? preferred
+          : sources.findIndex(isPlayableSource);
+        if (candidate >= 0 && candidate !== selectedIndexRef.current) {
+          selectedIndexRef.current = candidate;
+          setSourceIndex(candidate);
+          setSourceNonce((value) => value + 1);
+        }
       }
     };
 
@@ -239,6 +318,7 @@ export function Player({ apiBase, media }: Props) {
         const fingerprint = await getFingerprint();
         eventSource = fetchStreamEvents(apiBase, media, fingerprint, {
           invalidate: request.invalidate,
+          embed: Boolean(embed),
           onMeta: handleMeta,
           onSource: handleSource,
           onSubtitle: handleSubtitle,
@@ -256,7 +336,7 @@ export function Player({ apiBase, media }: Props) {
       eventSource?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiBase, media.type, media.id, media.season, media.episode, request]);
+  }, [apiBase, media.type, media.id, media.season, media.episode, request, embed]);
 
   useEffect(() => {
     if (!payload) return;
@@ -349,10 +429,8 @@ export function Player({ apiBase, media }: Props) {
       const startManifestTimeout = () => {
         if (manifestTimer) clearTimeout(manifestTimer);
         manifestTimer = setTimeout(() => {
-          if (failedCount < (payload?.sources.length ?? 1) - 1) {
-            tryAnotherSource();
-          }
-        }, 8000);
+          if (!ready) tryAnotherSourceRef.current();
+        }, FIRST_PLAYABLE_TIMEOUT_MS);
       };
       const clearManifestTimeout = () => {
         if (manifestTimer) { clearTimeout(manifestTimer); manifestTimer = null; }
@@ -378,28 +456,29 @@ export function Player({ apiBase, media }: Props) {
       });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) return;
-        if (failedCount < payload.sources.length - 1) {
-          tryAnotherSource();
-        } else {
-          fail(`Playback failed: ${data.details}`);
-        }
+        tryAnotherSourceRef.current();
       });
       navConnection?.addEventListener?.('change', onConnectionChange);
     } else {
       video.src = source.url;
     }
 
+    let nativeTimer: NodeJS.Timeout | null = null;
+    if (!Hls.isSupported()) {
+      nativeTimer = setTimeout(() => {
+        if (!ready) tryAnotherSourceRef.current();
+      }, FIRST_PLAYABLE_TIMEOUT_MS);
+    }
+
     const onLoadedMetadata = () => {
+      if (nativeTimer) { clearTimeout(nativeTimer); nativeTimer = null; }
       applyPendingSeek();
       updateBuffered();
       markReady();
     };
     const onVideoError = () => {
-      if (failedCount < (payload?.sources.length ?? 1) - 1) {
-        tryAnotherSource();
-      } else {
-        fail(video.error?.message ?? 'The video element could not play this source.');
-      }
+      if (nativeTimer) { clearTimeout(nativeTimer); nativeTimer = null; }
+      tryAnotherSourceRef.current();
     };
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('error', onVideoError);
@@ -408,10 +487,12 @@ export function Player({ apiBase, media }: Props) {
       navConnection?.removeEventListener?.('change', onConnectionChange);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('error', onVideoError);
+      if (nativeTimer) { clearTimeout(nativeTimer); nativeTimer = null; }
       hls?.destroy();
       if (hlsRef.current === hls) hlsRef.current = null;
       video.removeAttribute('src');
       video.load();
+      wasPlayingRef.current = false;
       setPlaying(false);
     };
   }, [source, sourceNonce, updateBuffered, isEmbedSource]);
@@ -423,6 +504,14 @@ export function Player({ apiBase, media }: Props) {
     const onTime = () => {
       setCurrentTime(video.currentTime);
       updateBuffered();
+      const now = Date.now();
+      if (now - lastTimeUpdateRef.current >= EMBED_TIMEUPDATE_INTERVAL_MS) {
+        lastTimeUpdateRef.current = now;
+        sendEmbedEvent('timeupdate', {
+          currentTime: video.currentTime,
+          duration: Number.isFinite(video.duration) ? video.duration : 0,
+        });
+      }
     };
     const onDuration = () => {
       setDuration(Number.isFinite(video.duration) ? video.duration : 0);
@@ -432,15 +521,28 @@ export function Player({ apiBase, media }: Props) {
       setPlaying(true);
       setNeedsInteraction(false);
       setStatus('ready');
+      if (!wasPlayingRef.current) {
+        wasPlayingRef.current = true;
+        sendEmbedEvent('play');
+      }
     };
-    const onPause = () => setPlaying(false);
+    const onPause = () => {
+      setPlaying(false);
+      wasPlayingRef.current = false;
+      sendEmbedEvent('pause');
+    };
     const onVolume = () => {
       setVolume(video.volume);
       setMuted(video.muted);
     };
     const onEnded = () => {
       setPlaying(false);
-      if (media.type === 'tv') setNextCountdown(5);
+      wasPlayingRef.current = false;
+      sendEmbedEvent('ended', {
+        currentTime: video.currentTime,
+        duration: Number.isFinite(video.duration) ? video.duration : 0,
+      });
+      if (media.type === 'tv' && !embed) setNextCountdown(5);
     };
 
     video.addEventListener('timeupdate', onTime);
@@ -462,7 +564,7 @@ export function Player({ apiBase, media }: Props) {
       video.removeEventListener('volumechange', onVolume);
       video.removeEventListener('ended', onEnded);
     };
-  }, [media.type, updateBuffered]);
+  }, [media.type, updateBuffered, sendEmbedEvent, embed]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -498,11 +600,10 @@ export function Player({ apiBase, media }: Props) {
   }, []);
 
   const reload = useCallback(
-    (invalidate: boolean) => {
+    (invalidate: boolean, resetRetries = true) => {
       capturePosition();
       setSourceIndex(0);
-      setFailedCount(0);
-      setReloadCount(0);
+      if (resetRetries) setReloadCount(0);
       attemptedSourcesRef.current = new Set();
       setSelectedLevel(null);
       setRequest((previous) => ({ token: previous.token + 1, invalidate }));
@@ -529,7 +630,6 @@ export function Player({ apiBase, media }: Props) {
       capturePosition();
       setSourceIndex(index);
       selectedIndexRef.current = index;
-      setFailedCount(0);
       attemptedSourcesRef.current = new Set();
       setSelectedLevel(null);
       setSourceNonce((value) => value + 1);
@@ -594,10 +694,17 @@ export function Player({ apiBase, media }: Props) {
   }, [showControlsBriefly]);
 
   const tryAnotherSource = useCallback(() => {
-    if (!payload || payload.sources.length <= 1) {
+    const sources = payload?.sources ?? [];
+    const current = sources[sourceIndex];
+    if (current) {
+      attemptedSourcesRef.current.add(sourceKey(current, sourceIndex));
+    }
+
+    const to = nextSourceIndex(sources, sourceIndex, attemptedSourcesRef.current);
+    if (to < 0) {
       if (reloadCount < 2) {
-        setReloadCount((v) => v + 1);
-        reload(true);
+        setReloadCount((value) => value + 1);
+        reload(true, false);
       } else {
         setStatus('error');
         setError('All sources failed after 2 retries. Please try again later.');
@@ -606,51 +713,21 @@ export function Player({ apiBase, media }: Props) {
       return;
     }
 
-    const source = payload.sources[sourceIndex];
-    if (source) {
-      attemptedSourcesRef.current.add(source.url || source.provider || `${sourceIndex}`);
-    }
-
-    const totalAttempted =
-      failedCount + 1 + attemptedSourcesRef.current.size;
-
-    if (totalAttempted >= payload.sources.length) {
-      if (reloadCount < 2) {
-        setReloadCount((v) => v + 1);
-        reload(true);
-      } else {
-        setStatus('error');
-        setError('All sources failed after 2 retries. Please try again later.');
-        setPlaying(false);
-      }
-      return;
-    }
-
+    if (switchTimerRef.current) return;
     const from = sourceIndex;
-    let to = (sourceIndex + 1) % payload.sources.length;
-    let safety = 0;
-    while (safety++ < payload.sources.length) {
-      const candidate = payload.sources[to];
-      const candidateKey = candidate?.url || candidate?.provider || `${to}`;
-      if (!attemptedSourcesRef.current.has(candidateKey)) {
-        break;
-      }
-      to = (to + 1) % payload.sources.length;
-    }
-
-    const servers = payload.sources.map((s) => s.provider || 'unknown');
-      setSwitching({ from, to, servers });
-    const delay = 2000;
-    setTimeout(() => {
+    const servers = sources.map((item) => item.provider || 'unknown');
+    setSwitching({ from, to, servers });
+    switchTimerRef.current = setTimeout(() => {
+      switchTimerRef.current = null;
       setSwitching(null);
       capturePosition();
-      setFailedCount((value) => value + 1);
       setSourceIndex(to);
       selectedIndexRef.current = to;
       setSelectedLevel(null);
       setSourceNonce((value) => value + 1);
-    }, delay);
-  }, [capturePosition, failedCount, payload, reload, sourceIndex]);
+    }, 400);
+  }, [capturePosition, payload, reload, reloadCount, sourceIndex]);
+  tryAnotherSourceRef.current = tryAnotherSource;
 
   const changeQuality = useCallback(
     (value: string) => {
@@ -662,9 +739,9 @@ export function Player({ apiBase, media }: Props) {
           hls.nextLevel = -1;
         }
         if (payload) {
-          const adaptiveIndex = payload.sources.findIndex((item) => item.adaptive);
-          if (adaptiveIndex >= 0 && !payload.sources[sourceIndex]?.adaptive) {
-            changeSource(adaptiveIndex);
+          const preferred = preferredSourceIndex(payload.sources, connectionHint());
+          if (payload.sources[preferred]?.adaptive && !payload.sources[sourceIndex]?.adaptive) {
+            changeSource(preferred);
           }
         }
         showControlsBriefly();
@@ -689,6 +766,90 @@ export function Player({ apiBase, media }: Props) {
     },
     [changeSource, payload, sourceIndex, showControlsBriefly],
   );
+
+  useEffect(() => {
+    if (!embed || status !== 'ready' || !payload || embedReadyRef.current) return;
+    embedReadyRef.current = true;
+    sendEmbedEvent('ready', { type: media.type, id: media.id, title: payload.title });
+  }, [embed, status, payload, media.type, media.id, sendEmbedEvent]);
+
+  useEffect(() => {
+    if (!embed || !sourceDescriptor) return;
+    const [index, quality, provider, codec] = JSON.parse(sourceDescriptor) as [
+      number,
+      string,
+      string,
+      string,
+    ];
+    sendEmbedEvent('sourcechange', { index, quality, provider, codec });
+  }, [embed, sourceDescriptor, sendEmbedEvent]);
+
+  useEffect(() => {
+    if (!embed || status !== 'error') return;
+    sendEmbedEvent('error', {
+      code: 'STREAM_UNAVAILABLE',
+      message: 'The stream could not be played.',
+    });
+  }, [embed, status, sendEmbedEvent]);
+
+  useEffect(() => {
+    if (!embed) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent) return;
+      if (!isAllowedOrigin(event.origin, embed.origins)) return;
+      const command = parseEmbedCommand(event.data);
+      if (!command.ok) return;
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (command.command === 'play') {
+        if (video.paused) togglePlay();
+        return;
+      }
+      if (command.command === 'pause') {
+        if (!video.paused) togglePlay();
+        return;
+      }
+      if (command.command === 'seek') {
+        const value = typeof command.value === 'number' ? command.value : 0;
+        const limit = Number.isFinite(video.duration) ? video.duration : value;
+        seek(Math.max(0, Math.min(value, limit)));
+        return;
+      }
+      if (command.command === 'setVolume') {
+        const value = typeof command.value === 'number' ? command.value : 0;
+        changeVolume(value);
+        return;
+      }
+      if (command.command === 'setSubtitle') {
+        if (typeof command.value === 'number') {
+          setSubtitleIndex(command.value);
+          return;
+        }
+        if (typeof command.value === 'string') {
+          const needle = command.value.toLowerCase();
+          const index = (payload?.subtitles ?? []).findIndex(
+            (item) =>
+              item.lang.toLowerCase() === needle || item.label.toLowerCase() === needle,
+          );
+          if (index >= 0) setSubtitleIndex(index);
+        }
+        return;
+      }
+      if (command.command === 'setQuality' && typeof command.value === 'string') {
+        const value = command.value;
+        if (value === 'auto' || value.startsWith('source:') || value.startsWith('level:')) {
+          changeQuality(value);
+          return;
+        }
+        const index = (payload?.sources ?? []).findIndex((item) => item.quality === value);
+        if (index >= 0) changeQuality(`source:${index}`);
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [embed, payload, seek, changeVolume, changeQuality, togglePlay]);
 
   const togglePiP = useCallback(async () => {
     const video = videoRef.current;
@@ -810,14 +971,10 @@ export function Player({ apiBase, media }: Props) {
       <AmbientBackground accentColor={branding.accentColor} />
 
       {isEmbedSource && source && (
-        <iframe
+        <ExternalEmbed
           key={`${source.url}-${sourceNonce}`}
-          src={source.url}
-          title="Embedded player"
-          className="player-video"
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowFullScreen
-          referrerPolicy="origin"
+          url={source.url}
+          title={payload?.title ? `${payload.title} — external provider` : 'External player'}
         />
       )}
 
@@ -905,8 +1062,12 @@ export function Player({ apiBase, media }: Props) {
       {status === 'error' && (
         <ErrorState
           title="Stream unavailable"
-          message={error ?? 'Something went wrong while loading this title.'}
-          diagnostics={payload?.diagnostics}
+          message={
+            embed
+              ? 'This stream is unavailable in the embedded player.'
+              : error ?? 'Something went wrong while loading this title.'
+          }
+          diagnostics={embed ? undefined : payload?.diagnostics}
           onTryAnother={tryAnotherSource}
           onReload={() => reload(true)}
         />

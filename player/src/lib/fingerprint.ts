@@ -36,7 +36,7 @@ function canvasSignature(): string {
     if (!context) return 'no-canvas';
     context.textBaseline = 'top';
     context.font = '14px Arial';
-    context.fillStyle = '#6366f1';
+    context.fillStyle = '#333333';
     context.fillRect(0, 0, 160, 40);
     context.fillStyle = '#ffffff';
     context.fillText('Peak fingerprint', 4, 8);

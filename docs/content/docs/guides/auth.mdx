@@ -1,0 +1,157 @@
+---
+title: Partner auth and origins
+description: Configure API keys, sign short-lived embed sessions, and enforce exact frame ancestors.
+---
+
+Peak uses two credentials with very different jobs:
+
+| Credential | Where it lives | What it can do |
+| --- | --- | --- |
+| Partner API key | Partner backend only | Create embed sessions for one partner |
+| Embed token | Browser URL | Play one signed media item from allowed origins |
+
+The API key is long-lived and must never reach the browser. The embed token is short-lived and is
+only useful for the media and origins it was minted for.
+
+## Configure a partner
+
+Partners are configured with `EMBED_PARTNERS`, a JSON array:
+
+```bash
+EMBED_PARTNERS='[
+  {
+    "id": "demo",
+    "name": "Demo Partner",
+    "apiKey": "replace-with-a-long-random-api-key",
+    "origins": ["https://app.example.com"]
+  }
+]'
+```
+
+Rules:
+
+- `id` must be unique and non-empty.
+- `apiKey` must be at least 8 characters. Use a generated secret with at least 32 bytes of entropy.
+- `origins` must be exact HTTP(S) origins: scheme, host, and optional port only. No path, query,
+  fragment, credentials, wildcard, or `null`.
+- Invalid partners are ignored. If no partner matches the key, session creation returns `401`.
+
+<Callout type="warn" title="Exact origins only">
+  `https://app.example.com` is valid. `https://*.example.com`, `https://app.example.com/path`,
+  `null`, and `*` are rejected. Origin checks are not substring matches.
+</Callout>
+
+## Create a session
+
+```bash
+curl -X POST http://localhost:3000/api/v1/embed/sessions \
+  -H 'content-type: application/json' \
+  -H 'x-api-key: YOUR_PARTNER_KEY' \
+  -d '{"type":"movie","id":"27205","ttlSeconds":900}'
+```
+
+The API looks up the partner by key using a constant-time comparison, validates the media request,
+and signs a token.
+
+## Token format
+
+The token is:
+
+```text
+base64url(JSON payload) + "." + base64url(HMAC-SHA256(encoded payload))
+```
+
+The payload contains:
+
+```json
+{
+  "v": 1,
+  "partnerId": "demo",
+  "type": "movie",
+  "id": "27205",
+  "season": null,
+  "episode": null,
+  "origins": ["https://app.example.com"],
+  "iat": 1761400000,
+  "exp": 1761400900
+}
+```
+
+`iat` and `exp` are Unix seconds. The token is signed with `EMBED_TOKEN_SECRET`. If the secret is not
+configured, Peak uses an ephemeral secret and logs a warning; tokens will not survive a restart, so
+set the secret in production.
+
+## Expiry
+
+| Setting | Value |
+| --- | --- |
+| Default TTL | 900 seconds (15 minutes) |
+| Minimum | 60 seconds |
+| Maximum | 86400 seconds (24 hours) |
+
+`ttlSeconds` is clamped, not rejected. A value below 60 becomes 60; a value above 86400 becomes
+86400. Non-numeric values fall back to the default.
+
+<Callout type="info" title="Short is better">
+  Keep embed tokens short-lived. The player only needs enough time to load and start playback. If a
+  viewer keeps the page open, mint a fresh session rather than issuing a day-long token.
+</Callout>
+
+## Origin enforcement
+
+Two controls must agree:
+
+1. **Token scope.** The token lists the partner’s exact origins.
+2. **CSP `frame-ancestors`.** The player response sets a CSP that allows `'self'` plus those exact
+   origins.
+
+A valid token used from an unlisted origin is still blocked by the browser’s frame policy. A listed
+origin with an invalid or expired token is blocked by the edge verifier.
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+The middleware sets `x-peak-embed-origins` and `x-peak-embed-partner` request headers for downstream
+handling. Those headers are derived from the verified token, not from client input.
+
+## Error codes
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `MISSING_TOKEN` | 401 | No token in the embed URL |
+| `INVALID_TOKEN` | 401 | Token is malformed |
+| `INVALID_SIGNATURE` | 401 | Signature does not match |
+| `INVALID_PAYLOAD` | 401 | Payload is not a JSON object or has no valid `exp` |
+| `EXPIRED` | 401 | Token expiry has passed |
+| `SECRET_MISSING` | 401 | Verifier has no signing secret |
+| `INVALID_API_KEY` | 401 | Partner key is missing or unknown |
+| `TOKEN_SIGNING_FAILED` | 500 | Session creation could not verify its own token |
+
+<Callout type="error" title="Never trust the token payload alone">
+  The payload is signed, not encrypted. It is readable by anyone with the URL. Do not put secrets or
+  personal data in a token.
+</Callout>
+
+## Rotation
+
+To rotate a partner key:
+
+1. Add a new partner entry with a new `id` and the same origins.
+2. Deploy the new key to the partner backend.
+3. Remove the old entry after the partner has switched.
+
+Rotating `EMBED_TOKEN_SECRET` invalidates every outstanding embed token. Do it during a maintenance
+window or accept that open players will need a new session.
+
+## CORS
+
+The embed player and media proxy use restricted CORS. The proxy only allows the origins needed for
+playback and never reflects arbitrary request origins. If a browser request fails CORS, check the
+partner origin configuration first.
+
+## Next
+
+- [Security model](/docs/security)
+- [Embed URL reference](/docs/reference/urls)
+- [Troubleshooting](/docs/troubleshooting)
