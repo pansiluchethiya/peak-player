@@ -4,4 +4,10 @@ restart.trigger
 .env
 utils/user-config.json
 utils/auth-users.json
+utils/peak.db
+utils/peak.db-shm
+utils/peak.db-wal
+player/.next
+player/node_modules
+player/tsconfig.tsbuildinfo
 /tmp_context

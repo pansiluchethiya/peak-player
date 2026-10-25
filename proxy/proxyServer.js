@@ -5,6 +5,13 @@
 const cors = require('cors');
 const fetch = require('node-fetch');
 
+const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(url, options = {}) {
+    return fetch(url, { ...options, timeout: FETCH_TIMEOUT_MS });
+}
+
 const CACHE_MAX_SIZE = 2000;
 const CACHE_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
 const segmentCache = new Map();
@@ -64,7 +71,7 @@ async function prefetchSegment(url, headers) {
     const existing = segmentCache.get(url);
     if (existing && Date.now() - existing.timestamp <= CACHE_EXPIRY_MS) return;
     try {
-        const resp = await fetch(url, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+        const resp = await fetchWithTimeout(url, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
         if (!resp.ok) return;
         const data = new Uint8Array(await resp.arrayBuffer());
         const responseHeaders = {};
@@ -73,15 +80,14 @@ async function prefetchSegment(url, headers) {
     } catch (_e) { /* ignore */ }
 }
 
-const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-
 function inferContentType(upstreamCT, targetUrl) {
-    const bad = !upstreamCT || /application\/octet-stream/i.test(upstreamCT) || /application\/(x-)?zip/i.test(upstreamCT);
-    if (!bad) return upstreamCT;
-    if (/\.mkv(\?|$)/i.test(targetUrl)) return 'video/x-matroska';
-    if (/\.mp4(\?|$)/i.test(targetUrl)) return 'video/mp4';
     if (/\.m3u8(\?|$)/i.test(targetUrl)) return 'application/vnd.apple.mpegurl';
     if (/\.ts(\?|$)/i.test(targetUrl)) return 'video/mp2t';
+    if (/\.html?(\?|$)/i.test(targetUrl)) return 'video/mp2t';
+    if (/\.mp4(\?|$)/i.test(targetUrl)) return 'video/mp4';
+    if (/\.mkv(\?|$)/i.test(targetUrl)) return 'video/x-matroska';
+    const bad = !upstreamCT || /application\/octet-stream/i.test(upstreamCT) || /application\/(x-)?zip/i.test(upstreamCT);
+    if (!bad) return upstreamCT;
     return 'application/octet-stream';
 }
 
@@ -144,6 +150,12 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
                 } else if (/\.ts(\?|$)/i.test(abs)) {
                     segmentUrls.push(abs);
                     out.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+                } else if (/\.html?(\?|$)/i.test(abs)) {
+                    segmentUrls.push(abs);
+                    out.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
+                } else if (/\.m4s(\?|$)/i.test(abs) || /\.aac(\?|$)/i.test(abs) || /\.mp4(\?|$)/i.test(abs)) {
+                    segmentUrls.push(abs);
+                    out.push(`${baseProxyUrl}/ts-proxy?url=${encodeURIComponent(abs)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
                 } else out.push(line);
             } catch { out.push(line); }
         } else out.push(line);
@@ -163,7 +175,7 @@ function createProxyRoutes(app) {
             // Ignore URL parsing errors
         }
         try {
-            const response = await fetch(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+            const response = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
             if (!response.ok) return res.status(response.status).json({ error: `M3U8 fetch failed: ${response.status}` });
             const text = await response.text();
             const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
@@ -282,7 +294,7 @@ function createProxyRoutes(app) {
             let upstreamAcceptRanges = null;
             if (!effectiveRange) {
                 try {
-                    const headResp = await fetch(targetUrl, { method: 'HEAD', headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+                    const headResp = await fetchWithTimeout(targetUrl, { method: 'HEAD', headers: { 'User-Agent': DEFAULT_UA, ...headers } });
                     if (headResp.ok) {
                         contentLength = headResp.headers.get('content-length');
                         upstreamAcceptRanges = headResp.headers.get('accept-ranges');
@@ -298,7 +310,7 @@ function createProxyRoutes(app) {
                 try {
                     const probeRange = 'bytes=0-0';
                     if (debug) console.log('[ts-proxy] probe range');
-                    const probeResp = await fetch(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, 'Range': probeRange } });
+                    const probeResp = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, 'Range': probeRange } });
                     if (probeResp.status === 206) {
                         const cr = probeResp.headers.get('content-range');
                         if (cr) {
@@ -325,7 +337,7 @@ function createProxyRoutes(app) {
                     (async () => {
                         try {
                             if (debug) console.log('[ts-proxy] tail prefetch start', { tailRange });
-                            const tr = await fetch(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, Range: tailRange } });
+                            const tr = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, Range: tailRange } });
                             if (tr.status === 206) {
                                 const buf = Buffer.from(await tr.arrayBuffer());
                                 const cr = tr.headers.get('content-range');
@@ -353,7 +365,7 @@ function createProxyRoutes(app) {
                 const desired = initChunkKB * 1024;
                 const chunkSize = Math.min(desired, Math.max(0, total - 1));
                 const syntheticRange = `bytes=0-${chunkSize}`;
-                const resp = await fetch(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, 'Range': syntheticRange } });
+                const resp = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers, 'Range': syntheticRange } });
                 if (resp.status === 206) {
                     if (debug) console.log('[ts-proxy] synthetic 206', syntheticRange);
                     const upstreamCT = inferContentType(resp.headers.get('content-type'), targetUrl);
@@ -374,7 +386,7 @@ function createProxyRoutes(app) {
             const upstreamOptions = { headers: { 'User-Agent': DEFAULT_UA, ...headers } };
             // If client supplied a suffix range like bytes=0- we pass it; force200 strips Range
             if (force200 && headers.Range) delete headers.Range;
-            const resp = await fetch(targetUrl, upstreamOptions);
+            const resp = await fetchWithTimeout(targetUrl, upstreamOptions);
             if (!resp.ok && resp.status !== 206) {
                 if (debug) console.log('[ts-proxy] upstream error', resp.status);
                 return res.status(resp.status).json({ error: `TS fetch failed: ${resp.status}` });
@@ -416,7 +428,7 @@ function createProxyRoutes(app) {
             // Ignore URL parsing errors
         }
         try {
-            const resp = await fetch(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
+            const resp = await fetchWithTimeout(targetUrl, { headers: { 'User-Agent': DEFAULT_UA, ...headers } });
             if (!resp.ok) return res.status(resp.status).json({ error: `subtitle fetch failed: ${resp.status}` });
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Cache-Control', 'public, max-age=3600');
@@ -441,10 +453,10 @@ function processStreamsForProxy(streams, serverUrl) {
         }
         // Force specific hosts through ts-proxy (direct file style) even without extension
         if (host.includes('pixeldrain.') || host === 'video-downloads.googleusercontent.com') {
-            return { ...s, url: `${serverUrl}/ts-proxy?url=${encodeURIComponent(original)}${hParam}` };
+            return { ...s, url: `${serverUrl}/ts-proxy?url=${encodeURIComponent(original)}${hParam}&force200=1&clampOpen=0` };
         }
         if (/\.(mp4|mkv)(\?|$)/i.test(original)) {
-            return { ...s, url: `${serverUrl}/ts-proxy?url=${encodeURIComponent(original)}${hParam}` };
+            return { ...s, url: `${serverUrl}/ts-proxy?url=${encodeURIComponent(original)}${hParam}&force200=1&clampOpen=0` };
         }
         return { ...s, url: `${serverUrl}/m3u8-proxy?url=${encodeURIComponent(original)}${hParam}` };
     });

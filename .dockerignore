@@ -7,6 +7,7 @@ streams_cache
 providers/.cache
 utils/user-config.json
 utils/auth-users.json
+utils/peak.db
 .env
 .git
 .gitignore

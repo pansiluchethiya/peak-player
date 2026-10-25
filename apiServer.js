@@ -9,17 +9,18 @@ const { listProviders, getProvider, getCookieStats } = require('./providers/regi
 const { createProxyRoutes, processStreamsForProxy } = require('./proxy/proxyServer');
 const { resolveImdbId } = require('./utils/tmdb');
 const { applyFilters } = require('./utils/streamFilters');
+const { getEmbed } = require('./utils/embed');
+const { getPlayerStream, getPlayerStreamEvents, getLiveTvStream, getBranding, getPlayerProviders } = require('./utils/playerService');
+const iptvStore = require('./utils/iptvStore');
+const iptvSync = require('./utils/iptvSync');
 
 const app = express();
 app.set('trust proxy', 1);
 
-// Conditionally mount proxy routes early so downstream handlers can use them
-if (config.enableProxy) {
-  console.log('[startup] enableProxy flag active: mounting proxy routes');
-  createProxyRoutes(app);
-} else {
-  console.log('[startup] enableProxy flag disabled: proxy routes not mounted');
-}
+// Proxy routes are always available for the custom player. Legacy /api/streams
+// still only rewrites through them when config.enableProxy is true.
+console.log('[startup] mounting media proxy routes for the custom player');
+createProxyRoutes(app);
 
 // --- Simple In-Memory Rate Limiting for /auth/login ---
 const loginAttempts = new Map(); // key: ip, value: { count, first, last, lockedUntil }
@@ -191,6 +192,10 @@ app.use((req,res,next)=>{ metrics.requestsTotal++; metrics.lastRequestAt = Date.
 // Serve static UI (login page at /)
 app.use(express.static(path.join(process.cwd(),'public')));
 
+// Initialize IPTV database + scheduler
+iptvStore.ensureIptvTables();
+iptvSync.startIptvScheduler();
+
 // Config API
 app.get('/api/config', (req,res) => {
   const fs = require('fs');
@@ -272,7 +277,19 @@ app.get('/api/status', (req,res) => {
     'GET /api/streams/:type/:tmdbId',
     'GET /api/streams/:provider/:type/:tmdbId',
     'POST /api/config',
-    'GET /api/config'
+    'GET /api/config',
+    'GET /api/v1/stream/:type/:id',
+    'GET /api/v1/stream/events/:type/:id',
+    'GET /api/v1/live/tv/channels',
+    'GET /api/v1/live/tv/groups',
+    'GET /api/admin/iptv/playlists',
+    'POST /api/admin/iptv/playlists',
+    'DELETE /api/admin/iptv/playlists/:id',
+    'POST /api/admin/iptv/playlists/:id/sync',
+    'PATCH /api/admin/iptv/playlists/:id',
+    'GET /api/admin/iptv/channels',
+    'PATCH /api/admin/iptv/channels/:id',
+    'GET /api/admin/iptv/groups'
   ];
   // Determine cookie requirement heuristically (currently Showbox / PStream)
   const cookieRequiredProviders = new Set(['showbox']);
@@ -311,11 +328,150 @@ app.get('/api/debug/env', (req,res) => {
   });
 });
 
+function requestBaseUrl(req) {
+  const proto = req.get('x-forwarded-proto') || req.protocol;
+  const host = req.get('x-forwarded-host') || req.get('host');
+  return `${proto}://${host}`;
+}
+
 // Single provider info
 app.get('/api/providers/:name', (req,res) => {
   const p = getProvider(req.params.name);
   if (!p) return res.status(404).json({ success:false, error:'PROVIDER_NOT_FOUND' });
   res.json({ success:true, provider:{ name: p.name, enabled: p.enabled } });
+});
+
+// --- Custom player API (v1) ---
+app.get('/api/v1/branding', (req,res) => {
+  res.json(getBranding());
+});
+
+app.get('/api/v1/providers', (req,res) => {
+  res.json(getPlayerProviders());
+});
+
+app.get('/api/v1/stream/:type/:id', async (req,res) => {
+  const { type, id } = req.params;
+  const validTypes = ['movie','tv','series','live_tv'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: 'INVALID_TYPE', message: 'type must be movie, tv, series, or live_tv' });
+  }
+  if (type === 'live_tv') {
+    if (!/^channel_[a-z0-9-]+_[a-f0-9]+$/.test(String(id))) {
+      return res.status(400).json({ error: 'INVALID_ID', message: 'id must be a channel id (channel_<slug>_<hash>)' });
+    }
+  } else if (!/^\d+$/.test(String(id))) {
+    return res.status(400).json({ error: 'INVALID_ID', message: 'id must be a numeric TMDB id' });
+  }
+  const season = req.query.season ? Number(req.query.season) : null;
+  const episode = req.query.episode ? Number(req.query.episode) : null;
+  try {
+    metrics.streamRequests++;
+    const payload = await getPlayerStream({
+      type,
+      id,
+      season,
+      episode,
+      serverUrl: requestBaseUrl(req),
+      config,
+    });
+     metrics.streamsReturned += payload.sources.length;
+    res.json(payload);
+  } catch (e) {
+    metrics.lastError = e.message;
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+// Progressive streaming API (SSE)
+app.get('/api/v1/stream/events/:type/:id', (req,res) => {
+  const { type, id } = req.params;
+  const validTypes = ['movie','tv','series','live_tv'];
+  if (!validTypes.includes(type)) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.flushHeaders();
+    res.write(`event: error\ndata: ${JSON.stringify({ error: 'INVALID_TYPE', message: 'type must be movie, tv, series, or live_tv' })}\n\n`);
+    return res.end();
+  }
+  if (type === 'live_tv') {
+    if (!/^channel_[a-z0-9-]+_[a-f0-9]+$/.test(String(id))) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.flushHeaders();
+      res.write(`event: error\ndata: ${JSON.stringify({ error: 'INVALID_ID', message: 'id must be a channel id (channel_<slug>_<hash>)' })}\n\n`);
+      return res.end();
+    }
+  } else if (!/^\d+$/.test(String(id))) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.flushHeaders();
+    res.write(`event: error\ndata: ${JSON.stringify({ error: 'INVALID_ID', message: 'id must be a numeric TMDB id' })}\n\n`);
+    return res.end();
+  }
+
+  const season = req.query.season ? Number(req.query.season) : null;
+  const episode = req.query.episode ? Number(req.query.episode) : null;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const cancelled = { value: false };
+  req.on('close', () => {
+    cancelled.value = true;
+  });
+  req.on('aborted', () => {
+    cancelled.value = true;
+  });
+
+  const onEvent = (event, data) => {
+    if (cancelled.value) return;
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  getPlayerStreamEvents({
+    type,
+    id,
+    season,
+    episode,
+    serverUrl: requestBaseUrl(req),
+    config,
+    onEvent,
+    cancelled,
+    invalidate: req.query.invalidate === '1' || req.query.invalidate === 'true',
+  })
+    .then(() => {
+      if (!cancelled.value) res.end();
+    })
+    .catch((err) => {
+      if (cancelled.value) return;
+      const safeMessage = err instanceof Error ? err.message : String(err);
+      res.write(`event: error\ndata: ${JSON.stringify({ error: 'INTERNAL_ERROR', message: safeMessage })}\n\n`);
+      res.end();
+    });
+});
+
+// Backend embed API. Returns the custom Peak player URL for the frontend iframe.
+app.get('/api/embed/:type/:id', async (req,res) => {
+  const result = await getEmbed({
+    type: req.params.type,
+    id: req.params.id,
+    season: req.query.season,
+    episode: req.query.episode,
+    source: req.query.source || req.query.provider,
+  });
+  if (result.error) {
+    return res.status(result.status).json({
+      success: false,
+      error: result.error,
+      message: result.message,
+    });
+  }
+  res.json({ success: true, ...result });
 });
 
 // Aggregate streams across all enabled providers
@@ -394,6 +550,139 @@ app.get('/api/streams/:provider/:type/:tmdbId', async (req,res) => {
   }
 });
 
+// --- IPTV Live TV (public API) ---
+app.get('/api/v1/live/tv/channels', (req,res) => {
+  try {
+    const q = req.query.q ? String(req.query.q) : undefined;
+    const group = req.query.group ? String(req.query.group) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : 200;
+    const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+    const result = iptvStore.listChannels({ q, group, limit, cursor });
+    const channels = result.channels.map((c) => ({
+      id: c.id,
+      name: c.name,
+      group: c.groupTitle,
+      logo: c.logo,
+      language: c.language,
+      country: c.country,
+    }));
+    res.json({ success: true, channels, nextCursor: result.nextCursor });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.get('/api/v1/live/tv/groups', (req,res) => {
+  try {
+    const groups = iptvStore.listGroups();
+    res.json({ success: true, groups });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+// --- IPTV admin API (auth required) ---
+app.get('/api/admin/iptv/playlists', (req,res) => {
+  try {
+    const playlists = iptvStore.listPlaylists();
+    res.json({ success: true, playlists });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.post('/api/admin/iptv/playlists', (req,res) => {
+  try {
+    const { name, url } = req.body || {};
+    if (!name || !url) {
+      return res.status(400).json({ success: false, error: 'MISSING_FIELDS', message: 'name and url are required' });
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ success: false, error: 'INVALID_URL', message: 'url must start with http:// or https://' });
+    }
+    const playlist = iptvStore.addPlaylist(name, url);
+    res.json({ success: true, playlist });
+  } catch (e) {
+    if (e.code === 'SQLITE_CONSTRAINT') {
+      return res.status(409).json({ success: false, error: 'DUPLICATE_URL', message: 'A playlist with this URL already exists' });
+    }
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.delete('/api/admin/iptv/playlists/:id', (req,res) => {
+  try {
+    const id = Number(req.params.id);
+    const removed = iptvStore.removePlaylist(id);
+    if (!removed) return res.status(404).json({ success: false, error: 'PLAYLIST_NOT_FOUND' });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.post('/api/admin/iptv/playlists/:id/sync', async (req,res) => {
+  try {
+    const id = Number(req.params.id);
+    const playlist = iptvStore.getPlaylist(id);
+    if (!playlist) return res.status(404).json({ success: false, error: 'PLAYLIST_NOT_FOUND' });
+    const result = await iptvSync.syncPlaylist(id);
+    res.json({ success: true, channelCount: result.channelCount, error: result.error });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.patch('/api/admin/iptv/playlists/:id', (req,res) => {
+  try {
+    const id = Number(req.params.id);
+    const { enabled } = req.body || {};
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'INVALID_FIELD', message: 'enabled must be boolean' });
+    }
+    iptvStore.setPlaylistEnabled(id, enabled);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.get('/api/admin/iptv/channels', (req,res) => {
+  try {
+    const q = req.query.q ? String(req.query.q) : undefined;
+    const group = req.query.group ? String(req.query.group) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : 200;
+    // Admin sees all channels (including disabled)
+    const channels = iptvStore.listChannelsFlat({ q, group, limit, admin: true });
+    res.json({ success: true, channels });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.patch('/api/admin/iptv/channels/:id', (req,res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body || {};
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ success: false, error: 'INVALID_FIELD', message: 'enabled must be boolean' });
+    }
+    iptvStore.setChannelEnabled(id, enabled);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
+app.get('/api/admin/iptv/groups', (req,res) => {
+  try {
+    const groups = iptvStore.listGroups();
+    res.json({ success: true, groups });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
+  }
+});
+
 const PORT = config.port;
 const HOST = process.env.BIND_HOST || '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {
@@ -401,12 +690,27 @@ const server = app.listen(PORT, HOST, () => {
   if (HOST !== 'localhost') {
     console.log(`Local access (if running on your machine): http://localhost:${PORT}`);
   }
-  console.log('Endpoints:');
-  console.log('  GET  /api/health');
-  console.log('  GET  /api/metrics');
-  console.log('  GET  /api/providers');
-  console.log('  GET  /api/streams/:type/:id');
-  console.log('  POST /api/streams/:type/:id');
+   console.log('Endpoints:');
+   console.log('  GET  /api/health');
+   console.log('  GET  /api/metrics');
+   console.log('  GET  /api/providers');
+   console.log('  GET  /api/embed/:type/:id');
+   console.log('  GET  /api/v1/stream/:type/:id');
+   console.log('  GET  /api/v1/stream/events/:type/:id');
+   console.log('  GET  /api/v1/live/tv/channels');
+   console.log('  GET  /api/v1/live/tv/groups');
+   console.log('  GET  /api/v1/branding');
+   console.log('  GET  /api/v1/providers');
+   console.log('  GET  /api/admin/iptv/playlists');
+   console.log('  POST /api/admin/iptv/playlists');
+   console.log('  POST /api/admin/iptv/playlists/:id/sync');
+   console.log('  PATCH /api/admin/iptv/playlists/:id');
+   console.log('  DELETE /api/admin/iptv/playlists/:id');
+   console.log('  GET  /api/admin/iptv/channels');
+   console.log('  PATCH /api/admin/iptv/channels/:id');
+   console.log('  GET  /api/admin/iptv/groups');
+   console.log('  GET  /api/streams/:type/:id');
+   console.log('  POST /api/streams/:type/:id');
   if (!config.febboxCookies || config.febboxCookies.length === 0) {
     console.warn('[startup][warning] No FEBBOX_COOKIES configured. Showbox / PStream related streams may be unavailable. Set FEBBOX_COOKIES in your environment to enable these sources.');
   }

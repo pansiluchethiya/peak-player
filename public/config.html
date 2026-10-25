@@ -75,6 +75,10 @@
             <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-code"></use></svg>
             <span>Live configuration</span>
           </button>
+          <button class="nav-item" type="button" data-target="panel-iptv">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-globe"></use></svg>
+            <span>IPTV Live TV</span>
+          </button>
         </div>
       </nav>
 
@@ -644,8 +648,87 @@
                 <p>This view can contain live credentials. Do not share screenshots of the merged config without redacting keys and cookies.</p>
               </div>
             </section>
-          </section>
-        </form>
+           </section>
+           <section id="panel-iptv" class="panel" aria-labelledby="title-iptv" hidden>
+             <div class="page-head">
+               <div>
+                 <p class="eyebrow">IPTV</p>
+                 <h1 id="title-iptv">Live TV</h1>
+                 <p class="page-subtitle">Ingest M3U playlists, manage channels and groups, and serve live TV alongside your VOD sources.</p>
+               </div>
+               <div class="page-head-actions">
+                 <button class="btn btn-secondary" id="iptvRefreshBtn" type="button" aria-label="Refresh IPTV data">
+                   <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-refresh"></use></svg>
+                   Refresh
+                 </button>
+               </div>
+             </div>
+
+             <div class="settings-grid">
+               <section class="card" aria-labelledby="iptv-playlists-title">
+                 <div class="card-head">
+                   <div>
+                     <p class="card-kicker">Playlists</p>
+                     <h2 id="iptv-playlists-title">M3U playlists</h2>
+                     <p class="card-subtitle">Add playlist URLs to ingest live channels. Playlists sync automatically on schedule.</p>
+                   </div>
+                   <span class="count-chip" id="iptvPlaylistCount">0 playlists</span>
+                 </div>
+                 <div class="secret-add-row">
+                   <div class="field grow">
+                     <label for="iptvPlaylistName">Playlist name</label>
+                     <input id="iptvPlaylistName" type="text" placeholder="e.g. IPTV World" autocomplete="off" spellcheck="false" />
+                   </div>
+                   <div class="field grow">
+                     <label for="iptvPlaylistUrl">M3U URL</label>
+                     <input id="iptvPlaylistUrl" type="url" placeholder="https://example.com/playlist.m3u8" autocomplete="off" spellcheck="false" />
+                   </div>
+                   <button id="iptvAddPlaylistBtn" type="button" class="btn btn-primary">Add</button>
+                 </div>
+                 <div id="iptvPlaylistList" class="iptv-list" aria-live="polite"></div>
+                 <div class="note-callout">
+                   <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-shield"></use></svg>
+                   <p>Only HTTP(S) playlist URLs are accepted. Private address ranges are blocked for safety.</p>
+                 </div>
+               </section>
+
+               <section class="card" aria-labelledby="iptv-channels-title">
+                 <div class="card-head">
+                   <div>
+                     <p class="card-kicker">Channels</p>
+                     <h2 id="iptv-channels-title">Channel catalog</h2>
+                     <p class="card-subtitle">Browse, search, and toggle channel availability.</p>
+                   </div>
+                   <span class="count-chip" id="iptvChannelCount">0 channels</span>
+                 </div>
+                 <div class="field-row">
+                   <div class="field">
+                     <label for="iptvChannelSearch">Search channels</label>
+                     <input id="iptvChannelSearch" type="search" placeholder="Channel name…" autocomplete="off" spellcheck="false" />
+                   </div>
+                   <div class="field">
+                     <label for="iptvChannelGroup">Filter by group</label>
+                     <select id="iptvChannelGroup">
+                       <option value="">All groups</option>
+                     </select>
+                   </div>
+                 </div>
+                 <div id="iptvChannelList" class="iptv-list" aria-live="polite"></div>
+               </section>
+
+               <section class="card" aria-labelledby="iptv-groups-title">
+                 <div class="card-head">
+                   <div>
+                     <p class="card-kicker">Groups</p>
+                     <h2 id="iptv-groups-title">Channel groups</h2>
+                     <p class="card-subtitle">Grouped by <code>group-title</code> from your playlists.</p>
+                   </div>
+                 </div>
+                 <div id="iptvGroupList" class="iptv-list" aria-live="polite"></div>
+               </section>
+             </div>
+           </section>
+         </form>
       </main>
 
       <div class="actions-bar" id="actionsBar">

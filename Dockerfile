@@ -1,13 +1,14 @@
 # ---------- Build Stage ----------
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 ARG VERSION=dev
 WORKDIR /app
 
+# Install build dependencies for native modules (better-sqlite3)
+RUN apk add --no-cache python3 make g++
+
 # Install only production dependencies first (leveraging cache)
 COPY package.json package-lock.json ./
-# Using npm install instead of npm ci because lock file appears out-of-sync
-# If you later regenerate lock (npm install locally) you can revert to npm ci for reproducibility
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Copy only required source (avoid sending screenshots, node_modules already installed)
 COPY apiServer.js ./
@@ -18,7 +19,7 @@ COPY utils ./utils
 COPY README.md ./
 
 # ---------- Runtime Stage ----------
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 ARG VERSION=dev
 WORKDIR /app
 ENV NODE_ENV=production \
@@ -53,6 +54,6 @@ LABEL org.opencontainers.image.title="Peak" \
     org.opencontainers.image.licenses="MIT"
 
 # Healthcheck (simple)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD wget -qO- http://localhost:${API_PORT:-8787}/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD wget -qO- http://127.0.0.1:${API_PORT:-8787}/api/health || exit 1
 
 CMD ["node","apiServer.js"]

@@ -10,7 +10,8 @@
     'panel-keys': 'API keys',
     'panel-febbox': 'FebBox',
     'panel-advanced': 'Advanced',
-    'panel-live': 'Live configuration'
+    'panel-live': 'Live configuration',
+    'panel-iptv': 'IPTV Live TV'
   };
   const PANEL_IDS = Object.keys(PANEL_TITLES);
   const RESET_SKIP_KEY = 'peak_confirmReset_skip';
@@ -45,7 +46,13 @@
     functionalChecks: Object.create(null),
     lastFocus: null,
     dashboardLoading: false,
-    checksRunning: false
+    checksRunning: false,
+    iptvPlaylists: [],
+    iptvChannels: [],
+    iptvGroups: [],
+    iptvChannelSearch: '',
+    iptvChannelGroup: '',
+    iptvLoading: false
   };
 
   const $ = (selector, root) => (root || document).querySelector(selector);
@@ -242,6 +249,7 @@
     setDrawer(false, false);
     if (id === 'panel-status') loadDashboard({ silent: Boolean(opts.initial) });
     if (id === 'panel-live') renderLiveConfig();
+    if (id === 'panel-iptv') loadIptv();
     if (!opts.initial) {
       const main = $('#mainContent');
       if (main) main.focus({ preventScroll: true });
@@ -1549,6 +1557,304 @@
   }
 
   /* ------------------------------------------------------------------------
+     IPTV Live TV
+     ------------------------------------------------------------------------ */
+
+  async function loadIptv() {
+    if (state.iptvLoading) return;
+    state.iptvLoading = true;
+    const refresh = $('#iptvRefreshBtn');
+    if (refresh) refresh.setAttribute('aria-busy', 'true');
+    try {
+      const [playlistRes, channelRes, groupRes] = await Promise.all([
+        fetchJSON('/api/admin/iptv/playlists').catch(() => ({ success: false })),
+        fetchJSON('/api/admin/iptv/channels').catch(() => ({ success: false })),
+        fetchJSON('/api/admin/iptv/groups').catch(() => ({ success: false }))
+      ]);
+      state.iptvPlaylists = Array.isArray(playlistRes.playlists) ? playlistRes.playlists : [];
+      state.iptvChannels = Array.isArray(channelRes.channels) ? channelRes.channels : [];
+      state.iptvGroups = Array.isArray(groupRes.groups) ? groupRes.groups : [];
+      renderIptv();
+    } catch (error) {
+      renderIptvEmpty(error.message);
+    } finally {
+      state.iptvLoading = false;
+      if (refresh) refresh.removeAttribute('aria-busy');
+    }
+  }
+
+  function renderIptvEmpty(message) {
+    const pl = $('#iptvPlaylistList');
+    const ch = $('#iptvChannelList');
+    const gr = $('#iptvGroupList');
+    if (pl) pl.innerHTML = `<div class="iptv-empty">Could not load IPTV data: ${escapeHTML(message)}</div>`;
+    if (ch) ch.innerHTML = '';
+    if (gr) gr.innerHTML = '';
+  }
+
+  function formatSyncStatus(playlist) {
+    const last = playlist.lastSyncAt ? new Date(playlist.lastSyncAt) : null;
+    const ago = last ? timeAgo(last.toISOString()) : 'Never';
+    let status = playlist.enabled ? 'Enabled' : 'Disabled';
+    if (playlist.lastError) status = `Error: ${playlist.lastError}`;
+    return `${status} · Last sync: ${ago}`;
+  }
+
+  function renderIptvPlaylists() {
+    const container = $('#iptvPlaylistList');
+    if (!container) return;
+    const count = $('#iptvPlaylistCount');
+    if (count) count.textContent = `${state.iptvPlaylists.length} playlists`;
+    if (!state.iptvPlaylists.length) {
+      container.innerHTML = '<div class="iptv-empty">No playlists added yet.</div>';
+      return;
+    }
+    container.innerHTML = state.iptvPlaylists.map((playlist, index) => {
+      const enabled = playlist.enabled !== false;
+      const syncing = playlist.syncing;
+      return `
+        <div class="iptv-playlist-item" data-iptv-index="${index}">
+          <div class="iptv-playlist-info">
+            <div class="iptv-playlist-name">${escapeHTML(playlist.name || playlist.url)}</div>
+            <div class="iptv-playlist-url">${escapeHTML(playlist.url)}</div>
+            <div class="iptv-playlist-meta">${formatSyncStatus(playlist)}</div>
+          </div>
+          <div class="iptv-playlist-actions">
+            <button class="btn btn-sm btn-ghost" type="button" data-iptv-action="toggle" data-iptv-index="${index}" aria-pressed="${enabled}" title="${enabled ? 'Disable' : 'Enable'} playlist" ${syncing ? 'disabled' : ''}>
+              <span class="iptv-dot ${enabled ? 'is-on' : ''}" aria-hidden="true"></span>
+              <span>${enabled ? 'On' : 'Off'}</span>
+            </button>
+            <button class="btn btn-sm btn-ghost" type="button" data-iptv-action="sync" data-iptv-index="${index}" title="Sync now" ${syncing ? 'disabled' : ''}>
+              ${syncing ? '<svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-clock"></use></svg>' : '<svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-refresh"></use></svg>'}
+            </button>
+            <button class="btn btn-sm btn-ghost" type="button" data-iptv-action="remove" data-iptv-index="${index}" title="Remove playlist">
+              <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-close"></use></svg>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderIptvChannels() {
+    const container = $('#iptvChannelList');
+    if (!container) return;
+    const count = $('#iptvChannelCount');
+    if (count) count.textContent = `${state.iptvChannels.length} channels`;
+    const search = (state.iptvChannelSearch || '').toLowerCase();
+    const group = state.iptvChannelGroup || '';
+    const visible = state.iptvChannels.filter((ch) => {
+      if (search && !(ch.name?.toLowerCase().includes(search) || ch.id?.toLowerCase().includes(search))) return false;
+      if (group && ch.groupTitle !== group) return false;
+      return true;
+    });
+    if (!visible.length) {
+      container.innerHTML = '<div class="iptv-empty">No matching channels found.</div>';
+      return;
+    }
+    container.innerHTML = visible.map((ch) => {
+      const enabled = ch.enabled !== false;
+      return `
+        <div class="iptv-channel-item" data-iptv-channel="${escapeAttr(ch.id)}">
+          <div class="iptv-channel-logo">${ch.logo ? `<img src="${escapeAttr(ch.logo)}" alt="${escapeAttr(ch.name)} logo" loading="lazy" />` : '<span class="iptv-channel-placeholder" aria-hidden="true"></span>'}</div>
+          <div class="iptv-channel-info">
+            <div class="iptv-channel-name">${escapeHTML(ch.name)}</div>
+            <div class="iptv-channel-meta">${escapeHTML(ch.groupTitle || 'Uncategorized')}</div>
+          </div>
+          <button class="btn btn-sm btn-ghost" type="button" data-iptv-action="toggle-channel" data-iptv-channel="${escapeAttr(ch.id)}" aria-pressed="${enabled}" title="${enabled ? 'Disable' : 'Enable'} channel">
+            <span class="iptv-dot ${enabled ? 'is-on' : ''}" aria-hidden="true"></span>
+            <span>${enabled ? 'On' : 'Off'}</span>
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  function renderIptvGroups() {
+    const container = $('#iptvGroupList');
+    if (!container) return;
+    if (!state.iptvGroups.length) {
+      container.innerHTML = '<div class="iptv-empty">No groups found.</div>';
+      return;
+    }
+    container.innerHTML = state.iptvGroups.map((g) => `
+      <div class="iptv-group-item">
+        <span class="iptv-group-name">${escapeHTML(g.title || '(no group)')}</span>
+        <span class="iptv-group-count">${number(g.count || 0)} channels</span>
+      </div>`).join('');
+    const groupFilter = $('#iptvChannelGroup');
+    if (groupFilter) {
+      const allOption = '<option value="">All groups</option>';
+      const options = state.iptvGroups.map((g) =>
+        `<option value="${escapeAttr(g.title || '')}">${escapeHTML(g.title || '(no group)')} (${number(g.count || 0)})</option>`
+      ).join('');
+      groupFilter.innerHTML = allOption + options;
+    }
+  }
+
+  function renderIptv() {
+    renderIptvPlaylists();
+    renderIptvChannels();
+    renderIptvGroups();
+  }
+
+  async function handleIptvAddPlaylist() {
+    const nameInput = $('#iptvPlaylistName');
+    const urlInput = $('#iptvPlaylistUrl');
+    const name = (nameInput ? nameInput.value.trim() : '');
+    const url = (urlInput ? urlInput.value.trim() : '');
+    if (!name || !url) {
+      toast('Both name and URL are required', 'error');
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      toast('Playlist URL must be an HTTP(S) address', 'error');
+      return;
+    }
+    const btn = $('#iptvAddPlaylistBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const result = await fetchJSON('/api/admin/iptv/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, url })
+      });
+      if (!result.success) throw new Error(result.error || 'Failed to add playlist');
+      if (nameInput) nameInput.value = '';
+      if (urlInput) urlInput.value = '';
+      await loadIptv();
+      toast(`Playlist "${name}" added`);
+    } catch (error) {
+      toast(`Failed to add playlist: ${error.message}`, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function handleIptvRemovePlaylist(index) {
+    const playlist = state.iptvPlaylists[index];
+    if (!playlist) return;
+    if (!confirm(`Remove playlist "${playlist.name || 'Untitled'}"? This cannot be undone.`)) return;
+    try {
+      const result = await fetchJSON(`/api/admin/iptv/playlists/${encodeURIComponent(playlist.id)}`, {
+        method: 'DELETE'
+      });
+      if (!result.success) throw new Error(result.error || 'Failed to remove playlist');
+      await loadIptv();
+      toast(`Playlist "${playlist.name || 'Untitled'}" removed`);
+    } catch (error) {
+      toast(`Failed to remove playlist: ${error.message}`, 'error');
+    }
+  }
+
+  async function handleIptvTogglePlaylist(index) {
+    const playlist = state.iptvPlaylists[index];
+    if (!playlist) return;
+    const wasEnabled = playlist.enabled !== false;
+    try {
+      const result = await fetchJSON(`/api/admin/iptv/playlists/${encodeURIComponent(playlist.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !wasEnabled })
+      });
+      if (!result.success) throw new Error(result.error || 'Failed to update playlist');
+      playlist.enabled = !wasEnabled;
+      renderIptvPlaylists();
+      toast(`Playlist ${wasEnabled ? 'disabled' : 'enabled'}`);
+    } catch (error) {
+      toast(`Failed to update playlist: ${error.message}`, 'error');
+    }
+  }
+
+  async function handleIptvSyncPlaylist(index) {
+    const playlist = state.iptvPlaylists[index];
+    if (!playlist) return;
+    try {
+      playlist.syncing = true;
+      renderIptvPlaylists();
+      await fetchJSON(`/api/admin/iptv/playlists/${encodeURIComponent(playlist.id)}/sync`, {
+        method: 'POST'
+      });
+      await loadIptv();
+      toast(`Playlist "${playlist.name || 'Untitled'}" synced`);
+    } catch (error) {
+      playlist.lastError = error.message;
+      renderIptvPlaylists();
+      toast(`Sync failed: ${error.message}`, 'error');
+    } finally {
+      playlist.syncing = false;
+      renderIptvPlaylists();
+    }
+  }
+
+  async function handleIptvToggleChannel(channelId) {
+    const channel = state.iptvChannels.find((ch) => ch.id === channelId);
+    if (!channel) return;
+    const wasEnabled = channel.enabled !== false;
+    try {
+      const result = await fetchJSON(`/api/admin/iptv/channels/${encodeURIComponent(channelId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !wasEnabled })
+      });
+      if (!result.success) throw new Error(result.error || 'Failed to update channel');
+      channel.enabled = !wasEnabled;
+      renderIptvChannels();
+      toast(`Channel ${wasEnabled ? 'disabled' : 'enabled'}`);
+    } catch (error) {
+      toast(`Failed to update channel: ${error.message}`, 'error');
+    }
+  }
+
+  function bindIptvControls() {
+    const addName = $('#iptvPlaylistName');
+    if (addName) addName.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); handleIptvAddPlaylist(); }
+    });
+    const addUrl = $('#iptvPlaylistUrl');
+    if (addUrl) addUrl.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); handleIptvAddPlaylist(); }
+    });
+    const addBtn = $('#iptvAddPlaylistBtn');
+    if (addBtn) addBtn.addEventListener('click', handleIptvAddPlaylist);
+
+    const search = $('#iptvChannelSearch');
+    if (search) {
+      search.addEventListener('input', () => {
+        state.iptvChannelSearch = search.value;
+        renderIptvChannels();
+      });
+    }
+    const group = $('#iptvChannelGroup');
+    if (group) {
+      group.addEventListener('change', () => {
+        state.iptvChannelGroup = group.value;
+        renderIptvChannels();
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-iptv-action]');
+      if (!action) return;
+      const kind = action.dataset.iptvAction;
+      const index = Number(action.dataset.iptvIndex);
+      const channel = action.dataset.iptvChannel;
+      if (kind === 'remove') { event.preventDefault(); handleIptvRemovePlaylist(index); return; }
+      if (kind === 'toggle') { event.preventDefault(); handleIptvTogglePlaylist(index); return; }
+      if (kind === 'sync') { event.preventDefault(); handleIptvSyncPlaylist(index); return; }
+      if (kind === 'toggle-channel') { event.preventDefault(); handleIptvToggleChannel(channel); return; }
+    });
+
+    const refresh = $('#iptvRefreshBtn');
+    if (refresh) refresh.addEventListener('click', loadIptv);
+
+    setInterval(() => {
+      if (!document.hidden && state.activePanel === 'panel-iptv') loadIptv();
+    }, 30000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && state.activePanel === 'panel-iptv') loadIptv();
+    });
+  }
+
+  /* ------------------------------------------------------------------------
      Boot
      ------------------------------------------------------------------------ */
 
@@ -1559,6 +1865,7 @@
     bindFormControls();
     bindDashboardControls();
     bindSessionRevalidation();
+    bindIptvControls();
 
     const hash = location.hash.replace('#', '');
     const initialPanel = PANEL_IDS.includes(hash) ? hash : 'panel-status';
