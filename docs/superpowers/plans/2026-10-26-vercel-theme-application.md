@@ -109,6 +109,52 @@
 - [ ] **Step 4:** Commit screenshots: `git add docs/public/screenshots && git commit -m "chore: capture Vercel theme verification screenshots"` (or `nothing to commit`).
 - [ ] **Step 5:** Tag `phase2-vercel-theme`.
 
-## Next (not in this plan)
+## Task 6: Admin Next.js migration start (Sub-project C) — fumadocs UI style
 
-Sub-project C (admin Next.js migration), D (API key management), E (repo public) follow. Tasks 11 (settings accessibility) and 12 (final verification) from the original 12-task plan resume after Sub-project E.
+**Priority:** User redirected — start the admin Next.js migration NOW, bringing the fumadocs
+UI aesthetic + the AMOLED monochrome theme into the new `admin/` Next.js app (port 3003).
+The Express-served HTML in `public/` (Task 2) becomes the reference for theme values and
+content; the new Next.js app is the real target.
+
+**Files:**
+- Create: `admin/` Next.js app skeleton mirroring `player/` + `docs/` conventions.
+- Create: `admin/package.json` (deps: `next`, `react`, `react-dom`, `fumadocs-ui`,
+  `fumadocs-core`, `lucide-react`, `clsx`, `tailwindcss`).
+- Create: `admin/next.config.js`, `admin/tailwind.config.js`, `admin/postcss.config.js`.
+- Create: `admin/app/layout.tsx`, `admin/app/globals.css` (thin importer of `../../ui/*`
+  + local theme), `admin/app/page.tsx`, `admin/app/login/page.tsx`.
+- Create: `admin/components/` — `Header`, `Sidebar`, `ThemeProvider` (data-theme toggle).
+- Modify: root `package.json` workspaces + `concurrently` dev script to run
+  `admin` alongside `player`/`docs`/`api`.
+- Modify: `apiServer.js` — add a catch-all proxy or static fallback for new admin routes
+  (initially proxy `/admin/*` → port 3003); keep existing HTML as fallback for now.
+
+**Interfaces:**
+- Consumes: `ui/fonts.css`, `ui/tokens.css`, `ui/base.css`.
+- Uses `fumadocs-ui` layout primitives (`Sidebar`, `Layout`, `Card`, `Table`) for the
+  admin control-plane aesthetic.
+- Theme: `data-theme="dark"` default (AMOLED `#000000`), toggle via `theme.js` pattern.
+
+- [ ] **Step 1:** Scaffold `admin/` Next.js app (deps, config, tailwind).
+- [ ] **Step 2:** Create `admin/app/globals.css` thin importer (tailwind + fumadocs neutral
+  + `../../ui/tokens.css` + `../../ui/base.css` + `../../ui/fonts.css`).
+- [ ] **Step 3:** Port admin layout to Next.js: `layout.tsx` with Header/Sidebar using
+  fumadocs UI primitives; `page.tsx` (dashboard shell), `login/page.tsx`.
+- [ ] **Step 4:** Add theme toggle component (light/dark, AMOLED).
+- [ ] **Step 5:** Add `admin` to root `package.json` workspaces + dev `concurrently`.
+- [ ] **Step 6:** Build + start `admin` on port 3003; verify 200 + Geist renders + meta
+  theme-color `#000000` (dark). Screenshots via Chrome DevTools MCP.
+- [ ] **Step 7:** `npm run check:css`. Commit: `git add admin package.json && git commit -m
+  \"feat: scaffold admin Next.js app with fumadocs UI + AMOLED theme\"`.
+
+## Next (deferred)
+
+Sub-project C continues (full page port, remove Express admin HTML). D (API key
+management), E (repo public), plus Tasks 3 (player), 4 (docs), 5 (verification),
+11 (settings accessibility), 12 (final verification) follow.
+
+### Execution order (user-directed)
+
+1. Task 6 (admin Next.js scaffold) — START NOW.
+2. Task 3 (player theme) ↴ Task 4 (docs theme) ↴ Task 5 (verification).
+3. Sub-project C full port ↴ D ↴ E ↴ Tasks 11/12.

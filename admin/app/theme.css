@@ -1,0 +1,49 @@
+/* admin/app/theme.css
+ * AMOLED monochrome overrides for fumadocs-ui (fd-*) tokens.
+ * Imported AFTER fumadocs neutral.css/preset.css so these win, mapping the
+ * fumadocs control-plane aesthetic onto the shared AMOLED palette.
+ * Dark canvas = #000000, monochrome gray accent (NO blue).
+ * Light canvas = #ffffff. Both variants fully styled.
+ */
+
+/* Light: white canvas, neutral gray accent */
+:root {
+  --color-fd-background: #ffffff;
+  --color-fd-foreground: #0a0a0a;
+  --color-fd-muted: #eaeaea;
+  --color-fd-muted-foreground: #737373;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #0a0a0a;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #0a0a0a;
+  --color-fd-border: #e5e5e5;
+  --color-fd-primary: #333333;
+  --color-fd-primary-foreground: #0a0a0a;
+  --color-fd-secondary: #f5f5f5;
+  --color-fd-secondary-foreground: #0a0a0a;
+  --color-fd-accent: #e5e5e5;
+  --color-fd-accent-foreground: #0a0a0a;
+  --color-fd-ring: #333333;
+}
+
+/* Dark: AMOLED #000000 canvas. Covers both data-theme and .dark (equal
+   specificity vs neutral.css .dark, wins by import order). */
+[data-theme="dark"],
+.dark {
+  --color-fd-background: #000000;
+  --color-fd-foreground: #ededed;
+  --color-fd-muted: #262626;
+  --color-fd-muted-foreground: #a3a3a3;
+  --color-fd-popover: #0a0a0a;
+  --color-fd-popover-foreground: #ededed;
+  --color-fd-card: #0a0a0a;
+  --color-fd-card-foreground: #ededed;
+  --color-fd-border: #333333;
+  --color-fd-primary: #e5e5e5;
+  --color-fd-primary-foreground: #000000;
+  --color-fd-secondary: #111111;
+  --color-fd-secondary-foreground: #ededed;
+  --color-fd-accent: #333333;
+  --color-fd-accent-foreground: #ededed;
+  --color-fd-ring: #e5e5e5;
+}

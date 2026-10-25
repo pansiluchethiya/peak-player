@@ -192,6 +192,38 @@ const metrics = {
 };
 
 app.use((req,res,next)=>{ metrics.requestsTotal++; metrics.lastRequestAt = Date.now(); next(); });
+
+// --- Admin (Next.js) proxy: /admin/* -> ADMIN_TARGET (default 127.0.0.1:3003) ---
+// The admin control plane is now a separate Next.js app on port 3003. This
+// catch-all forwards /admin/* here, stripping the /admin prefix, and falls
+// through to the static layer when the upstream is unavailable.
+const http = require('http');
+const https = require('https');
+const ADMIN_TARGET = process.env.ADMIN_TARGET || 'http://127.0.0.1:3003';
+const adminTarget = new URL(ADMIN_TARGET);
+function proxyAdmin(req, res, next) {
+  if (req.path !== '/admin' && !req.path.startsWith('/admin/')) return next();
+  const lib = adminTarget.protocol === 'https:' ? https : http;
+  const subPath = req.path.slice('/admin'.length) || '/';
+  const query = req.url.slice(req.path.length);
+  const headers = Object.assign({}, req.headers, { host: adminTarget.host });
+  const options = {
+    protocol: adminTarget.protocol,
+    hostname: adminTarget.hostname,
+    port: adminTarget.port || (adminTarget.protocol === 'https:' ? 443 : 80),
+    path: subPath + query,
+    method: req.method,
+    headers,
+  };
+  const upstream = lib.request(options, (upRes) => {
+    res.writeHead(upRes.statusCode, upRes.headers);
+    upRes.pipe(res);
+  });
+  upstream.on('error', () => next());
+  req.pipe(upstream);
+}
+app.use(proxyAdmin);
+
 // Serve static UI (login page at /)
 app.use(express.static(path.join(process.cwd(),'public')));
 

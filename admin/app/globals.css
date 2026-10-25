@@ -1,0 +1,16 @@
+/* admin/app/globals.css
+ * Thin importer (mirrors docs/app/global.css). Order matters:
+ *   1. Tailwind v4 base
+ *   2. fumadocs-ui neutral tokens + preset (registers fd-* utilities + dark variant)
+ *   3. shared ui layer (fonts, tokens, base reset) — AMOLED palette
+ *   4. AMOLED overrides for fumadocs fd-* tokens
+ *   5. admin chrome + dashboard + auth shells
+ */
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import '../../ui/fonts.css';
+@import '../../ui/tokens.css';
+@import '../../ui/base.css';
+@import './theme.css';
+@import './admin.css';

@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
-const roots = ['ui', 'player/src', 'docs/app', 'public'];
+const roots = ['ui', 'player/src', 'docs/app', 'public', 'admin/app'];
 const MAX_LINES = 200;
 const failures = [];
 

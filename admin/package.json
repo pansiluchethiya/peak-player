@@ -1,0 +1,33 @@
+{
+  "name": "peak-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Peak admin control plane (Next.js + fumadocs-ui, AMOLED monochrome theme)",
+  "scripts": {
+    "dev": "next dev -p 3003",
+    "build": "next build",
+    "start": "next start -p 3003",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "fumadocs-core": "15.8.5",
+    "fumadocs-ui": "15.8.5",
+    "lucide-react": "^1.61.0",
+    "next": "15.5.28",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.28",
+    "postcss": "^8.4.49",
+    "typescript": "^5.7.0"
+  }
+}
