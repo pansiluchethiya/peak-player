@@ -1,4 +1,4 @@
-# Vercel (Geist) Theme + CSS Modularization — Design Spec
+# Vercel (Geist) Theme + CSS Modularization + Admin Next.js Migration — Design Spec
 
 Date: 2026-10-25
 Branch: `feat/player-embed-platform`
@@ -6,88 +6,147 @@ Status: pending user review
 
 ## 1. Goal
 
-Make the admin portal, the Peak player (chrome + landing + embed), and the docs site all use
-one Vercel/Geist visual system (black/white light + dark themes), with both themes fully
-styled everywhere, and split the oversized CSS files into modular files that the whole
-codebase imports. After this refactor, resume the remaining verification and commit work.
+1. Split every oversized CSS file into modules of **no more than 200 lines each**, verify styling is unchanged, then apply the Vercel/Geist theme.
+2. Apply a Vercel/Geist visual system (black/white light + dark themes) with component-specific theming across the streaming app, docs, admin portal, and embed SDK.
+3. Migrate the admin portal from Express-served HTML to **Next.js (no exception)**.
+4. Add an admin feature to **create and manage API keys**, with extensive docs.
+5. Add extensive admin portal documentation.
+6. Decide whether to make the repo public, name it, and wire GitHub clone/docs links into the docs.
 
 ## 2. Non-goals
 
-- Changing application logic, routing, or data flow.
-- Replacing Tailwind in the player/docs (they keep Tailwind; tokens feed it).
-- Rewriting admin HTML templates (keep class names stable; only swap token values).
-- Adding new features beyond theming/CSS modularization.
+- Changing application logic, routing, or data flow beyond the admin migration and API-key feature.
+- Introducing secondary/tertiary branding colors (only green=success, red=error status colors).
+- Rewriting admin HTML templates' class names (keep stable; swap token values).
 
-## 3. Visual system (Vercel "black and white")
+## 3. Hard constraints
 
-- Fonts: Geist Sans (text/UI) + Geist Mono (code) everywhere. Drop Manrope/JetBrains Mono
-  and Bricolage Grotesque/DM Sans.
-- Canvas: `#000000` dark / `#ffffff` light, full-bleed.
-- Surfaces: `surface-1` (slightly off canvas), `surface-2` (elevated).
-- Borders: `#e5e5e5` light / `#262626` dark.
-- Text: `#000000`/`#ffffff` primary, `#666666`/`#888888` secondary.
-- Accent: `#0070f3` (Vercel blue) for links, focus rings, primary buttons.
-- Motion: 120–160ms transitions; honor `prefers-reduced-motion`.
-- Theme attribute: `data-theme="light" | "dark"` on `<html>`, default from `prefers-color-scheme`,
-  persisted in `localStorage` (admin) or `next-themes` (player/docs).
+- **No CSS file may exceed 200 lines.** Split further if needed.
+- **Split first, test, then theme.** Phase 1 = split + verify byte-identical styling. Phase 2 = apply Vercel theme on top of the split modules.
+- Admin portal moves to Next.js completely; no Express HTML remains.
+- Both light and dark themes must be fully styled on every surface.
 
-## 4. Decisions (pending confirmation)
+## 4. Vercel Geist design system (from UX architecture prompt)
 
-- D1: Fonts — add the shared `geist` npm package at repo root and serve its woff2 via a single
-  `ui/fonts.css` `@font-face` for the admin too. (Alternative B: keep admin on local woff2 and
-  use `next/font/google` for Next apps.)
-- D2: Accent — standard Vercel blue `#0070f3`. (Alternative: monochrome `currentColor`.)
+Design philosophy: clean Vercel Geist-inspired layout, strict monochrome base, Vercel Blue
+`#0070f3` used exclusively as a surgical interactive accent. Stark, flat, crisp typographic
+hierarchy. No secondary/tertiary branding colors unless instructed.
+
+### Component themes
+
+1. **Streaming app** — 98% dark monochrome (`#0a0a0a` background). UI disappears to emphasize
+   video. Blue used only for player progress bars, active sliders, streaming indicators.
+2. **Docs & SDK** — hybrid light/dark monochrome, high legibility. Blue for hyperlinks, active
+   navigation states, code endpoints, syntax anchors.
+3. **Admin portal** — data-dense grid layout using subtle neutral grays for structure. Blue
+   strictly for primary CTAs (Save, Edit), selections, interactive links. Add distinct green
+   (success) and red (error) for system status.
+4. **Embed API / SDK widgets** — strict neutral monochrome (black, white, translucent grays) to
+   fit seamlessly on third-party sites. Must accept a customizable `themeColor` parameter to
+   override defaults.
+
+### Tailwind / CSS variables
+
+- Background: Light `#ffffff` | Dark `#0a0a0a`
+- Foreground: Light `#171717` | Dark `#ededed`
+- Muted text / borders: Light `#eaeaea` | Dark `#333333`
+- Interactive accent (Vercel Blue): `#0070f3` (hover `#0056b3` light / `#3291ff` dark)
+- Status: success `#17c964`, error `#f31260` (admin only).
 
 ## 5. Shared `ui/` layer
 
-Create root `ui/` directory:
+Root `ui/` directory (each file <= 200 lines):
 - `ui/fonts.css` — `@font-face` for Geist Sans/Mono (woff2 from `public/assets/fonts/geist/`)
-  and `--font-sans` / `--font-mono` custom properties.
-- `ui/tokens.css` — color, spacing, radius, border variables for both themes, keyed by
-  `[data-theme]` and `.dark`.
-- `ui/base.css` — reset (`box-sizing`, margins) + html/body base.
+  and `--font-sans` / `--font-mono`.
+- `ui/tokens.css` — color/spacing/radius/border variables for both themes.
+- `ui/base.css` — reset + html/body base.
 
-## 6. CSS split
+## 6. CSS split (<= 200 lines per file)
 
-### Admin (`public/`)
-- Split `public/style.css` (2370 lines) into:
-  `public/admin/fonts.css`, `admin/base.css`, `admin/layout.css`, `admin/components.css`,
-  `admin/charts.css`, `admin/forms.css`, `admin/tables.css`.
-- Templates link `ui/fonts.css`, `ui/tokens.css`, `ui/base.css`, then the admin modules.
-- Keep existing class names; only swap token values and fonts.
+### Admin (Next.js app under `admin/`)
+Split into `admin/src/styles/`: `fonts.css`, `tokens.css`, `base.css`, `layout.css`,
+`components.css`, `charts.css`, `forms.css`, `tables.css`, `theme.css`. Each <= 200 lines.
 
 ### Player (`player/src/`)
-- Split `player/src/app/globals.css` (4198 lines) into `player/src/styles/`:
-  `tokens.css`, `reset.css`, `base.css`, `chrome.css`, `landing.css`, `embed.css`,
-  `marketing.css`, `theme.css`, `player.css`.
-- `globals.css` becomes a thin importer of these.
-- Remove `peak-*` forest/ivory tokens; replace with Vercel tokens.
+Split `globals.css` into `player/src/styles/`: `tokens.css`, `reset.css`, `base.css`,
+`chrome.css`, `landing.css`, `embed.css`, `marketing.css`, `theme.css`, `player.css`.
+`globals.css` becomes a thin importer. Each <= 200 lines.
 
 ### Docs (`docs/app/`)
-- Split `docs/app/global.css` (541 lines) into `docs/app/styles/`:
-  `fonts.css`, `tokens.css`, `base.css`, `content.css`, `layout.css`, `api.css`, `home.css`.
-- Re-export via imports in `global.css`.
+Split `global.css` into `docs/app/styles/`: `fonts.css`, `tokens.css`, `base.css`,
+`content.css`, `layout.css`, `api.css`, `home.css`. Each <= 200 lines.
 
-## 7. Rollout order
+## 7. Admin portal migration (HTML → Next.js)
 
-1. `ui/` layer + fonts + tokens; verify all apps still build.
-2. Admin portal: swap to Geist + Vercel tokens, split `style.css`, verify admin pages.
-3. Player: split globals, swap tokens, verify player tests + build.
-4. Docs: swap fumadocs neutral preset + Tailwind overrides, split global.css, verify build/test/link check.
-5. Capture 320/768/1440 screenshots per app for both themes; verify focus/reduced-motion.
-6. Commit in logical chunks, then resume verification + Tasks 11/12.
+- Create `admin/` Next.js app (port 3003) mirroring player/docs conventions.
+- Migrate all admin pages (dashboard, providers, IPTV, config, branding, partners) to
+  Next.js routes + React components.
+- Remove Express HTML routes and `public/style.css` usage from the API server.
+- Admin auth via the existing session mechanism, surfaced in Next.js middleware.
+- Add admin docs section to the docs site.
 
-## 8. Verification
+## 8. API key management feature
+
+- Backend: endpoints to create/list/revoke partner API keys (admin-authenticated), stored in
+  SQLite or runtime config; keys hashed at rest, shown once on creation.
+- Admin UI: create key (name, origins, scopes), list with masked values, revoke.
+- Extensive docs: guide + API reference entries + security notes.
+
+## 9. Rollout order
+
+1. CSS split (phase 1): split files, keep styling identical, run builds/tests, verify no visual
+   regression via screenshots. Commit `refactor: split oversized CSS files`.
+2. Vercel theme (phase 2): apply tokens + component themes on top of split modules, verify
+   both light/dark on all surfaces. Commit `style: apply Vercel Geist theme`.
+3. Admin Next.js migration: scaffold app, migrate pages, remove Express HTML. Commit
+   `feat: migrate admin portal to Next.js`.
+4. API key management: backend + admin UI + docs. Commit `feat: add admin API key management`.
+5. Admin docs + GitHub/repo public docs updates. Commit `docs: add admin portal and repo docs`.
+6. Resume verification + Tasks 11/12, final `npm run check`, screenshots.
+
+## 10. Sub-project decomposition (recommended)
+
+Given size, treat as sub-projects each with its own spec/plan/implementation cycle:
+- A. CSS split + verification.
+- B. Vercel theme tokens + component theming.
+- C. Admin Next.js migration.
+- D. API key management + docs.
+- E. Repo public / GitHub docs.
+
+We can execute A first (smallest, unblocks everything), then B, then C, D, E.
+
+## 11. Verification
 
 - Player: `npm --prefix player test/typecheck/lint/build`.
 - Docs: `npm --prefix docs test/build/check:links`.
-- Admin: HTTP 200 on key pages; no console errors.
-- Screenshots at 320/768/1440 light + dark; focus ring visible; reduced motion honored.
-- `npm run check` passes.
+- Admin: `npm --prefix admin test/build` (once scaffolded), HTTP 200 on key pages.
+- Root: `npm run check` passes.
+- Screenshots at 320/768/1440 light + dark for player, docs, admin, embed.
+- Focus ring visible; reduced motion honored; no console errors.
+- Every CSS file <= 200 lines (enforced by a check script).
 
-## 9. Risks / notes
+## 12. Open questions
 
-- Admin portal is plain HTML served by Express; it needs woff2 available under `public/`.
-- `next/font/google` Geist is an alternative if `geist` package adds weight.
-- Splitting CSS requires updating every `@import`/`<link>`; missed imports will break styling.
+- Repo name and public/private decision (see section 13).
+- Whether admin auth reuses the existing Express session or moves to NextAuth/iron-session.
+
+## 13. Repo public decision (answer now)
+
+**Recommendation: make it public** as an open-source streaming platform tool, but only after:
+- Remove/verify no secrets, `.env`, db files, or provider credentials in git history.
+- Add a `LICENSE` (MIT recommended), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
+- Add a root `README.md` with clone, install, dev, and test commands.
+
+**Suggested repo name:** `peak-player` (short, memorable) or `peak-player-embed-platform`
+(matches current worktree). Recommendation: `peak-player`.
+
+**If public, docs must add:** GitHub clone URL, “Getting started” clone instructions, license
+badge, contributing link, issue/PR templates, and a “Star on GitHub” CTA on the docs home.
+The docs home Quickstart card meta should also drop the `5 MINUTES` duration estimate.
+
+## 14. Risks
+
+- Admin migration is large; keep Express API as the backend, only move the UI to Next.js.
+- CSS split requires updating every `@import`/`<link>`; missed imports break styling.
 - Docs uses fumadocs neutral preset; override its tokens via CSS variables to Vercel palette.
+- API keys shown once on creation; must be hashed at rest and never logged.
