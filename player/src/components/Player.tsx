@@ -15,6 +15,7 @@ import {
   sortLevelsDescending,
   type HlsLevelLike,
 } from '../lib/quality';
+import { isPlayableSource, nextSourceIndex, sourceKey } from '../lib/playback';
 import { calculateBufferedRanges, clamp, type BufferedRange } from '../lib/time';
 import { DEFAULT_BRANDING, type Branding, type Diagnostic, type Media, type Source, type StreamResponse, type Subtitle } from '../lib/types';
 import { AmbientBackground } from './AmbientBackground';
@@ -33,6 +34,8 @@ interface Props {
 }
 
 type Status = 'loading' | 'ready' | 'error';
+
+const FIRST_PLAYABLE_TIMEOUT_MS = 1500;
 
 interface LevelOption extends HlsLevelLike {
   index: number;
@@ -53,7 +56,6 @@ export function Player({ apiBase, media }: Props) {
 
   const [sourceIndex, setSourceIndex] = useState(0);
   const [sourceNonce, setSourceNonce] = useState(0);
-  const [failedCount, setFailedCount] = useState(0);
   const [reloadCount, setReloadCount] = useState(0);
   const [switching, setSwitching] = useState<{ from: number; to: number; servers: string[] } | null>(null);
 
@@ -87,6 +89,8 @@ export function Player({ apiBase, media }: Props) {
   const firstSourceTsRef = useRef<number | null>(null);
   const selectedIndexRef = useRef(0);
   const attemptedSourcesRef = useRef<Set<string>>(new Set());
+  const tryAnotherSourceRef = useRef<() => void>(() => {});
+  const switchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Inactivity / Auto-hide controls state
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -115,6 +119,12 @@ export function Player({ apiBase, media }: Props) {
 
   const source = payload?.sources[sourceIndex];
   const isEmbedSource = source?.codec === 'html5';
+
+  useEffect(() => {
+    return () => {
+      if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+    };
+  }, []);
 
   // Auto-hide controls helper
   const resetInactivityTimer = useCallback(() => {
@@ -158,7 +168,6 @@ export function Player({ apiBase, media }: Props) {
     setError(null);
     setPayload(null);
     setSourceIndex(0);
-    setFailedCount(0);
     setSubtitleIndex(-1);
     setNextCountdown(null);
     setSelectedLevel(null);
@@ -205,8 +214,13 @@ export function Player({ apiBase, media }: Props) {
 
       if (firstSourceTsRef.current === null) {
         firstSourceTsRef.current = Date.now();
-        selectedIndexRef.current = newIndex;
-        setSourceIndex(newIndex);
+        const preferred = preferredSourceIndex(accumulatedRef.current.sources, connectionHint());
+        const playable = isPlayableSource(accumulatedRef.current.sources[preferred])
+          ? preferred
+          : accumulatedRef.current.sources.findIndex(isPlayableSource);
+        const index = playable >= 0 ? playable : newIndex;
+        selectedIndexRef.current = index;
+        setSourceIndex(index);
       }
     };
 
@@ -223,9 +237,22 @@ export function Player({ apiBase, media }: Props) {
     const handleDone = () => {
       accumulatedRef.current.done = true;
       setPayload(buildPayload());
-      if (accumulatedRef.current.sources.length === 0) {
+      const sources = accumulatedRef.current.sources;
+      if (sources.length === 0) {
         setStatus('error');
         setError('No playable sources were returned for this title.');
+        return;
+      }
+      if (!isPlayableSource(sources[selectedIndexRef.current])) {
+        const preferred = preferredSourceIndex(sources, connectionHint());
+        const candidate = isPlayableSource(sources[preferred])
+          ? preferred
+          : sources.findIndex(isPlayableSource);
+        if (candidate >= 0 && candidate !== selectedIndexRef.current) {
+          selectedIndexRef.current = candidate;
+          setSourceIndex(candidate);
+          setSourceNonce((value) => value + 1);
+        }
       }
     };
 
@@ -349,10 +376,8 @@ export function Player({ apiBase, media }: Props) {
       const startManifestTimeout = () => {
         if (manifestTimer) clearTimeout(manifestTimer);
         manifestTimer = setTimeout(() => {
-          if (failedCount < (payload?.sources.length ?? 1) - 1) {
-            tryAnotherSource();
-          }
-        }, 8000);
+          if (!ready) tryAnotherSourceRef.current();
+        }, FIRST_PLAYABLE_TIMEOUT_MS);
       };
       const clearManifestTimeout = () => {
         if (manifestTimer) { clearTimeout(manifestTimer); manifestTimer = null; }
@@ -378,28 +403,29 @@ export function Player({ apiBase, media }: Props) {
       });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) return;
-        if (failedCount < payload.sources.length - 1) {
-          tryAnotherSource();
-        } else {
-          fail(`Playback failed: ${data.details}`);
-        }
+        tryAnotherSourceRef.current();
       });
       navConnection?.addEventListener?.('change', onConnectionChange);
     } else {
       video.src = source.url;
     }
 
+    let nativeTimer: NodeJS.Timeout | null = null;
+    if (!Hls.isSupported()) {
+      nativeTimer = setTimeout(() => {
+        if (!ready) tryAnotherSourceRef.current();
+      }, FIRST_PLAYABLE_TIMEOUT_MS);
+    }
+
     const onLoadedMetadata = () => {
+      if (nativeTimer) { clearTimeout(nativeTimer); nativeTimer = null; }
       applyPendingSeek();
       updateBuffered();
       markReady();
     };
     const onVideoError = () => {
-      if (failedCount < (payload?.sources.length ?? 1) - 1) {
-        tryAnotherSource();
-      } else {
-        fail(video.error?.message ?? 'The video element could not play this source.');
-      }
+      if (nativeTimer) { clearTimeout(nativeTimer); nativeTimer = null; }
+      tryAnotherSourceRef.current();
     };
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('error', onVideoError);
@@ -408,6 +434,7 @@ export function Player({ apiBase, media }: Props) {
       navConnection?.removeEventListener?.('change', onConnectionChange);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('error', onVideoError);
+      if (nativeTimer) { clearTimeout(nativeTimer); nativeTimer = null; }
       hls?.destroy();
       if (hlsRef.current === hls) hlsRef.current = null;
       video.removeAttribute('src');
@@ -498,11 +525,10 @@ export function Player({ apiBase, media }: Props) {
   }, []);
 
   const reload = useCallback(
-    (invalidate: boolean) => {
+    (invalidate: boolean, resetRetries = true) => {
       capturePosition();
       setSourceIndex(0);
-      setFailedCount(0);
-      setReloadCount(0);
+      if (resetRetries) setReloadCount(0);
       attemptedSourcesRef.current = new Set();
       setSelectedLevel(null);
       setRequest((previous) => ({ token: previous.token + 1, invalidate }));
@@ -529,7 +555,6 @@ export function Player({ apiBase, media }: Props) {
       capturePosition();
       setSourceIndex(index);
       selectedIndexRef.current = index;
-      setFailedCount(0);
       attemptedSourcesRef.current = new Set();
       setSelectedLevel(null);
       setSourceNonce((value) => value + 1);
@@ -594,10 +619,17 @@ export function Player({ apiBase, media }: Props) {
   }, [showControlsBriefly]);
 
   const tryAnotherSource = useCallback(() => {
-    if (!payload || payload.sources.length <= 1) {
+    const sources = payload?.sources ?? [];
+    const current = sources[sourceIndex];
+    if (current) {
+      attemptedSourcesRef.current.add(sourceKey(current, sourceIndex));
+    }
+
+    const to = nextSourceIndex(sources, sourceIndex, attemptedSourcesRef.current);
+    if (to < 0) {
       if (reloadCount < 2) {
-        setReloadCount((v) => v + 1);
-        reload(true);
+        setReloadCount((value) => value + 1);
+        reload(true, false);
       } else {
         setStatus('error');
         setError('All sources failed after 2 retries. Please try again later.');
@@ -606,51 +638,21 @@ export function Player({ apiBase, media }: Props) {
       return;
     }
 
-    const source = payload.sources[sourceIndex];
-    if (source) {
-      attemptedSourcesRef.current.add(source.url || source.provider || `${sourceIndex}`);
-    }
-
-    const totalAttempted =
-      failedCount + 1 + attemptedSourcesRef.current.size;
-
-    if (totalAttempted >= payload.sources.length) {
-      if (reloadCount < 2) {
-        setReloadCount((v) => v + 1);
-        reload(true);
-      } else {
-        setStatus('error');
-        setError('All sources failed after 2 retries. Please try again later.');
-        setPlaying(false);
-      }
-      return;
-    }
-
+    if (switchTimerRef.current) return;
     const from = sourceIndex;
-    let to = (sourceIndex + 1) % payload.sources.length;
-    let safety = 0;
-    while (safety++ < payload.sources.length) {
-      const candidate = payload.sources[to];
-      const candidateKey = candidate?.url || candidate?.provider || `${to}`;
-      if (!attemptedSourcesRef.current.has(candidateKey)) {
-        break;
-      }
-      to = (to + 1) % payload.sources.length;
-    }
-
-    const servers = payload.sources.map((s) => s.provider || 'unknown');
-      setSwitching({ from, to, servers });
-    const delay = 2000;
-    setTimeout(() => {
+    const servers = sources.map((item) => item.provider || 'unknown');
+    setSwitching({ from, to, servers });
+    switchTimerRef.current = setTimeout(() => {
+      switchTimerRef.current = null;
       setSwitching(null);
       capturePosition();
-      setFailedCount((value) => value + 1);
       setSourceIndex(to);
       selectedIndexRef.current = to;
       setSelectedLevel(null);
       setSourceNonce((value) => value + 1);
-    }, delay);
-  }, [capturePosition, failedCount, payload, reload, sourceIndex]);
+    }, 400);
+  }, [capturePosition, payload, reload, reloadCount, sourceIndex]);
+  tryAnotherSourceRef.current = tryAnotherSource;
 
   const changeQuality = useCallback(
     (value: string) => {
@@ -662,9 +664,9 @@ export function Player({ apiBase, media }: Props) {
           hls.nextLevel = -1;
         }
         if (payload) {
-          const adaptiveIndex = payload.sources.findIndex((item) => item.adaptive);
-          if (adaptiveIndex >= 0 && !payload.sources[sourceIndex]?.adaptive) {
-            changeSource(adaptiveIndex);
+          const preferred = preferredSourceIndex(payload.sources, connectionHint());
+          if (payload.sources[preferred]?.adaptive && !payload.sources[sourceIndex]?.adaptive) {
+            changeSource(preferred);
           }
         }
         showControlsBriefly();
