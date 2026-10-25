@@ -1,0 +1,194 @@
+.thumbnail-preview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.thumbnail-image-wrapper {
+  width: 160px;
+  height: 90px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  background: #000;
+}
+
+.thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-time-badge {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(14, 16, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Desktop Control Bar
+   ========================================================================== */
+
+.controls-bar-desktop {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  padding: 0 28px 20px;
+  pointer-events: auto;
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+
+.controls-bar-desktop.hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.controls-bar-desktop.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.controls-progress-wrapper {
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.controls-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.controls-group-left,
+.controls-group-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f5f6fb;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.ctrl-btn:active {
+  transform: scale(0.92);
+}
+
+.ctrl-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+/* Expandable Volume Slider (YouTube / Netflix style) */
+
+.volume-slider-container {
+  display: flex;
+  align-items: center;
+}
+
+.volume-slider-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  opacity: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+  transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease, margin 200ms ease;
+  pointer-events: none;
+}
+
+.volume-slider-container:hover .volume-slider-range,
+.volume-slider-container:focus-within .volume-slider-range {
+  width: 72px;
+  opacity: 1;
+  margin-left: 6px;
+  pointer-events: auto;
+}
+
+.volume-slider-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.volume-slider-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* Time Display */
+
+.time-display-wrapper {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+.time-separator {
+  margin: 0 5px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Quality Pill Button */
+
+.quality-badge-btn {
+  width: auto;
+  padding: 0 8px;
+}
+
+.quality-pill {
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+

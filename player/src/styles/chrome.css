@@ -1,0 +1,190 @@
+/* ==========================================================================
+   Top Header Bar (Netflix Title + Peak Stream Brand)
+   ========================================================================== */
+
+.player-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 12px;
+  pointer-events: auto;
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+
+.player-header.hidden {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+.player-header.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.player-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.header-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f5f6fb;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.header-back-button:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.05);
+}
+
+.header-back-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.header-brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header-brand-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.header-title {
+  margin: 1px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+}
+
+.header-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(245, 246, 251, 0.75);
+}
+
+/* ==========================================================================
+   YouTube-Style Multi-Layer Timeline (ProgressBar)
+   ========================================================================== */
+
+.progress-hitbox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+
+.progress-rail {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: height 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+}
+
+.progress-hitbox:hover .progress-rail,
+.progress-hitbox.active .progress-rail {
+  height: 8px;
+}
+
+.progress-buffered-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.42);
+  pointer-events: none;
+  transition: width 150ms ease;
+}
+
+.progress-hover-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+
+.progress-played-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.progress-scrubber-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.65), 0 0 4px var(--accent);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.progress-hitbox:hover .progress-scrubber-thumb,
+.progress-hitbox.active .progress-scrubber-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.progress-tooltip-anchor {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  pointer-events: none;
+  z-index: 50;
+  white-space: nowrap;
+}
+

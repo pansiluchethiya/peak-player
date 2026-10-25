@@ -1,0 +1,114 @@
+@media (max-width: 720px) {
+  .peak-header {
+    gap: 14px;
+    padding: 11px 18px;
+  }
+
+  .peak-brand img {
+    width: 33px;
+    height: 33px;
+  }
+
+  .peak-brand span {
+    font-size: 17px;
+  }
+
+  .peak-status-pill {
+    display: none;
+  }
+
+  .peak-header-cta {
+    padding: 9px 13px;
+    font-size: 11px;
+  }
+
+  .peak-hero {
+    padding-top: 52px;
+  }
+
+  .peak-hero h1 {
+    max-width: 12ch;
+    font-size: clamp(2.75rem, 13vw, 4.4rem);
+  }
+
+  .peak-hero-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .peak-hero-facts li:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .peak-source-rail {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .peak-section-heading {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .peak-section-heading h2 {
+    max-width: 18ch;
+  }
+
+  .peak-steps li {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .peak-bento {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+
+  .peak-bento-card,
+  .peak-bento-wide,
+  .peak-bento-tall {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    min-height: 210px;
+  }
+
+  .peak-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .peak-auth-art {
+    min-height: 330px;
+  }
+
+  .peak-docs-card {
+    padding: 26px 20px;
+    border-radius: 20px;
+  }
+
+  .peak-docs-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .peak-docs-row small {
+    display: none;
+  }
+
+  .peak-footer {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .peak-footer nav {
+    justify-content: flex-start;
+  }
+
+  .peak-dialog-backdrop {
+    padding: 10px;
+  }
+
+  .peak-dialog {
+    max-height: calc(100vh - 20px);
+    border-radius: 16px;
+  }
+}
+

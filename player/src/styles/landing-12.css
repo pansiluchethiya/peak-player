@@ -1,0 +1,185 @@
+.peak-preview-badge {
+  padding: 4px 8px;
+  border: 1px solid rgba(242, 239, 230, 0.16);
+  border-radius: 999px;
+  background: rgba(3, 8, 6, 0.4);
+}
+
+.peak-preview-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.peak-preview-play {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border: 1px solid rgba(242, 239, 230, 0.32);
+  border-radius: 50%;
+  background: rgba(7, 19, 15, 0.56);
+  color: var(--peak-ivory);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.peak-preview-play svg {
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  fill: currentColor;
+}
+
+.peak-preview-title {
+  position: absolute;
+  bottom: 46px;
+  left: 18px;
+  z-index: 2;
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(22px, 3.3vw, 38px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+.peak-preview-sub {
+  position: absolute;
+  bottom: 26px;
+  left: 18px;
+  z-index: 2;
+  color: rgba(242, 239, 230, 0.5);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.peak-preview-timeline {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  z-index: 2;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(242, 239, 230, 0.18);
+}
+
+.peak-preview-timeline::before {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--peak-forest-soft), var(--peak-lime));
+  content: "";
+}
+
+.peak-preview-controls {
+  position: absolute;
+  right: 18px;
+  bottom: 28px;
+  left: 18px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(242, 239, 230, 0.62);
+}
+
+.peak-preview-controls svg {
+  width: 13px;
+  height: 13px;
+}
+
+.peak-preview-controls-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.peak-dialog-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 18px 16px;
+  background: #06100c;
+}
+
+.peak-dialog-rail-title {
+  margin-bottom: 12px;
+  color: rgba(242, 239, 230, 0.38);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.peak-dialog-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(242, 239, 230, 0.07);
+  color: var(--peak-ivory-muted);
+  font-size: 11px;
+}
+
+.peak-dialog-source-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--peak-lime);
+  box-shadow: 0 0 8px rgba(201, 242, 109, 0.5);
+}
+
+.peak-dialog-source > div {
+  display: grid;
+  gap: 1px;
+}
+
+.peak-dialog-source strong {
+  color: var(--peak-ivory);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.peak-dialog-source div span {
+  color: rgba(242, 239, 230, 0.42);
+  font-size: 9px;
+}
+
+.peak-dialog-source em {
+  margin-left: auto;
+  color: var(--peak-lime);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 8.5px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+
+.peak-dialog-source:nth-child(4n) .peak-dialog-source-dot {
+  background: var(--peak-amber);
+  box-shadow: 0 0 8px rgba(214, 158, 46, 0.5);
+}
+
+.peak-dialog-source:nth-child(5n) .peak-dialog-source-dot {
+  background: rgba(242, 239, 230, 0.35);
+  box-shadow: none;
+}
+
+.peak-dialog-note {
+  margin: auto 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(242, 239, 230, 0.07);
+  color: rgba(242, 239, 230, 0.36);
+  font-size: 9.5px;
+  line-height: 1.55;
+}
+
+/* Border beam ------------------------------------------------------------- */
+

@@ -1,0 +1,195 @@
+.peak-event-head,
+.peak-event-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  color: var(--peak-ivory-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.peak-event-head {
+  border-bottom: 1px solid var(--peak-line);
+}
+
+.peak-event-head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--peak-lime);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.peak-event-head svg,
+.peak-event-footer svg {
+  width: 13px;
+  height: 13px;
+}
+
+.peak-event-head > span:last-child {
+  color: rgba(242, 239, 230, 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+}
+
+.peak-event-card pre {
+  margin: 0;
+  padding: 18px 16px;
+  overflow-x: auto;
+  color: #d9e7dc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.72;
+}
+
+.peak-event-footer {
+  justify-content: flex-start;
+  border-top: 1px solid var(--peak-line);
+  color: rgba(242, 239, 230, 0.42);
+  font-size: 10px;
+}
+
+.peak-event-footer svg {
+  color: var(--peak-amber);
+}
+
+/* Partner auth ------------------------------------------------------------ */
+
+.peak-auth {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: center;
+  gap: clamp(36px, 6vw, 88px);
+  width: min(var(--peak-max), 100%);
+  margin: 0 auto;
+  border-top: 1px solid var(--peak-line);
+}
+
+.peak-auth-art {
+  position: relative;
+  display: grid;
+  min-height: 430px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--peak-line);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(18, 81, 59, 0.55), transparent 56%),
+    linear-gradient(160deg, rgba(242, 239, 230, 0.03), transparent),
+    var(--peak-ink-raised);
+}
+
+.peak-auth-orbit {
+  position: relative;
+  width: min(76%, 340px);
+  aspect-ratio: 1;
+  animation: peak-orbit-breathe 8s ease-in-out infinite;
+}
+
+.peak-orbit-ring {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(201, 242, 109, 0.18);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 40px rgba(201, 242, 109, 0.04),
+    0 0 0 32px rgba(201, 242, 109, 0.025);
+}
+
+.peak-orbit-ring::before,
+.peak-orbit-ring::after {
+  position: absolute;
+  border-radius: 50%;
+  content: "";
+}
+
+.peak-orbit-ring::before {
+  inset: 18%;
+  border: 1px dashed rgba(242, 239, 230, 0.14);
+}
+
+.peak-orbit-ring::after {
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--peak-amber);
+  box-shadow: 0 0 14px 4px rgba(214, 158, 46, 0.45);
+  transform: translate(-50%, -50%);
+}
+
+.peak-orbit-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  width: 78px;
+  height: 78px;
+  place-items: center;
+  border: 1px solid rgba(201, 242, 109, 0.3);
+  border-radius: 50%;
+  background: rgba(7, 19, 15, 0.9);
+  color: var(--peak-lime);
+  box-shadow: 0 0 48px rgba(201, 242, 109, 0.16);
+  transform: translate(-50%, -50%);
+}
+
+.peak-orbit-core svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.4;
+}
+
+.peak-orbit-node {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--peak-line-strong);
+  border-radius: 50%;
+  background: rgba(8, 23, 17, 0.94);
+  color: var(--peak-ivory-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+}
+
+.peak-orbit-node.a {
+  top: 3%;
+  left: 50%;
+  border-color: rgba(201, 242, 109, 0.35);
+  color: var(--peak-lime);
+  transform: translateX(-50%);
+}
+
+.peak-orbit-node.b {
+  right: 2%;
+  bottom: 17%;
+  border-color: rgba(214, 158, 46, 0.35);
+  color: var(--peak-amber-soft);
+}
+
+.peak-orbit-node.c {
+  bottom: 17%;
+  left: 2%;
+  border-color: rgba(18, 81, 59, 0.6);
+}
+
+@keyframes peak-orbit-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+

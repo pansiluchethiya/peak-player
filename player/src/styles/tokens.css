@@ -1,0 +1,43 @@
+
+:root {
+  color-scheme: dark;
+
+  /* Peak landing design tokens */
+  --peak-forest: #0c4a34;
+  --peak-forest-deep: #073326;
+  --peak-forest-soft: #12513b;
+  --peak-ink: #07130f;
+  --peak-ink-raised: #0b1f18;
+  --peak-ivory: #f2efe6;
+  --peak-ivory-muted: #c8c8b8;
+  --peak-amber: #d69e2e;
+  --peak-amber-soft: #f0c96a;
+  --peak-lime: #c9f26d;
+  --peak-lime-soft: #eaf9c8;
+  --peak-line: rgba(242, 239, 230, 0.14);
+  --peak-line-strong: rgba(242, 239, 230, 0.26);
+  --peak-surface: rgba(242, 239, 230, 0.045);
+  --peak-surface-strong: rgba(242, 239, 230, 0.075);
+
+  --peak-space-1: 8px;
+  --peak-space-2: 16px;
+  --peak-space-3: 24px;
+  --peak-space-4: 32px;
+  --peak-space-5: 48px;
+  --peak-space-6: 64px;
+  --peak-space-7: 96px;
+  --peak-space-8: 128px;
+
+  --peak-radius-sm: 10px;
+  --peak-radius-md: 16px;
+  --peak-radius-lg: 24px;
+  --peak-radius-xl: 32px;
+  --peak-radius-pill: 999px;
+
+  --peak-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --peak-fast: 180ms var(--peak-ease);
+  --peak-medium: 360ms var(--peak-ease);
+  --peak-slow: 700ms var(--peak-ease);
+  --peak-shadow: 0 32px 90px rgba(0, 0, 0, 0.48);
+}
+

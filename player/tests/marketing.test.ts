@@ -4,7 +4,15 @@ import { describe, it } from 'node:test';
 
 const page = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
 const layout = readFileSync(new URL('../src/app/layout.tsx', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../src/app/globals.css', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../src/styles/tokens.css', import.meta.url), 'utf8');
+const allStyles = [
+  'tokens.css', 'reset.css', 'base.css', 'chrome.css', 'chrome-2.css', 'chrome-3.css',
+  'chrome-4.css', 'player.css', 'player-2.css', 'player-3.css', 'marketing.css',
+  'embed.css', 'embed-2.css', 'landing.css', 'landing-2.css', 'landing-3.css',
+  'landing-4.css', 'landing-5.css', 'landing-6.css', 'landing-7.css', 'landing-8.css',
+  'landing-9.css', 'landing-10.css', 'landing-11.css', 'landing-12.css', 'landing-13.css',
+  'landing-14.css', 'theme.css',
+].map((f) => readFileSync(new URL(`../src/styles/${f}`, import.meta.url), 'utf8')).join('\n');
 const player = readFileSync(new URL('../src/components/Player.tsx', import.meta.url), 'utf8');
 
 describe('embed landing page', () => {
@@ -46,7 +54,7 @@ describe('embed landing page', () => {
     assert.match(css, /--peak-ivory/);
     assert.match(css, /--peak-amber/);
     assert.doesNotMatch(css, /#e50914/i);
-    assert.match(css, /prefers-reduced-motion/);
+    assert.match(allStyles, /prefers-reduced-motion/);
   });
 
   it('loads the display and UI faces from next/font/google', () => {
