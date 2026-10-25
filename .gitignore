@@ -1,4 +1,5 @@
 /node_modules
+**/node_modules
 restart.trigger
 .vscode/
 .env
@@ -7,7 +8,11 @@ utils/auth-users.json
 utils/peak.db
 utils/peak.db-shm
 utils/peak.db-wal
-player/.next
-player/node_modules
+**/.next
+**/.source
 player/tsconfig.tsbuildinfo
 /tmp_context
+# Tooling artifacts
+.playwright-mcp/
+logs/
+**/*.tsbuildinfo

@@ -1,0 +1,103 @@
+---
+title: Status and health
+description: Interpret process health, provider health, and playback telemetry.
+---
+
+Peak exposes health at two levels: process health and playback health. They answer different
+questions and should not be conflated.
+
+## Process health
+
+```http
+GET /api/health
+```
+
+Use this for load balancers and uptime checks. It answers: is the API process alive and able to
+serve requests? It does not prove that providers are healthy.
+
+## Playback health
+
+```http
+GET /api/v1/playback/health
+```
+
+```json
+{
+  "success": true,
+  "providers": [
+    {
+      "name": "netmirror",
+      "state": "healthy",
+      "successRate": 0.97,
+      "latencyMs": 820,
+      "lastCheckedAt": "2026-10-25T16:20:00.000Z"
+    }
+  ],
+  "telemetry": {
+    "sessions": 184,
+    "firstPlaySuccessRate": 0.96,
+    "ttffP75Ms": 2180,
+    "sourceChanges": 31
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `state` | `healthy`, `degraded`, `down`, or `unknown` |
+| `successRate` | Rolling share of successful provider attempts |
+| `latencyMs` | Recent provider latency |
+| `lastCheckedAt` | Last health observation |
+| `firstPlaySuccessRate` | Share of playback attempts that reached first play |
+| `ttffP75Ms` | 75th percentile time to first frame |
+| `sourceChanges` | Count of failovers |
+
+## Telemetry summary
+
+```http
+GET /api/v1/telemetry/summary
+```
+
+Returns the aggregate telemetry object directly. Use it for dashboards and alerts.
+
+## What healthy means
+
+- **Healthy:** recent attempts mostly succeed and latency is within the expected range.
+- **Degraded:** elevated failures or latency, but some attempts still succeed.
+- **Down:** recent attempts consistently fail.
+- **Unknown:** not enough recent data.
+
+A degraded provider can still be tried. Health is a ranking signal, not a hard gate.
+
+## Alerting suggestions
+
+- API process down for more than 2 minutes.
+- First-play success below 90% over 15 minutes.
+- p75 TTFF above 5 seconds over 15 minutes.
+- A provider down for more than 10 minutes.
+- Proxy 5xx rate above 2%.
+- Embed 401 rate spike, which may indicate a secret rotation or clock skew.
+
+## Public status page
+
+If you expose a status page, read `/api/v1/playback/health` server-side and publish only aggregate
+state. Do not publish provider URLs, diagnostics, or token data. Cache the result for 30–60 seconds
+to avoid hammering the API.
+
+```js
+const response = await fetch(`${PEAK_API}/api/v1/playback/health`, {
+  headers: { accept: 'application/json' },
+  next: { revalidate: 30 },
+});
+const health = await response.json();
+```
+
+<Callout type="info" title="This page is documentation, not a live status feed">
+  The values above are examples. Query your deployment for current state.
+</Callout>
+
+## Next
+
+- [Troubleshooting](/docs/troubleshooting)
+- [Playback and failover](/docs/guides/playback)
+- [Architecture](/docs/architecture)

@@ -1,0 +1,20 @@
+{
+  "title": "Peak Docs",
+  "pages": [
+    "index",
+    "quickstart",
+    "concepts",
+    "guides",
+    "reference",
+    "api-reference",
+    "self-hosting",
+    "architecture",
+    "source-pipeline",
+    "security",
+    "troubleshooting",
+    "changelog",
+    "status",
+    "legal",
+    "faq"
+  ]
+}

@@ -1,0 +1,130 @@
+---
+title: Error handling
+description: Stable error codes, safe messages, and where each failure is surfaced.
+---
+
+Peak separates errors into three layers: session creation, stream resolution, and player runtime.
+Handle each layer where it happens.
+
+## Session creation errors
+
+These come from `POST /api/v1/embed/sessions` as JSON:
+
+```json
+{
+  "success": false,
+  "error": "INVALID_ID",
+  "message": "id must be a numeric TMDB id"
+}
+```
+
+| Code | Status | Cause |
+| --- | --- | --- |
+| `INVALID_TYPE` | 400 | `type` is not movie, tv, series, live_tv, or live |
+| `INVALID_ID` | 400 | Missing id, or a non-numeric id for movie/TV |
+| `INVALID_SOURCE` | 400 | A source other than `netmirror` was requested for movie/TV |
+| `INVALID_API_KEY` | 401 | Missing or unknown `x-api-key` |
+| `PLAYER_PUBLIC_URL_REQUIRED` | 500 | Production has no player URL configured |
+| `INVALID_PLAYER_PUBLIC_URL` | 500 | Player URL is malformed or has credentials/query/fragment |
+| `TOKEN_SIGNING_FAILED` | 500 | The server could not verify the token it just signed |
+| `INTERNAL_ERROR` | 500 | Unexpected server failure |
+
+<Callout type="info" title="Messages are safe for partners">
+  Session errors do not include provider URLs, credentials, or stack traces. Log the code and the
+  request id, not the token.
+</Callout>
+
+## Embed edge errors
+
+These happen before the player document is served. The edge verifier returns `401` for every token
+problem.
+
+| Code | Meaning |
+| --- | --- |
+| `MISSING_TOKEN` | No `token` query parameter |
+| `INVALID_TOKEN` | Token is not two base64url segments |
+| `INVALID_SIGNATURE` | HMAC signature mismatch |
+| `INVALID_PAYLOAD` | Payload is not an object or has no valid expiry |
+| `EXPIRED` | `exp` is in the past |
+| `SECRET_MISSING` | The verifier has no signing secret |
+
+The browser sees a `401`, not a player shell. A token from the wrong partner, a tampered token, or a
+token used after expiry all fail closed.
+
+## Stream errors
+
+Stream resolution can fail before any source is playable:
+
+```json
+{
+  "error": "NO_EMBEDDABLE_SOURCE",
+  "message": "This live channel needs an external player and is unavailable in embeds."
+}
+```
+
+| Code | Meaning |
+| --- | --- |
+| `INVALID_TYPE` | Unsupported media type |
+| `INVALID_TARGET` | Missing or malformed media target |
+| `NO_PLAYABLE_SOURCES` | Providers returned nothing that passed validation |
+| `NO_EMBEDDABLE_SOURCE` | Live channel is external-only in embed mode |
+| `LIVE_TV_ERROR` | Live catalog or stream lookup failed |
+| `INTERNAL_ERROR` | Unexpected resolver failure |
+
+The player treats a terminal stream error as `STREAM_UNAVAILABLE` and shows a retry affordance.
+
+## Player runtime errors
+
+The embed SDK receives:
+
+```json
+{
+  "channel": "peak-player",
+  "type": "event",
+  "event": "error",
+  "payload": {
+    "code": "STREAM_UNAVAILABLE",
+    "message": "The stream could not be played."
+  }
+}
+```
+
+The player intentionally does not expose upstream diagnostics to the parent page. Operators can see
+provider diagnostics in server logs, the admin UI, and the health endpoint.
+
+## Handling errors in the host page
+
+```js
+player.on('error', ({ code, message }) => {
+  if (code === 'STREAM_UNAVAILABLE') {
+    showRetryButton(async () => {
+      const next = await fetch('/peak/session', { /* ... */ }).then((r) => r.json());
+      player.destroy();
+      mountPlayer(next.embedUrl);
+    });
+    return;
+  }
+
+  reportToTelemetry({ code, message });
+});
+```
+
+<Callout type="warn" title="Do not retry expired sessions">
+  If the player document never loaded, check the session endpoint response and the token expiry
+  before retrying. Repeatedly mounting an expired URL will keep failing at the edge.
+</Callout>
+
+## What not to log
+
+- Full embed URLs (they contain bearer-like tokens).
+- Partner API keys.
+- Upstream provider URLs.
+- Raw response bodies that may contain credentials.
+
+Log the token’s `partnerId` and `exp` only after verifying it server-side, or log a hash.
+
+## Next
+
+- [Troubleshooting](/docs/troubleshooting)
+- [Security](/docs/security)
+- [Status](/docs/status)

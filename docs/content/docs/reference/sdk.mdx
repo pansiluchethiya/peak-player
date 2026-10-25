@@ -1,0 +1,165 @@
+---
+title: JavaScript SDK
+description: The complete window.PeakEmbed API for mounting and controlling the player.
+---
+
+The Peak SDK is a dependency-free script served from the player origin. It creates an iframe,
+validates the player origin, and exposes a small command/event API.
+
+## Loading
+
+```html
+<script src="https://player.example.com/peak-embed.js" defer></script>
+```
+
+The script defines `window.PeakEmbed`:
+
+```js
+window.PeakEmbed.version; // "1.0.0"
+```
+
+## mount(options)
+
+```js
+const player = window.PeakEmbed.mount({
+  target: '#player',
+  url: session.embedUrl,
+  title: 'Inception',
+  width: '100%',
+  height: '100%',
+  loading: 'lazy',
+  allow: 'autoplay; fullscreen; picture-in-picture; encrypted-media',
+});
+```
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `target` | Yes | — | Element or selector for the iframe container |
+| `url` | Yes | — | Signed embed URL from the session endpoint |
+| `title` | No | `Peak player` | iframe accessible name |
+| `width` | No | `100%` | CSS width applied to the iframe |
+| `height` | No | `100%` | CSS height applied to the iframe |
+| `loading` | No | `lazy` | iframe loading hint |
+| `allow` | No | autoplay/fullscreen/PiP/encrypted-media | iframe permissions policy |
+
+`mount` throws if the target is missing, the URL is missing or invalid, or the URL is not HTTP(S).
+It appends the iframe to the target and starts listening for messages from that exact iframe and
+origin.
+
+<Callout type="info" title="The container owns layout">
+  The SDK sets the iframe to 100% width and height by default. Give the container an explicit
+  aspect ratio or dimensions before mounting to avoid layout shift.
+</Callout>
+
+## Methods
+
+### on(event, handler)
+
+Subscribe to a player event. Returns the API for chaining.
+
+```js
+player.on('timeupdate', ({ currentTime, duration }) => {
+  progress.value = currentTime / duration;
+});
+```
+
+### off(event, handler)
+
+Remove a specific handler. Returns the API.
+
+### play()
+
+Ask the player to play. Returns `true` if the command was posted, not whether playback started.
+Browsers can still block autoplay.
+
+### pause()
+
+Ask the player to pause.
+
+### seek(seconds)
+
+Seek to a finite, non-negative number of seconds. Invalid values are ignored by the player.
+
+```js
+player.seek(90);
+```
+
+### setVolume(value)
+
+Set volume between `0` and `1`.
+
+```js
+player.setVolume(0.35);
+```
+
+### setSubtitle(value)
+
+Select a subtitle track by label/language string, or disable subtitles with `-1` (number). The player
+validates the value before applying it.
+
+```js
+player.setSubtitle('en');
+player.setSubtitle(-1);
+```
+
+### setQuality(value)
+
+Select a quality label exposed by the current manifest. The player validates the label.
+
+```js
+player.setQuality('1080p');
+```
+
+### destroy()
+
+Remove the iframe, remove the message listener, and clear handlers. Safe to call more than once.
+
+```js
+player.destroy();
+```
+
+## Properties
+
+| Property | Description |
+| --- | --- |
+| `element` | The created iframe element |
+| `origin` | Parsed player origin |
+
+## Events
+
+| Event | Payload | When |
+| --- | --- | --- |
+| `ready` | `{ type, id, title }` | First playable source is ready |
+| `play` | — | Playback starts or resumes |
+| `pause` | — | Playback pauses |
+| `ended` | `{ currentTime, duration }` | Media ends |
+| `timeupdate` | `{ currentTime, duration }` | Roughly four times per second |
+| `sourcechange` | `{ index, quality, provider, codec }` | Player switches source |
+| `error` | `{ code, message }` | Playback fails |
+
+`ready` is emitted once per player instance. `sourcechange` can fire multiple times during failover.
+
+## Security behaviour
+
+- The SDK only accepts messages where `event.source === iframe.contentWindow`.
+- The SDK only accepts messages where `event.origin === origin` parsed from the embed URL.
+- Commands are posted with the exact origin, never `*`.
+- The SDK does not expose a way to read upstream URLs or provider diagnostics.
+- Handler exceptions are rethrown asynchronously so one bad handler does not break the listener.
+
+## Cleanup
+
+Always destroy the player when unmounting a route or replacing a session:
+
+```js
+useEffect(() => {
+  const player = window.PeakEmbed.mount({ target, url });
+  return () => player.destroy();
+}, [url]);
+```
+
+## Next
+
+- [postMessage protocol](/docs/reference/postmessage)
+- [Quickstart](/docs/quickstart)
+- [Errors](/docs/guides/errors)

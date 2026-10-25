@@ -1,0 +1,88 @@
+---
+title: Overview
+description: The Peak embed platform turns many unreliable media sources into one signed, validated player experience.
+---
+
+Peak is a source aggregation and playback platform. It resolves media from multiple providers,
+validates each candidate before exposing it, ranks the survivors, and plays them through a custom
+Hls.js player with automatic failover. Partners never receive provider URLs or provider
+credentials — only a short-lived signed embed URL.
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart">
+    Create a signed session and mount the player SDK in a few lines of JavaScript.
+  </Card>
+  <Card title="Concepts" href="/docs/concepts">
+    Understand the source pipeline, validation, ranking, and the embed boundary.
+  </Card>
+  <Card title="API reference" href="/docs/api-reference">
+    Endpoint-by-endpoint reference generated from the platform OpenAPI document.
+  </Card>
+</Cards>
+
+## What you get
+
+- **A real player, not an iframe wrapper.** Peak ships its own Hls.js-based player with quality
+  control, subtitles, keyboard shortcuts, fullscreen, picture-in-picture, and live TV support.
+- **Validated sources only.** A candidate must pass protocol, manifest, segment, and media checks
+  before the player can select it.
+- **Progressive delivery.** Sources stream to the player over SSE as they become ready. Peak does
+  not wait for every provider before playback can start.
+- **Signed media proxy.** Upstream URLs are signed server-side and streamed through Peak with
+  Range support, SSRF protection, and a strict header allowlist.
+- **Partner boundary.** Embed tokens are HMAC-signed, short-lived, and scoped to a partner, a media
+  item, and an exact set of origins.
+- **Failover that is visible.** The player retries the next ranked source when a stream stalls or
+  errors, without reloading the page.
+
+## The shape of an integration
+
+```text
+Partner backend                     Peak API                      Peak player
+      │                                │                              │
+      │  POST /api/v1/embed/sessions   │                              │
+      │  x-api-key: <partner key>      │                              │
+      ├───────────────────────────────▶│                              │
+      │                                │  validate media + origins    │
+      │  { token, embedUrl, expiresAt }│                              │
+      │◀───────────────────────────────┤                              │
+      │                                │                              │
+      │  mount({ target, url })        │                              │
+      ├────────────────────────────────┼─────────────────────────────▶│
+      │                                │  GET /api/v1/stream/... (SSE)│
+      │                                │◀─────────────────────────────┤
+      │                                │  validated, ranked sources   │
+      │                                ├─────────────────────────────▶│
+      │                                │  signed /api/proxy/... media │
+      │                                │◀─────────────────────────────┤
+      │  postMessage events            │                              │
+      │◀───────────────────────────────┼──────────────────────────────┤
+```
+
+The partner API key stays on the partner server. The embed token is the only credential that
+reaches the browser, and it is only useful for the media item and origins it was minted for.
+
+## Supported media
+
+| Type | Identifier | Example |
+| --- | --- | --- |
+| Movie | TMDB numeric id | `27205` |
+| TV episode | TMDB numeric id + season + episode | `1399`, season `1`, episode `1` |
+| Live TV | Peak channel id | `channel_bbc_one_ab12cd34` |
+
+Movies and TV accept numeric TMDB ids. Live TV accepts the ids returned by the channel catalog.
+`series` is accepted as an alias for `tv`; `live` is accepted as an alias for `live_tv`.
+
+## Start here
+
+<Cards>
+  <Card title="I want to embed a movie" href="/docs/guides/movies" />
+  <Card title="I want to embed a TV episode" href="/docs/guides/tv" />
+  <Card title="I want to embed live TV" href="/docs/guides/live-tv" />
+  <Card title="I need to secure partner access" href="/docs/guides/auth" />
+</Cards>
+
+<Callout type="info" title="Local development">
+  The examples assume the API and player are running at `http://localhost:3000` and
+  `http://localhost:3001`. Set `PLAYER_PUBLIC_URL` to the public player origin in production.
+</Callout>

@@ -1,0 +1,103 @@
+---
+title: Movies
+description: Embed a movie by TMDB id, handle posters, and understand source selection.
+---
+
+Movie embeds use a numeric TMDB id. Peak resolves metadata and sources, validates candidates, and
+returns a signed player URL.
+
+## Create a movie session
+
+```bash
+curl -X POST http://localhost:3000/api/v1/embed/sessions \
+  -H 'content-type: application/json' \
+  -H 'x-api-key: YOUR_PARTNER_KEY' \
+  -d '{"type":"movie","id":"27205"}'
+```
+
+`27205` is *Inception*. The response includes a signed `embedUrl` and a poster path when TMDB has
+one. The default source is `netmirror`; it is the only source accepted for movie embeds in the
+current build.
+
+```json
+{
+  "success": true,
+  "embedUrl": "http://localhost:3001/embed/movie/27205?token=...",
+  "poster": "/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg",
+  "source": "netmirror",
+  "expiresAt": "2026-10-25T16:30:00.000Z"
+}
+```
+
+## Poster handling
+
+If you pass `poster`, Peak uses it as-is. Otherwise it asks TMDB for the poster path. Poster paths
+are relative to the TMDB image CDN in the player; your page can build a full URL if it needs to show
+a poster outside the player.
+
+```json
+{
+  "type": "movie",
+  "id": "27205",
+  "poster": "https://cdn.example.com/inception.jpg"
+}
+```
+
+<Callout type="info" title="Poster overrides are not validated as media">
+  The poster is presentation metadata. It does not affect source resolution or playback.
+</Callout>
+
+## What the player receives
+
+The player requests:
+
+```http
+GET /api/v1/stream/events/movie/27205?embed=1
+Accept: text/event-stream
+```
+
+The first `source` event is the highest-ranked validated candidate. If it fails, the player advances
+to the next source in the same SSE stream. A movie embed never shows an external iframe fallback.
+
+## Direct player route
+
+The non-embed route is useful for previews and internal testing:
+
+```text
+http://localhost:3001/movie/27205
+```
+
+It does not require a token and is not protected by `frame-ancestors`. Do not expose it as a partner
+integration surface; use `/embed/movie/:id?token=...` for partners.
+
+## Cache behaviour
+
+Aggregate stream results are cached briefly. The default TTL is **15 minutes**, capped at **30
+minutes**. A cache hit still runs sources through the public preparation step so signed proxy URLs
+are fresh for the request.
+
+To bypass the cache during development:
+
+```http
+GET /api/v1/stream/movie/27205?refresh=1
+```
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `INVALID_ID` | Id is not numeric | Use the TMDB numeric id, not an IMDb id |
+| `INVALID_SOURCE` | A provider other than `netmirror` was requested | Omit `source` |
+| `NO_PLAYABLE_SOURCES` / empty queue | Every provider failed validation | Retry later; inspect `/api/v1/playback/health` |
+| Player shows an error after ready | Source failed mid-playback | The player should fail over automatically; check provider health |
+
+<Callout type="warn" title="TMDB ids are not IMDb ids">
+  Peak does not resolve `tt...` ids on the embed endpoint. Resolve them to TMDB ids before creating
+  a session, or use the platform’s title resolution tooling in your own backend.
+</Callout>
+
+## Next
+
+- [TV episodes](/docs/guides/tv)
+- [Playback and failover](/docs/guides/playback)
+- [Error handling](/docs/guides/errors)

@@ -1,0 +1,123 @@
+---
+title: Security model
+description: Threat model, controls, and residual risks for the embed platform.
+---
+
+Peak handles partner access, signed media URLs, and untrusted upstream content. This page describes
+what is protected, how, and what remains the deployer’s responsibility.
+
+## Assets
+
+- Partner API keys.
+- Embed token and proxy signing secrets.
+- Upstream provider URLs and credentials.
+- Viewer IP addresses and playback telemetry.
+- The integrity of the player document and media stream.
+
+## Threat model
+
+| Threat | Control |
+| --- | --- |
+| Stolen embed URL shared outside the partner origin | Exact `frame-ancestors` and token origin scope |
+| Token tampering | HMAC-SHA256 signature, constant-time compare |
+| Long-lived access after leak | Short TTL, 60 s minimum, 24 h maximum |
+| Partner key exposed in browser | Key only used server-to-server |
+| Open proxy abuse | Signed proxy URLs, expiry, rate limit, CORS |
+| SSRF to internal services | Protocol allowlist, DNS/IP checks, private-IP block, redirect limits |
+| Header injection | Proxy header allowlist: `referer`, `origin`, `user-agent` |
+| XSS in the player | React escaping, no raw HTML from providers, CSP |
+| Clickjacking | `frame-ancestors` allowlist, never wildcard |
+| postMessage spoofing | Exact origin and `event.source` checks |
+| Provider URL leakage | Proxy URLs only; embed responses filter upstream URLs |
+
+## Embed token controls
+
+- HMAC-SHA256 over the encoded payload.
+- `base64url` encoding, two segments, no `alg` confusion.
+- `v`, `partnerId`, media identity, origins, `iat`, `exp` claims.
+- Expiry enforced before the player document is served.
+- Secret missing → fail closed with `SECRET_MISSING`.
+- Signature comparison is constant-time.
+
+The payload is signed, not encrypted. It must not contain secrets.
+
+## Origin controls
+
+Origins are normalized to scheme + host + port. Paths, queries, fragments, credentials, wildcards,
+and `null` are rejected. The token scope and the CSP are derived from the same partner record.
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+The middleware also sets `x-peak-embed-origins` and `x-peak-embed-partner` for downstream use.
+Those headers are trusted only because they are set after verification.
+
+## Proxy controls
+
+- Signed URL with expiry.
+- `Range` and `If-Range` preserved for media seeking.
+- Upstream response body streamed, not buffered into memory.
+- Request header allowlist: `referer`, `origin`, `user-agent`.
+- Response header filtering to avoid leaking upstream internals.
+- SSRF guard rejects loopback, link-local, private, and metadata addresses.
+- Redirects are bounded and re-checked.
+- CORS restricted to configured player origins.
+- Rate limiting per client and URL.
+
+<Callout type="warn" title="DNS rebinding">
+  Host validation happens at request time and redirects are re-checked. If you run Peak in an
+  environment with unusual DNS or egress controls, add a network-level egress policy as defense in
+  depth.
+</Callout>
+
+## Player controls
+
+- No `dangerouslySetInnerHTML` for provider content.
+- External iframe fallback is off by default and sandboxed when enabled.
+- Embed mode filters external live sources.
+- Commands are validated for type and range.
+- Events are posted to one exact origin.
+- Incoming messages must match the parent window and an allowed origin.
+
+## Secrets
+
+| Secret | Rotation impact |
+| --- | --- |
+| `EMBED_TOKEN_SECRET` | All outstanding embed tokens become invalid |
+| `PROXY_SIGNING_SECRET` | All outstanding proxy URLs become invalid; active playback may fail |
+| Partner API key | Partner must switch keys; existing tokens remain valid until expiry |
+
+Use a secret manager. Do not commit `.env`, `utils/peak.db`, `utils/user-config.json`, or logs that
+contain tokens.
+
+## Logging and privacy
+
+- Do not log full embed URLs; treat the token as a bearer credential.
+- Do not log partner API keys.
+- Do not log upstream URLs at info level.
+- Hash or truncate viewer identifiers where possible.
+- Retain telemetry only as long as needed for operations.
+
+## Residual risks
+
+- A token is a bearer credential for its short lifetime. Anyone who obtains it and can control an
+  allowed origin may use it.
+- Provider content is untrusted. Validation reduces risk but does not make upstream media
+  trustworthy.
+- The demo route mints sessions server-side. Disable it or use a dedicated key in production.
+- SQLite and in-memory state are not a hardened multi-tenant store. Use external infrastructure for
+  large deployments.
+- The direct external iframe fallback, when enabled, runs third-party code in a sandboxed frame. It
+  is off by default for a reason.
+
+## Reporting
+
+Report security issues privately to the deployment owner. Do not include live tokens or partner keys
+in a public issue.
+
+## Next
+
+- [Auth and origins](/docs/guides/auth)
+- [Self-hosting](/docs/self-hosting)
+- [Troubleshooting](/docs/troubleshooting)

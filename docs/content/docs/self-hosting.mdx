@@ -1,0 +1,165 @@
+---
+title: Self-hosting
+description: Run the API, player, and docs with the right secrets, URLs, and reverse-proxy rules.
+---
+
+Peak is a Node.js API plus a Next.js player. The docs site is a separate Next.js app. You can run
+them directly with npm or with the provided Docker Compose stack.
+
+## Requirements
+
+- Node.js 20 or newer for the player and docs.
+- Node.js 18 or newer for the API.
+- A writable directory for the SQLite database and runtime config.
+- A TMDB API key.
+- A reverse proxy with TLS for production.
+
+## Environment
+
+Start from `.env.example` and set at minimum:
+
+```bash
+TMDB_API_KEY=...
+PLAYER_PUBLIC_URL=https://player.example.com
+PUBLIC_API_URL=https://api.example.com
+PLAYER_ALLOWED_ORIGINS=https://player.example.com
+EMBED_TOKEN_SECRET=<long random secret>
+PROXY_SIGNING_SECRET=<long random secret>
+EMBED_PARTNERS=[{"id":"partner","name":"Partner","apiKey":"<long key>","origins":["https://app.example.com"]}]
+```
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `TMDB_API_KEY` | Yes | TMDB metadata and posters |
+| `PLAYER_PUBLIC_URL` | Production | Public player origin used in embed URLs |
+| `PUBLIC_API_URL` | Yes | Browser-facing API origin |
+| `PLAYER_ALLOWED_ORIGINS` | Yes | Comma-separated origins allowed to call the proxy |
+| `EMBED_TOKEN_SECRET` | Production | HMAC secret for embed tokens |
+| `PROXY_SIGNING_SECRET` | Production | HMAC secret for proxy URLs |
+| `EMBED_PARTNERS` | For embeds | JSON array of partner objects |
+| `EMBED_DEMO_API_KEY` | Demo only | Must match a partner key |
+| `NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED` | No | Off unless set to `1` at build time |
+
+<Callout type="warn" title="NEXT_PUBLIC values are build-time">
+  `NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED` is compiled into the client bundle. Changing it at runtime
+  does nothing; rebuild the player image after changing it.
+</Callout>
+
+## Local development
+
+```bash
+npm install
+npm --prefix player install
+npm --prefix docs install
+npm start                 # API on 8787 by default
+npm --prefix player run dev
+npm --prefix docs run dev
+```
+
+The player dev server runs on port 3001; the docs dev server runs on port 3002. The API port comes
+from `API_PORT` (default `8787`).
+
+## Docker Compose
+
+```bash
+docker compose up --build
+```
+
+The compose file starts `peak` on `8787` and `peak-player` on `3001`. It includes a development-only
+demo partner:
+
+```json
+{"id":"demo","name":"Peak Demo","apiKey":"demo-key-change-me","origins":["http://localhost:3001"]}
+```
+
+Replace it before exposing the stack. The demo page is a convenience, not a production integration.
+
+## Reverse proxy
+
+Terminate TLS at the proxy and forward to the player and API. Preserve:
+
+- `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`.
+- `Range` and `If-Range` for media requests.
+- `Accept: text/event-stream` without buffering.
+
+SSE needs proxy buffering disabled:
+
+```nginx
+location /api/v1/stream/events/ {
+  proxy_pass http://peak;
+  proxy_http_version 1.1;
+  proxy_set_header Connection '';
+  proxy_buffering off;
+  proxy_cache off;
+  chunked_transfer_encoding off;
+}
+```
+
+For media:
+
+```nginx
+location /api/proxy/ {
+  proxy_pass http://peak;
+  proxy_http_version 1.1;
+  proxy_set_header Range $http_range;
+  proxy_set_header If-Range $http_if_range;
+  proxy_buffering off;
+}
+```
+
+Do not cache embed player HTML at the edge without including the token in the cache key. A shared
+cache keyed only by path can serve one partner’s player shell to another.
+
+## Persistence
+
+- `utils/peak.db` is the local SQLite database. Back it up and do not commit it.
+- `utils/user-config.json` holds runtime overrides from the admin UI.
+- Provider caches are disposable.
+- Embed and proxy secrets belong in your secret manager, not in the database.
+
+## Health checks
+
+| Service | Check |
+| --- | --- |
+| API | `GET /api/health` |
+| Playback | `GET /api/v1/playback/health` |
+| Player | `GET /` |
+| Docs | `GET /` |
+
+A healthy API process can still have unhealthy providers. Treat provider health as a separate
+signal from process health.
+
+## Upgrades
+
+1. Back up the SQLite database and runtime config.
+2. Pull the new images or code.
+3. Rebuild the player if any `NEXT_PUBLIC_*` value changed.
+4. Run the test suites.
+5. Roll the API first, then the player.
+6. Verify an embed session end to end.
+
+```bash
+node --test tests/*.test.js
+npm --prefix player test
+npm --prefix player run typecheck
+npm --prefix docs test
+npm --prefix docs run check:links
+```
+
+## Production checklist
+
+- [ ] Both secrets replaced with unique random values.
+- [ ] Demo partner removed or rotated.
+- [ ] `PLAYER_PUBLIC_URL` and `PUBLIC_API_URL` use HTTPS public names.
+- [ ] `EMBED_PARTNERS` origins are exact and minimal.
+- [ ] SSE buffering disabled at the proxy.
+- [ ] Range headers preserved.
+- [ ] Database backed up.
+- [ ] Provider health monitored.
+- [ ] Logs redact tokens, keys, and upstream URLs.
+
+## Next
+
+- [Architecture](/docs/architecture)
+- [Security](/docs/security)
+- [Troubleshooting](/docs/troubleshooting)

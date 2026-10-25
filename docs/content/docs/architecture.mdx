@@ -1,0 +1,122 @@
+---
+title: Architecture
+description: Services, data flow, storage, and failure domains in a Peak deployment.
+---
+
+Peak is deliberately split into two deployable services: an API/source resolver and a Next.js player.
+The docs site is a third, independent Next.js app.
+
+## Services
+
+```text
+                    ┌──────────────────────────┐
+                    │        Partner app       │
+                    │  server + browser        │
+                    └────────────┬─────────────┘
+                                 │
+              session creation   │   signed embed URL
+                    ┌────────────▼─────────────┐
+                    │       Peak API           │
+                    │  Express + source pipeline│
+                    │  SQLite + provider caches │
+                    └──────┬──────────┬────────┘
+                           │          │
+                 signed proxy│          │ SSE / JSON
+                           │          │
+                    ┌──────▼──────────▼────────┐
+                    │       Peak player        │
+                    │  Next.js + Hls.js        │
+                    └──────────────────────────┘
+                                 │
+                           upstream providers
+```
+
+### API service
+
+- Express routes for streams, playback sessions, telemetry, health, live TV, embeds, and admin.
+- Provider adapters and source normalization.
+- Validation, ranking, caching, and SSE.
+- Signed proxy with SSRF protection and Range streaming.
+- SQLite for local state and runtime config.
+
+### Player service
+
+- Next.js app routes for `/movie`, `/tv`, `/live`, `/embed/*`, and `/embed/demo`.
+- React player with Hls.js, native video fallback, quality control, subtitles, fullscreen, PiP, and
+  keyboard shortcuts.
+- Edge middleware that verifies embed tokens and sets `frame-ancestors`.
+- Public SDK at `/peak-embed.js`.
+- Marketing landing at `/`.
+
+### Docs service
+
+- Fumadocs 15 app under `docs/`.
+- Static content, search route, OpenAPI reference, and link checker.
+- Independent deployment; link to it from the player or host it under `/docs` with a rewrite.
+
+## Request lifecycle
+
+1. Partner backend creates an embed session with its API key.
+2. API validates media, signs a token, and returns an embed URL.
+3. Browser loads the embed route.
+4. Edge middleware verifies the token and emits CSP.
+5. Player opens SSE and receives ranked, validated sources.
+6. Player attaches the first playable source to Hls.js.
+7. Media segments flow through the signed proxy.
+8. Player emits postMessage events to the parent.
+
+## Storage
+
+| Store | Contents | Durability |
+| --- | --- | --- |
+| SQLite `utils/peak.db` | Runtime state, provider config, IPTV data | Back up |
+| `utils/user-config.json` | Admin overrides | Back up |
+| In-memory aggregate cache | Validated stream results | Ephemeral |
+| In-memory playback sessions | 10-minute playback context | Ephemeral |
+| In-memory provider health | Rolling health signals | Ephemeral |
+
+Embed tokens are stateless. There is no session table to scale; verification is a signature and
+expiry check. Playback sessions are in-memory and do not survive a restart.
+
+## Failure domains
+
+- **Provider failure:** isolated by per-provider deadlines and validation. One provider cannot block
+  the SSE stream indefinitely.
+- **Player failure:** failover moves to the next source; a terminal failure emits `STREAM_UNAVAILABLE`.
+- **API failure:** the player cannot resolve new sources. Existing media may continue briefly.
+- **Proxy failure:** playback stops; the player may fail over to another source URL.
+- **Edge/middleware failure:** embed routes fail closed.
+- **Docs failure:** no impact on playback.
+
+## Scaling
+
+- The API is stateless for embed verification; run multiple instances behind a load balancer.
+- Provider caches and playback sessions are per-process. Sticky sessions are not required for
+  playback, but telemetry correlation is best-effort across instances.
+- The proxy is bandwidth-heavy. Scale it horizontally and keep upstream connections bounded.
+- SQLite is a single-writer store. For multi-instance deployments, move shared state to a database
+  designed for concurrent writers.
+
+## Security boundaries
+
+| Boundary | Control |
+| --- | --- |
+| Partner → API | API key, constant-time compare |
+| Browser → embed | HMAC token, expiry, exact origins |
+| Browser → proxy | Signed URL, expiry, CORS, rate limit |
+| Proxy → upstream | SSRF guard, private-IP block, header allowlist |
+| Player → parent | Exact origin, source check, command validation |
+
+## Observability
+
+- `/api/health` for process health.
+- `/api/v1/playback/health` for provider and telemetry health.
+- `/api/v1/telemetry/summary` for aggregate playback metrics.
+- Structured logs should redact tokens, keys, and upstream URLs.
+- Track TTFF, first-play success, source-change rate, and proxy error rate.
+
+## Next
+
+- [Source pipeline](/docs/source-pipeline)
+- [Security](/docs/security)
+- [Self-hosting](/docs/self-hosting)

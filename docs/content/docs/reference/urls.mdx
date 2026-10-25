@@ -1,0 +1,103 @@
+---
+title: Embed URL reference
+description: Player routes, signed query parameters, and the public URL contract.
+---
+
+Peak exposes two URL families: player pages and media/API endpoints. Partners should only depend on
+the embed player routes.
+
+## Embed player routes
+
+| Media | Route |
+| --- | --- |
+| Movie | `/embed/movie/:id?token=...` |
+| TV | `/embed/tv/:id/:season/:episode?token=...` |
+| Live TV | `/embed/live/:id?token=...` |
+| Demo | `/embed/demo` |
+
+`id` is a numeric TMDB id for movies and TV, and a Peak channel id for live TV. `season` and
+`episode` are positive integers.
+
+## Query parameters
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `token` | Yes, except `/embed/demo` | HMAC-signed embed token |
+| `poster` | No | Poster override passed through to the player |
+
+The token is the only access credential. Do not add partner API keys, provider names, or upstream
+URLs to the player URL.
+
+```text
+https://player.example.com/embed/movie/27205?token=eyJ2Ijox...
+```
+
+## Non-embed player routes
+
+These routes are for direct use by the Peak site and internal previews:
+
+| Media | Route |
+| --- | --- |
+| Movie | `/movie/:id` |
+| TV | `/tv/:id/:season/:episode` |
+| Live TV | `/live/:id` |
+
+They do not require a token and do not set a partner `frame-ancestors` policy. Do not expose them as
+a partner integration surface.
+
+## API routes used by the player
+
+| Route | Purpose |
+| --- | --- |
+| `GET /api/v1/branding` | Branding metadata |
+| `GET /api/v1/providers` | Enabled provider list |
+| `GET /api/v1/stream/:type/:id` | Aggregate source JSON |
+| `GET /api/v1/stream/events/:type/:id` | Progressive SSE source stream |
+| `GET /api/v1/live/tv/channels` | Live channel catalog |
+| `GET /api/v1/playback/health` | Provider and telemetry health |
+| `POST /api/v1/playback/events` | Playback telemetry |
+| `GET /api/proxy/...` | Signed media proxy |
+
+## Signed proxy URLs
+
+Source `url` fields are signed Peak proxy URLs. They contain a signature and an expiry, not an
+upstream host. Treat them as opaque:
+
+- Do not parse, rewrite, or persist them.
+- Do not append query parameters.
+- Do not share them outside the player session.
+- Do not assume they are stable across requests.
+
+The proxy preserves `Range` requests and streams the upstream body. It applies SSRF protection,
+private-IP blocking, a header allowlist (`referer`, `origin`, `user-agent`), rate limiting, and
+restricted CORS.
+
+## URL configuration
+
+| Variable | Purpose |
+| --- | --- |
+| `PLAYER_PUBLIC_URL` | Public origin of the player, used to build embed URLs |
+| `NEXT_PUBLIC_PLAYER_ORIGIN` | Optional browser-visible player origin for the demo/landing |
+| `PROXY_SIGNING_SECRET` | Signs proxy URLs |
+| `EMBED_TOKEN_SECRET` | Signs embed tokens |
+
+`PLAYER_PUBLIC_URL` must be an HTTP(S) origin with an optional path prefix. It must not contain
+credentials, a query, or a fragment. In production it is required; in development it defaults to
+`http://localhost:3001`.
+
+<Callout type="warn" title="Do not build embed URLs yourself">
+  The token binds the partner, media, and origins. Build the URL with the session endpoint so the
+  signature and claims stay consistent.
+</Callout>
+
+## Cache headers
+
+Player documents are private and short-lived. Do not cache an embed URL in a CDN keyed only by path:
+the token is part of the query and determines access. Cache at the partner session layer, not at the
+edge, unless you fully understand the token boundary.
+
+## Next
+
+- [SDK reference](/docs/reference/sdk)
+- [postMessage protocol](/docs/reference/postmessage)
+- [Auth and origins](/docs/guides/auth)

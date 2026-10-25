@@ -1,0 +1,791 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Peak Embed Platform API",
+    "version": "1.0.0",
+    "description": "Create signed embed sessions, inspect playback health, and stream validated media through Peak's player."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development API"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Embed",
+      "description": "Partner sessions and signed player URLs"
+    },
+    {
+      "name": "Playback",
+      "description": "Playback sessions, health, and telemetry"
+    },
+    {
+      "name": "Stream",
+      "description": "Validated source resolution and SSE events"
+    },
+    {
+      "name": "Live TV",
+      "description": "IPTV channel catalog"
+    }
+  ],
+  "paths": {
+    "/api/v1/embed/sessions": {
+      "post": {
+        "tags": [
+          "Embed"
+        ],
+        "summary": "Create a signed embed session",
+        "description": "Validates the partner API key, media identity, and optional TTL, then returns a short-lived HMAC-signed embed URL. The token is scoped to the partner, media item, and exact partner origins.",
+        "security": [
+          {
+            "partnerApiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbedSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed embed session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid type, id, season, episode, source, or TTL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid partner API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Token signing failed or the player URL is misconfigured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playback/health": {
+      "get": {
+        "tags": [
+          "Playback"
+        ],
+        "summary": "Read provider and telemetry health",
+        "description": "Returns provider health snapshots plus aggregate playback telemetry. This endpoint is safe for status pages and does not expose upstream media URLs.",
+        "responses": {
+          "200": {
+            "description": "Provider health and telemetry summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playback/sessions": {
+      "post": {
+        "tags": [
+          "Playback"
+        ],
+        "summary": "Start a playback session",
+        "description": "Creates a server-side playback session used to correlate stream requests, source changes, and telemetry events.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaybackSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Playback session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid media request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/playback/sessions/{sessionId}": {
+      "get": {
+        "tags": [
+          "Playback"
+        ],
+        "summary": "Read a playback session",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "description": "Session identifier returned when the session was created.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Playback session state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackSessionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stream/{type}/{id}": {
+      "get": {
+        "tags": [
+          "Stream"
+        ],
+        "summary": "Resolve ranked, validated sources",
+        "description": "Resolves sources for a movie, TV episode, or live channel. Sources are validated before they are emitted and ranked by quality, reliability, and provider health. Responses may be cached briefly.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "Media type.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "movie",
+                "tv",
+                "live_tv"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "TMDB id for movies and TV, or a live channel id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "required": false,
+            "description": "Season number for TV.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "episode",
+            "in": "query",
+            "required": false,
+            "description": "Episode number for TV.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "description": "Bypass the cached stream response.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated source list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No playable sources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stream/events/{type}/{id}": {
+      "get": {
+        "tags": [
+          "Stream"
+        ],
+        "summary": "Stream sources progressively with SSE",
+        "description": "Server-sent events emit each validated source as soon as it is ready, followed by a done event. The player can start on the first valid source without waiting for every provider.",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "Media type.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "movie",
+                "tv",
+                "live_tv"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "TMDB id for movies and TV, or a live channel id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream of source and done events",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/live/tv/channels": {
+      "get": {
+        "tags": [
+          "Live TV"
+        ],
+        "summary": "List live TV channels",
+        "description": "Returns the configured IPTV catalog. Channel ids are stable and can be used with the embed session endpoint using type live_tv.",
+        "parameters": [
+          {
+            "name": "group",
+            "in": "query",
+            "required": false,
+            "description": "Filter by group name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive channel search.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Channel catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveChannelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "partnerApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Partner API key. Keys are configured server-side in EMBED_PARTNERS and are never exposed to embed clients."
+      }
+    },
+    "schemas": {
+      "EmbedSessionRequest": {
+        "type": "object",
+        "required": [
+          "type",
+          "id"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "movie",
+              "tv",
+              "series",
+              "live_tv",
+              "live"
+            ],
+            "description": "Media type. tv and series are normalized to tv; live and live_tv are normalized to live_tv."
+          },
+          "id": {
+            "type": "string",
+            "description": "Numeric TMDB id for movies and TV, or a channel id such as channel_bbc_one_abc123 for live TV."
+          },
+          "season": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Season number. Ignored for movies and live TV."
+          },
+          "episode": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Episode number. Ignored for movies and live TV."
+          },
+          "source": {
+            "type": "string",
+            "default": "netmirror",
+            "description": "Requested provider. Currently only netmirror is accepted for movies and TV."
+          },
+          "poster": {
+            "type": "string",
+            "description": "Optional poster override. Otherwise Peak resolves a TMDB poster."
+          },
+          "ttlSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 86400,
+            "default": 900,
+            "description": "Signed token lifetime. Values outside the range are normalized."
+          }
+        }
+      },
+      "EmbedSessionResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "token",
+          "expiresAt",
+          "url",
+          "embedUrl",
+          "origins"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Always true on a successful response."
+          },
+          "token": {
+            "type": "string",
+            "description": "base64url(payload).base64url(HMAC-SHA256 signature)."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 token expiry."
+          },
+          "url": {
+            "type": "string",
+            "description": "Signed player URL. Same value as embedUrl."
+          },
+          "embedUrl": {
+            "type": "string",
+            "description": "Signed URL to mount in an iframe."
+          },
+          "partner": {
+            "type": "object",
+            "description": "Partner identity resolved from the API key.",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "origins": {
+            "type": "array",
+            "description": "Exact origins allowed to frame the player.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "string",
+            "description": "Normalized media type."
+          },
+          "id": {
+            "type": "string",
+            "description": "Normalized media id."
+          },
+          "season": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Season for TV, otherwise null."
+          },
+          "episode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Episode for TV, otherwise null."
+          },
+          "poster": {
+            "type": "string",
+            "description": "Resolved poster path, if any."
+          },
+          "source": {
+            "type": "string",
+            "description": "Provider for movies and TV, otherwise null."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "error",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Always false on an error response."
+          },
+          "error": {
+            "type": "string",
+            "description": "Stable machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable explanation safe for partner logs."
+          }
+        }
+      },
+      "PlaybackSessionRequest": {
+        "type": "object",
+        "required": [
+          "type",
+          "id"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "movie",
+              "tv",
+              "live_tv"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "TMDB id or live channel id."
+          },
+          "season": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "episode": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "PlaybackSessionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "year": {
+            "type": "string"
+          },
+          "season": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "episode": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StreamSource"
+            }
+          },
+          "subtitles": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "meta": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlaybackHealthResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "healthy",
+                    "degraded",
+                    "down",
+                    "unknown"
+                  ]
+                },
+                "successRate": {
+                  "type": "number"
+                },
+                "latencyMs": {
+                  "type": "integer"
+                },
+                "lastCheckedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "telemetry": {
+            "type": "object",
+            "properties": {
+              "sessions": {
+                "type": "integer"
+              },
+              "firstPlaySuccessRate": {
+                "type": "number"
+              },
+              "ttffP75Ms": {
+                "type": "integer"
+              },
+              "sourceChanges": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "StreamResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "year": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StreamSource"
+            }
+          },
+          "subtitles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "LiveChannelResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "group": {
+                  "type": "string"
+                },
+                "logo": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "StreamSource": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Signed Peak proxy URL."
+          },
+          "quality": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "codec": {
+            "type": "string"
+          },
+          "container": {
+            "type": "string"
+          },
+          "videoCodec": {
+            "type": "string"
+          },
+          "audioCodec": {
+            "type": "string"
+          },
+          "hdr": {
+            "type": "boolean"
+          },
+          "browserPlayable": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

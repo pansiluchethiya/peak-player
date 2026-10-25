@@ -1,0 +1,118 @@
+---
+title: TV episodes
+description: Embed a specific season and episode, and understand how Peak handles series metadata.
+---
+
+TV embeds use a TMDB series id plus a season and episode. Season and episode default to `1` when
+omitted.
+
+## Create a TV session
+
+```bash
+curl -X POST http://localhost:3000/api/v1/embed/sessions \
+  -H 'content-type: application/json' \
+  -H 'x-api-key: YOUR_PARTNER_KEY' \
+  -d '{
+    "type": "tv",
+    "id": "1399",
+    "season": 1,
+    "episode": 1
+  }'
+```
+
+`1399` is *Game of Thrones*. The response includes `season` and `episode` so the caller can confirm
+what was signed.
+
+```json
+{
+  "success": true,
+  "type": "tv",
+  "id": "1399",
+  "season": 1,
+  "episode": 1,
+  "embedUrl": "http://localhost:3001/embed/tv/1399/1/1?token=...",
+  "expiresAt": "2026-10-25T16:30:00.000Z"
+}
+```
+
+## Aliases
+
+`type: "series"` is normalized to `tv`. The normalized type is returned in the response and appears
+in the token payload. Use `tv` in new integrations.
+
+## Episode defaults
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `season` | `1` | Must be a positive integer |
+| `episode` | `1` | Must be a positive integer |
+
+Invalid values are normalized to the default rather than rejected, except for the media id and
+type. Check the response if you need to confirm the effective episode.
+
+## Player route
+
+```text
+/embed/tv/:id/:season/:episode?token=...
+```
+
+The player resolves the episode’s sources and displays the series title plus episode metadata when
+available. In non-embed mode, the player offers a next-episode countdown after an episode ends. The
+embed player does not auto-advance, because the partner controls navigation.
+
+## Direct stream request
+
+```http
+GET /api/v1/stream/events/tv/1399?season=1&episode=1
+Accept: text/event-stream
+```
+
+The SSE stream is identical in shape to the movie stream: `meta`, zero or more `source` events,
+optional `subtitle` events, `diagnostic` events, and a terminal `done` or `error`.
+
+## Episode identity and caching
+
+The aggregate cache key includes type, id, season, and episode. Two episodes of the same series do
+not share a cache entry. This is intentional: provider URLs and subtitles are episode-specific.
+
+## Next episode flows
+
+For a partner UI, listen for the `ended` event and create a new session for the next episode:
+
+```js
+player.on('ended', async () => {
+  const next = await fetch('/peak/session', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'tv',
+      id: '1399',
+      season: 1,
+      episode: 2,
+    }),
+  }).then((response) => response.json());
+
+  player.destroy();
+  mountPlayer(next.embedUrl);
+});
+```
+
+<Callout type="info" title="Do not reuse tokens across episodes">
+  A token is scoped to the exact media identity. A season 1 episode 1 token cannot be used for
+  season 1 episode 2.
+</Callout>
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `INVALID_TYPE` | Type is not `tv` or `series` | Use `tv` |
+| `INVALID_ID` | Series id is not numeric | Use the TMDB series id |
+| Wrong episode | Season/episode omitted or invalid | Send positive integers and inspect the response |
+| No sources | Episode not carried by providers | Try another episode/provider or retry later |
+
+## Next
+
+- [Live TV](/docs/guides/live-tv)
+- [SDK reference](/docs/reference/sdk)
+- [Error handling](/docs/guides/errors)

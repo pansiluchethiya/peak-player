@@ -1,0 +1,69 @@
+---
+title: Legal and responsible use
+description: Content responsibility, privacy expectations, and deployment obligations.
+---
+
+Peak is playback infrastructure. It does not grant rights to any movie, series, channel, or other
+media. Whoever deploys or uses Peak is responsible for the content they access and for complying
+with applicable law, contracts, and platform policies.
+
+## Content responsibility
+
+- Only use sources and media you are authorized to access.
+- Respect provider terms of service, rate limits, and geographic restrictions.
+- Do not use Peak to bypass paywalls, DRM, or access controls.
+- Do not redistribute credentials, cookies, or provider URLs.
+- Remove content promptly when you no longer have the right to use it.
+
+## Provider terms
+
+Peak aggregates third-party providers. Provider availability and terms can change without notice.
+You are responsible for reviewing the terms that apply to your deployment and for configuring only
+providers you are permitted to use.
+
+## Privacy
+
+Peak can process viewer IP addresses, user agents, playback events, and approximate performance
+data. A production deployment should:
+
+- Publish a privacy notice describing what is collected and why.
+- Minimize retention of viewer identifiers.
+- Redact tokens, API keys, and upstream URLs from logs.
+- Provide a contact path for privacy requests.
+- Apply appropriate cross-border transfer safeguards.
+
+The embed SDK itself does not collect analytics. Telemetry is controlled by the player and your
+deployment configuration.
+
+## Security
+
+Do not publicly disclose live tokens, partner keys, or exploitable details. Report security issues
+privately to the deployment owner. See [Security](/docs/security) for the threat model.
+
+## No warranty
+
+The software is provided as-is, without warranties of availability, fitness for a particular
+purpose, or non-infringement. You are responsible for backups, monitoring, incident response, and
+compliance.
+
+## Copyright complaints
+
+If you operate a public deployment, provide a documented process for copyright complaints that
+includes:
+
+1. A contact address.
+2. The specific content and URL at issue.
+3. A statement of authorization.
+4. A process for removal and confirmation.
+
+Do not publish a real complaint address in this documentation; configure one for your deployment.
+
+## Changes
+
+These notes are not legal advice. Review them with counsel for your jurisdiction and use case.
+
+## Next
+
+- [Security](/docs/security)
+- [Self-hosting](/docs/self-hosting)
+- [FAQ](/docs/faq)

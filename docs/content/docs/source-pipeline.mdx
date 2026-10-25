@@ -1,0 +1,154 @@
+---
+title: Source pipeline
+description: Normalization, validation, ranking, and progressive delivery in detail.
+---
+
+The source pipeline is the part of Peak that turns provider responses into a short, ordered list of
+playable sources. It is intentionally conservative: a source that cannot be verified is not emitted.
+
+## Stage 1: provider fan-out
+
+Movie and TV requests fan out to enabled providers. Each provider has its own adapter and timeout.
+Responses are normalized into a common candidate shape:
+
+```ts
+interface Candidate {
+  url: string;
+  quality?: string;
+  provider: string;
+  codec?: string;
+  container?: string;
+  videoCodec?: string;
+  audioCodec?: string;
+  hdr?: boolean;
+  adaptive?: boolean;
+  headers?: Record<string, string>;
+  _order?: number;
+}
+```
+
+Providers can return HLS manifests, progressive files, or external embed URLs. Live TV uses the
+IPTV catalog instead of the movie/TV provider fan-out.
+
+## Stage 2: metadata normalization
+
+`utils/sourceMetadata.js` infers missing metadata rather than trusting provider labels:
+
+- HLS is detected from codec, `adaptive`, `.m3u8`, or an m3u8 proxy URL.
+- Container is detected from explicit metadata, codec, or URL extension.
+- Video codec markers include H.264, HEVC/H.265, AV1, and VP9.
+- Audio codec markers include AAC, AC3, EAC3/DD+, Atmos, DTS, and Opus.
+- HDR markers include HDR, HDR10, HDR10+, Dolby Vision, and DV.
+- Browser playability is computed from container and codec.
+
+The result is stable metadata that ranking and diagnostics can rely on. Peak never rewrites an MKV
+or HEVC source as MP4.
+
+## Stage 3: validation
+
+`utils/sourceValidator.js` performs layered checks:
+
+1. **URL safety** — protocol, host, DNS resolution, private-address blocking, redirect limits.
+2. **Manifest** — fetch the HLS manifest with a deadline and size cap; parse it; require variants or
+   segments.
+3. **Segment** — fetch a representative segment for formats that need it.
+4. **Media sanity** — reject empty or clearly invalid bodies.
+
+Validation runs with a deadline so a single slow host cannot hold the stream open. Failures are
+recorded as diagnostics with a provider name and a safe reason.
+
+<Callout type="info" title="No unvalidated source is emitted">
+  The SSE stream and aggregate JSON both only include sources that passed validation. A provider
+  response is a candidate, not a result.
+</Callout>
+
+## Stage 4: ranking
+
+`utils/sourceRanking.js` scores candidates:
+
+| Signal | Weight |
+| --- | --- |
+| HLS container | +500 |
+| MP4 | +380 |
+| WebM | +320 |
+| Unknown container | +120 |
+| MKV | +40 |
+| H.264 | +120 |
+| VP9 | +60 |
+| AV1 | +40 |
+| HEVC | -120 |
+| Browser-unplayable | -80 |
+| HDR | -15 |
+| 1080p | +30 |
+| 720p | +20 |
+| 480p | +5 |
+| 4K | -20 |
+| Provider health | up to ±10 |
+| Provider order | small tie-breaker |
+
+The negative 4K score is intentional: a 4K source is more likely to stall on constrained devices.
+The player can still expose 4K levels when the manifest supports them.
+
+## Stage 5: delivery
+
+### Aggregate JSON
+
+`GET /api/v1/stream/:type/:id` returns the full result after the pipeline settles. Use it for
+server-side previews, tests, and integrations that do not need progressive delivery.
+
+### SSE
+
+`GET /api/v1/stream/events/:type/:id` emits:
+
+```text
+event: meta
+data: {"title":"...","year":"..."}
+
+event: source
+data: {"url":"/api/proxy/...","quality":"1080p",...}
+
+event: subtitle
+data: {"label":"English","language":"en","url":"..."}
+
+event: diagnostic
+data: {"provider":"...","ok":false,"error":"..."}
+
+event: done
+data: {"meta":{"providers":5,"sources":3,"latencyMs":1840,"cacheHit":false}}
+```
+
+The stream is terminal on `done` or `error`. The player can start on the first `source` event.
+
+## Caching
+
+- Aggregate results are cached for **15 minutes** by default, capped at **30 minutes**.
+- Cache keys include type, id, season, and episode.
+- Cached sources still pass through public preparation so proxy signatures are fresh.
+- `refresh=1` bypasses the cache for development.
+
+## Embed filtering
+
+In embed mode, external iframe live sources are removed. If no embeddable source remains, the
+pipeline emits `NO_EMBEDDABLE_SOURCE`. Movie and TV embeds do not use external iframes at all.
+
+## Diagnostics
+
+Diagnostics are operator-facing. They can include provider names, latency, and a safe error reason.
+They never include upstream media URLs in embed responses. The player receives only source metadata
+and safe error codes.
+
+## Testing the pipeline
+
+```bash
+node --test tests/*.test.js
+```
+
+The backend suite covers metadata inference, ranking, validation deadlines, proxy signing, token
+verification, and embed session creation. Player tests cover source selection, failover, and embed
+bridge validation.
+
+## Next
+
+- [Playback and failover](/docs/guides/playback)
+- [Security](/docs/security)
+- [Architecture](/docs/architecture)
