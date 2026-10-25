@@ -1,0 +1,127 @@
+/* ui/base.css
+ * Shared reset + root element base styles, fully token-driven.
+ * Import order: ui/fonts.css -> ui/tokens.css -> ui/base.css.
+ */
+
+/* --- Reset --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Root element: canvas, type, color-scheme, scrollbar --- */
+html {
+  font-size: 16px;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Firefox monochrome scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted) var(--color-bg);
+}
+
+/* Dark theme: canvas flips to the dark palette. */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Form controls: inherit typography, use token borders/radius --- */
+button,
+input,
+textarea,
+select,
+fieldset,
+legend {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+/* --- Media responsiveness --- */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* --- Lists / headings --- */
+ol,
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* --- Focus ring: surgical Vercel accent --- */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* --- Monochrome surface scrollbars --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid var(--color-bg);
+  background-color: var(--color-muted);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-fg);
+}
