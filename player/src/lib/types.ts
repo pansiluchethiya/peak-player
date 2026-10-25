@@ -10,6 +10,11 @@ export interface Media {
   poster?: string;
 }
 
+export interface EmbedConfig {
+  partnerId?: string;
+  origins: string[];
+}
+
 export interface Source {
   url: string;
   quality: string;

@@ -15,13 +15,30 @@ import {
   sortLevelsDescending,
   type HlsLevelLike,
 } from '../lib/quality';
+import {
+  createEmbedEvent,
+  isAllowedOrigin,
+  parseEmbedCommand,
+  postToParent,
+  type EmbedEventName,
+} from '../lib/embedBridge';
 import { isPlayableSource, nextSourceIndex, sourceKey } from '../lib/playback';
 import { calculateBufferedRanges, clamp, type BufferedRange } from '../lib/time';
-import { DEFAULT_BRANDING, type Branding, type Diagnostic, type Media, type Source, type StreamResponse, type Subtitle } from '../lib/types';
+import {
+  DEFAULT_BRANDING,
+  type Branding,
+  type Diagnostic,
+  type EmbedConfig,
+  type Media,
+  type Source,
+  type StreamResponse,
+  type Subtitle,
+} from '../lib/types';
 import { AmbientBackground } from './AmbientBackground';
 import { CenterFeedback } from './CenterFeedback';
 import { ControlBar, type QualityOption } from './ControlBar';
 import { ErrorState } from './ErrorState';
+import { ExternalEmbed } from './ExternalEmbed';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { MobileGestureLayer } from './MobileGestureLayer';
 import { MobilePlayerControls } from './MobilePlayerControls';
@@ -31,22 +48,30 @@ import { SkipFeedback } from './SkipFeedback';
 interface Props {
   apiBase: string;
   media: Media;
+  embed?: EmbedConfig;
 }
 
 type Status = 'loading' | 'ready' | 'error';
 
 const FIRST_PLAYABLE_TIMEOUT_MS = 1500;
+const EMBED_TIMEUPDATE_INTERVAL_MS = 250;
 
 interface LevelOption extends HlsLevelLike {
   index: number;
 }
 
-export function Player({ apiBase, media }: Props) {
+export function Player({ apiBase, media, embed }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const pendingSeekRef = useRef<number | null>(null);
+  const embedRef = useRef(embed);
+  embedRef.current = embed;
+  const parentOriginRef = useRef('');
+  const embedReadyRef = useRef(false);
+  const wasPlayingRef = useRef(false);
+  const lastTimeUpdateRef = useRef(0);
 
   const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
   const [payload, setPayload] = useState<StreamResponse | null>(null);
@@ -119,6 +144,33 @@ export function Player({ apiBase, media }: Props) {
 
   const source = payload?.sources[sourceIndex];
   const isEmbedSource = source?.codec === 'html5';
+  const embedOriginsKey = embed?.origins.join('|') ?? '';
+  const sourceDescriptor = source
+    ? JSON.stringify([sourceIndex, source.quality, source.provider, source.codec])
+    : '';
+
+  const sendEmbedEvent = useCallback((event: EmbedEventName, data?: Record<string, unknown>) => {
+    if (!embedRef.current) return;
+    const origin = parentOriginRef.current;
+    if (!origin) return;
+    postToParent(window.parent, origin, createEmbedEvent(event, data));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const configured = embedRef.current?.origins?.[0];
+    const ancestor =
+      window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0
+        ? window.location.ancestorOrigins[0]
+        : '';
+    const candidate = configured || ancestor;
+    try {
+      parentOriginRef.current = candidate ? new URL(candidate).origin : '';
+    } catch {
+      parentOriginRef.current = '';
+    }
+    embedReadyRef.current = false;
+  }, [embedOriginsKey]);
 
   useEffect(() => {
     return () => {
@@ -266,6 +318,7 @@ export function Player({ apiBase, media }: Props) {
         const fingerprint = await getFingerprint();
         eventSource = fetchStreamEvents(apiBase, media, fingerprint, {
           invalidate: request.invalidate,
+          embed: Boolean(embed),
           onMeta: handleMeta,
           onSource: handleSource,
           onSubtitle: handleSubtitle,
@@ -283,7 +336,7 @@ export function Player({ apiBase, media }: Props) {
       eventSource?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiBase, media.type, media.id, media.season, media.episode, request]);
+  }, [apiBase, media.type, media.id, media.season, media.episode, request, embed]);
 
   useEffect(() => {
     if (!payload) return;
@@ -439,6 +492,7 @@ export function Player({ apiBase, media }: Props) {
       if (hlsRef.current === hls) hlsRef.current = null;
       video.removeAttribute('src');
       video.load();
+      wasPlayingRef.current = false;
       setPlaying(false);
     };
   }, [source, sourceNonce, updateBuffered, isEmbedSource]);
@@ -450,6 +504,14 @@ export function Player({ apiBase, media }: Props) {
     const onTime = () => {
       setCurrentTime(video.currentTime);
       updateBuffered();
+      const now = Date.now();
+      if (now - lastTimeUpdateRef.current >= EMBED_TIMEUPDATE_INTERVAL_MS) {
+        lastTimeUpdateRef.current = now;
+        sendEmbedEvent('timeupdate', {
+          currentTime: video.currentTime,
+          duration: Number.isFinite(video.duration) ? video.duration : 0,
+        });
+      }
     };
     const onDuration = () => {
       setDuration(Number.isFinite(video.duration) ? video.duration : 0);
@@ -459,15 +521,28 @@ export function Player({ apiBase, media }: Props) {
       setPlaying(true);
       setNeedsInteraction(false);
       setStatus('ready');
+      if (!wasPlayingRef.current) {
+        wasPlayingRef.current = true;
+        sendEmbedEvent('play');
+      }
     };
-    const onPause = () => setPlaying(false);
+    const onPause = () => {
+      setPlaying(false);
+      wasPlayingRef.current = false;
+      sendEmbedEvent('pause');
+    };
     const onVolume = () => {
       setVolume(video.volume);
       setMuted(video.muted);
     };
     const onEnded = () => {
       setPlaying(false);
-      if (media.type === 'tv') setNextCountdown(5);
+      wasPlayingRef.current = false;
+      sendEmbedEvent('ended', {
+        currentTime: video.currentTime,
+        duration: Number.isFinite(video.duration) ? video.duration : 0,
+      });
+      if (media.type === 'tv' && !embed) setNextCountdown(5);
     };
 
     video.addEventListener('timeupdate', onTime);
@@ -489,7 +564,7 @@ export function Player({ apiBase, media }: Props) {
       video.removeEventListener('volumechange', onVolume);
       video.removeEventListener('ended', onEnded);
     };
-  }, [media.type, updateBuffered]);
+  }, [media.type, updateBuffered, sendEmbedEvent, embed]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -692,6 +767,90 @@ export function Player({ apiBase, media }: Props) {
     [changeSource, payload, sourceIndex, showControlsBriefly],
   );
 
+  useEffect(() => {
+    if (!embed || status !== 'ready' || !payload || embedReadyRef.current) return;
+    embedReadyRef.current = true;
+    sendEmbedEvent('ready', { type: media.type, id: media.id, title: payload.title });
+  }, [embed, status, payload, media.type, media.id, sendEmbedEvent]);
+
+  useEffect(() => {
+    if (!embed || !sourceDescriptor) return;
+    const [index, quality, provider, codec] = JSON.parse(sourceDescriptor) as [
+      number,
+      string,
+      string,
+      string,
+    ];
+    sendEmbedEvent('sourcechange', { index, quality, provider, codec });
+  }, [embed, sourceDescriptor, sendEmbedEvent]);
+
+  useEffect(() => {
+    if (!embed || status !== 'error') return;
+    sendEmbedEvent('error', {
+      code: 'STREAM_UNAVAILABLE',
+      message: 'The stream could not be played.',
+    });
+  }, [embed, status, sendEmbedEvent]);
+
+  useEffect(() => {
+    if (!embed) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent) return;
+      if (!isAllowedOrigin(event.origin, embed.origins)) return;
+      const command = parseEmbedCommand(event.data);
+      if (!command.ok) return;
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (command.command === 'play') {
+        if (video.paused) togglePlay();
+        return;
+      }
+      if (command.command === 'pause') {
+        if (!video.paused) togglePlay();
+        return;
+      }
+      if (command.command === 'seek') {
+        const value = typeof command.value === 'number' ? command.value : 0;
+        const limit = Number.isFinite(video.duration) ? video.duration : value;
+        seek(Math.max(0, Math.min(value, limit)));
+        return;
+      }
+      if (command.command === 'setVolume') {
+        const value = typeof command.value === 'number' ? command.value : 0;
+        changeVolume(value);
+        return;
+      }
+      if (command.command === 'setSubtitle') {
+        if (typeof command.value === 'number') {
+          setSubtitleIndex(command.value);
+          return;
+        }
+        if (typeof command.value === 'string') {
+          const needle = command.value.toLowerCase();
+          const index = (payload?.subtitles ?? []).findIndex(
+            (item) =>
+              item.lang.toLowerCase() === needle || item.label.toLowerCase() === needle,
+          );
+          if (index >= 0) setSubtitleIndex(index);
+        }
+        return;
+      }
+      if (command.command === 'setQuality' && typeof command.value === 'string') {
+        const value = command.value;
+        if (value === 'auto' || value.startsWith('source:') || value.startsWith('level:')) {
+          changeQuality(value);
+          return;
+        }
+        const index = (payload?.sources ?? []).findIndex((item) => item.quality === value);
+        if (index >= 0) changeQuality(`source:${index}`);
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [embed, payload, seek, changeVolume, changeQuality, togglePlay]);
+
   const togglePiP = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
@@ -812,14 +971,10 @@ export function Player({ apiBase, media }: Props) {
       <AmbientBackground accentColor={branding.accentColor} />
 
       {isEmbedSource && source && (
-        <iframe
+        <ExternalEmbed
           key={`${source.url}-${sourceNonce}`}
-          src={source.url}
-          title="Embedded player"
-          className="player-video"
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          allowFullScreen
-          referrerPolicy="origin"
+          url={source.url}
+          title={payload?.title ? `${payload.title} — external provider` : 'External player'}
         />
       )}
 
@@ -907,8 +1062,12 @@ export function Player({ apiBase, media }: Props) {
       {status === 'error' && (
         <ErrorState
           title="Stream unavailable"
-          message={error ?? 'Something went wrong while loading this title.'}
-          diagnostics={payload?.diagnostics}
+          message={
+            embed
+              ? 'This stream is unavailable in the embedded player.'
+              : error ?? 'Something went wrong while loading this title.'
+          }
+          diagnostics={embed ? undefined : payload?.diagnostics}
           onTryAnother={tryAnotherSource}
           onReload={() => reload(true)}
         />

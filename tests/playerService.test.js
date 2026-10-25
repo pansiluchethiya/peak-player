@@ -200,6 +200,88 @@ describe('getPlayerStreamEvents', () => {
     assert.equal(done.meta.cacheHit, false);
     assert.equal(done.meta.sources, 1);
   });
+
+  it('strips external live iframe sources from embed event streams', async () => {
+    const sink = collector();
+    await getPlayerStreamEvents({
+      type: 'live_tv',
+      id: 'channel_demo_abc',
+      serverUrl: 'http://peak.test',
+      config: {},
+      onEvent: sink.onEvent,
+      cancelled: { value: false },
+      embed: true,
+      deps: {
+        getLiveTvStream: () => ({
+          title: 'News',
+          group: 'News',
+          logo: '',
+          sources: [
+            {
+              url: 'https://cdn.example/live.m3u8',
+              quality: 'auto',
+              codec: 'hls',
+              provider: 'iptv',
+              adaptive: true,
+              expiresIn: 3600,
+            },
+            {
+              url: 'https://third-party.example/embed/123',
+              quality: 'auto',
+              codec: 'html5',
+              provider: 'iptv',
+              adaptive: false,
+              expiresIn: 3600,
+            },
+          ],
+          diagnostics: [{ provider: 'iptv', ok: true, latencyMs: 0 }],
+        }),
+      },
+    });
+
+    const sources = sink.events.filter((entry) => entry.event === 'source').map((entry) => entry.data);
+    assert.equal(sources.length, 1);
+    assert.equal(sources[0].codec, 'hls');
+    assert.equal(JSON.stringify(sink.events).includes('third-party.example'), false);
+  });
+
+  it('rejects an external-only live channel in embed mode without leaking its URL', async () => {
+    const sink = collector();
+    await getPlayerStreamEvents({
+      type: 'live_tv',
+      id: 'channel_demo_abc',
+      serverUrl: 'http://peak.test',
+      config: {},
+      onEvent: sink.onEvent,
+      cancelled: { value: false },
+      embed: true,
+      deps: {
+        getLiveTvStream: () => ({
+          title: 'News',
+          group: 'News',
+          logo: '',
+          sources: [
+            {
+              url: 'https://third-party.example/embed/123',
+              quality: 'auto',
+              codec: 'html5',
+              provider: 'iptv',
+              adaptive: false,
+              expiresIn: 3600,
+            },
+          ],
+          diagnostics: [{ provider: 'iptv', ok: true, latencyMs: 0 }],
+        }),
+      },
+    });
+
+    assert.equal(sink.events.some((entry) => entry.event === 'source'), false);
+    assert.equal(
+      sink.events.find((entry) => entry.event === 'error')?.data.error,
+      'NO_EMBEDDABLE_SOURCE',
+    );
+    assert.equal(JSON.stringify(sink.events).includes('third-party.example'), false);
+  });
 });
 
 describe('cacheTtlMs', () => {

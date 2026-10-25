@@ -17,7 +17,8 @@ services:
       - EMBED_TOKEN_SECRET=${EMBED_TOKEN_SECRET:-change-me-embed-token-secret}
       - PROXY_SIGNING_SECRET=${PROXY_SIGNING_SECRET:-change-me-proxy-signing-secret}
       - PLAYER_ALLOWED_ORIGINS=${PLAYER_ALLOWED_ORIGINS:-http://localhost:3001}
-      - EMBED_PARTNERS=${EMBED_PARTNERS:-[]}
+      # Development-only demo partner. Replace this before exposing the stack.
+      - 'EMBED_PARTNERS=${EMBED_PARTNERS:-[{"id":"demo","name":"Peak Demo","apiKey":"demo-key-change-me","origins":["http://localhost:3001"]}]}'
       # FebBox cookies (comma separated) if you want Showbox immediately functional
       - FEBBOX_COOKIES=${FEBBOX_COOKIES:-}
     ports:
@@ -46,6 +47,11 @@ services:
       - PLAYER_PUBLIC_URL=${PLAYER_PUBLIC_URL:-http://localhost:3001}
       - EMBED_TOKEN_SECRET=${EMBED_TOKEN_SECRET:-change-me-embed-token-secret}
       - PLAYER_ALLOWED_ORIGINS=${PLAYER_ALLOWED_ORIGINS:-http://localhost:3001}
+      # Development-only demo session minting. Replace or unset in production.
+      - EMBED_DEMO_API_KEY=${EMBED_DEMO_API_KEY:-demo-key-change-me}
+      - EMBED_DEMO_TMDB_ID=${EMBED_DEMO_TMDB_ID:-550}
+      # NEXT_PUBLIC_* values are compiled into the client bundle at build time.
+      - NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED=${NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED:-0}
       - PORT=3001
     ports:
       - "${PLAYER_PORT:-3001}:3001"

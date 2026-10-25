@@ -386,6 +386,7 @@ async function getPlayerStreamEvents({
   onEvent,
   cancelled,
   invalidate,
+  embed = false,
   deps = {},
 }) {
   const fetchProviderImpl = deps.fetchProvider || fetchProvider;
@@ -393,6 +394,7 @@ async function getPlayerStreamEvents({
   const prepareStreamsImpl = deps.prepareStreams || prepareStreams;
   const getDetailsImpl = deps.getDetails || getDetails;
   const resolveImdbIdImpl = deps.resolveImdbId || resolveImdbId;
+  const getLiveTvStreamImpl = deps.getLiveTvStream || getLiveTvStream;
   const emit = (event, data) => {
     if (cancelled && cancelled.value) return;
     onEvent(event, data);
@@ -401,14 +403,31 @@ async function getPlayerStreamEvents({
   if (type === 'live_tv') {
     const started = Date.now();
     try {
-      const payload = getLiveTvStream({ id, serverUrl });
+      const payload = getLiveTvStreamImpl({ id, serverUrl });
+      const sources = embed
+        ? payload.sources.filter((source) => source.codec !== 'html5')
+        : payload.sources;
       emit('meta', { title: payload.title, group: payload.group, logo: payload.logo });
-      for (const source of payload.sources) emit('source', source);
+      if (embed && sources.length === 0) {
+        const diagnostic = {
+          provider: 'iptv',
+          ok: false,
+          latencyMs: 0,
+          error: 'external live channel is disabled in embeds',
+        };
+        emit('diagnostic', diagnostic);
+        emit('error', {
+          error: 'NO_EMBEDDABLE_SOURCE',
+          message: 'This live channel needs an external player and is unavailable in embeds.',
+        });
+        return;
+      }
+      for (const source of sources) emit('source', source);
       for (const diag of payload.diagnostics) emit('diagnostic', diag);
       emit('done', {
         meta: {
           providers: 1,
-          sources: payload.sources.length,
+          sources: sources.length,
           subtitles: 0,
           latencyMs: Date.now() - started,
           cacheHit: false,

@@ -446,6 +446,7 @@ app.get('/api/v1/stream/events/:type/:id', (req,res) => {
     onEvent,
     cancelled,
     invalidate: req.query.invalidate === '1' || req.query.invalidate === 'true',
+    embed: req.query.embed === '1',
   })
     .then(() => {
       if (!cancelled.value) res.end();

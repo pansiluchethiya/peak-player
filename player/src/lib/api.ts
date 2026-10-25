@@ -42,9 +42,9 @@ export function fetchStreamEvents(
   apiBase: string,
   media: Media,
   fingerprint: Fingerprint,
-  options: { invalidate?: boolean } & StreamEventHandlers = {},
+  options: { invalidate?: boolean; embed?: boolean } & StreamEventHandlers = {},
 ): { close: () => void } {
-  const { onMeta, onSource, onSubtitle, onDiagnostic, onDone, onError, invalidate } = options;
+  const { onMeta, onSource, onSubtitle, onDiagnostic, onDone, onError, invalidate, embed } = options;
 
   const params = new URLSearchParams({
     fpHash: fingerprint.hash,
@@ -54,6 +54,7 @@ export function fetchStreamEvents(
     lang: fingerprint.language,
   });
   if (invalidate) params.set('invalidate', '1');
+  if (embed) params.set('embed', '1');
 
   const url = `${base(apiBase)}${eventsPath(media)}?${params.toString()}`;
   const source = new EventSource(url);
