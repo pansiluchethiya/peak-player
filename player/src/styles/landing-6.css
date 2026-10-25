@@ -3,10 +3,10 @@
   width: 36px;
   height: 36px;
   place-items: center;
-  border: 1px solid rgba(201, 242, 109, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
   border-radius: 50%;
-  background: rgba(201, 242, 109, 0.055);
-  color: var(--peak-lime);
+  background: color-mix(in srgb, var(--color-accent) 5.5%, transparent);
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   font-weight: 700;
@@ -14,7 +14,7 @@
 
 .peak-steps h3 {
   margin: 4px 0 5px;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.025em;
@@ -23,7 +23,7 @@
 .peak-steps p {
   max-width: 44ch;
   margin: 0;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 13px;
   line-height: 1.62;
 }
@@ -37,14 +37,14 @@
 .peak-code-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--peak-line);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: rgba(242, 239, 230, 0.028);
+  background: color-mix(in srgb, var(--color-fg) 2.8%, transparent);
 }
 
 .peak-code-card-dark {
-  border-color: rgba(201, 242, 109, 0.16);
-  background: #030a07;
+  border-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  background: var(--color-bg);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
@@ -54,8 +54,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 11px 14px;
-  border-bottom: 1px solid var(--peak-line);
-  color: var(--peak-ivory-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -70,11 +70,11 @@
 .peak-code-head svg {
   width: 13px;
   height: 13px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
 }
 
 .peak-code-head > span:last-child {
-  color: rgba(242, 239, 230, 0.3);
+  color: color-mix(in srgb, var(--color-fg) 3%, transparent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 9px;
   font-weight: 500;
@@ -84,7 +84,7 @@
   margin: 0;
   padding: 16px;
   overflow-x: auto;
-  color: #d9e7dc;
+  color: var(--color-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11.5px;
   line-height: 1.7;
@@ -95,7 +95,7 @@
 
 .peak-features {
   background:
-    radial-gradient(circle at 50% 0%, rgba(18, 81, 59, 0.24), transparent 34rem),
+    radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.24), transparent 34rem),
     transparent;
 }
 
@@ -116,11 +116,11 @@
   min-width: 0;
   padding: 24px;
   overflow: hidden;
-  border: 1px solid var(--peak-line);
+  border: 1px solid var(--color-border);
   border-radius: 18px;
   background:
-    linear-gradient(150deg, rgba(242, 239, 230, 0.045), transparent 55%),
-    rgba(9, 27, 20, 0.56);
+    linear-gradient(150deg, color-mix(in srgb, var(--color-fg) 4.5%, transparent), transparent 55%),
+    rgba(0, 0, 0, 0.56);
   transition: border-color 220ms ease, transform 220ms var(--peak-ease), background 220ms ease;
 }
 
@@ -131,17 +131,17 @@
   width: 60%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201, 242, 109, 0.09), transparent 68%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 68%);
   content: "";
   pointer-events: none;
   transition: opacity 220ms ease;
 }
 
 .peak-bento-card:hover {
-  border-color: rgba(201, 242, 109, 0.22);
+  border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
   background:
-    linear-gradient(150deg, rgba(242, 239, 230, 0.065), transparent 55%),
-    rgba(11, 33, 24, 0.74);
+    linear-gradient(150deg, color-mix(in srgb, var(--color-fg) 6.5%, transparent), transparent 55%),
+    rgba(0, 0, 0, 0.74);
   transform: translateY(-3px);
 }
 
@@ -149,13 +149,13 @@
   width: 22px;
   height: 22px;
   margin-bottom: auto;
-  color: var(--peak-lime);
+  color: var(--color-accent);
   stroke-width: 1.6;
 }
 
 .peak-bento-card h3 {
   margin: 28px 0 8px;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 21px;
   font-weight: 650;
   letter-spacing: -0.03em;
@@ -164,7 +164,7 @@
 .peak-bento-card p {
   max-width: 42ch;
   margin: 0;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 13px;
   line-height: 1.62;
 }

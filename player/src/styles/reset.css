@@ -6,10 +6,9 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background: #05060a;
-  color: #f5f6fb;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
   user-select: none;
   -webkit-user-select: none;
 }

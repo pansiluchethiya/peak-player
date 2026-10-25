@@ -13,7 +13,7 @@ interface BacklightProps {
 export function Backlight({
   children,
   className,
-  color = 'rgba(201, 242, 109, 0.16)',
+  color = 'color-mix(in srgb, var(--color-accent) 16%, transparent)',
   size = 420,
 }: BacklightProps) {
   const ref = useRef<HTMLDivElement>(null);

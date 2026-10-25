@@ -44,7 +44,7 @@
   opacity: 0.35;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(245, 246, 251, 0.5);
+  color: color-mix(in srgb, var(--color-fg) 5%, transparent);
   transform: translateY(12px);
   transition: all 450ms ease;
 }

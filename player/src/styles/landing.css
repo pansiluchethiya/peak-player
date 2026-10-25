@@ -8,11 +8,11 @@
   min-height: 100vh;
   overflow-x: clip;
   background:
-    radial-gradient(circle at 8% -4%, rgba(18, 81, 59, 0.55), transparent 34rem),
-    radial-gradient(circle at 96% 8%, rgba(214, 158, 46, 0.12), transparent 30rem),
-    var(--peak-ink);
-  color: var(--peak-ivory);
-  font-family: var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    radial-gradient(circle at 8% -4%, rgba(0, 0, 0, 0.55), transparent 34rem),
+    radial-gradient(circle at 96% 8%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 30rem),
+    var(--color-fg);
+  color: var(--color-fg);
+  font-family: var(--font-mono), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -24,8 +24,8 @@
 }
 
 .peak-site ::selection {
-  background: var(--peak-lime);
-  color: var(--peak-ink);
+  background: var(--color-accent);
+  color: var(--color-fg);
 }
 
 .peak-site a {
@@ -41,7 +41,7 @@
 .peak-site a:focus-visible,
 .peak-site button:focus-visible,
 .peak-site summary:focus-visible {
-  outline: 3px solid var(--peak-lime);
+  outline: 3px solid var(--color-accent);
   outline-offset: 4px;
 }
 
@@ -52,8 +52,8 @@
   z-index: 300;
   padding: 10px 14px;
   border-radius: 999px;
-  background: var(--peak-lime);
-  color: var(--peak-ink);
+  background: var(--color-accent);
+  color: var(--color-fg);
   font-size: 13px;
   font-weight: 700;
   transform: translateY(-160%);
@@ -76,8 +76,8 @@
   gap: 24px;
   width: 100%;
   padding: 14px clamp(20px, 4.5vw, 72px);
-  border-bottom: 1px solid var(--peak-line);
-  background: rgba(7, 19, 15, 0.8);
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
 }
@@ -93,13 +93,13 @@
   width: 38px;
   height: 38px;
   border-radius: 11px;
-  box-shadow: 0 0 0 1px rgba(201, 242, 109, 0.16);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 .peak-brand span {
   display: grid;
   gap: 1px;
-  font-family: var(--font-display), var(--font-ui), sans-serif;
+  font-family: var(--font-sans), var(--font-mono), sans-serif;
   font-size: 19px;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -107,8 +107,8 @@
 }
 
 .peak-brand small {
-  color: var(--peak-ivory-muted);
-  font-family: var(--font-ui), sans-serif;
+  color: var(--color-muted);
+  font-family: var(--font-mono), sans-serif;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -124,7 +124,7 @@
 
 .peak-nav a {
   position: relative;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -137,7 +137,7 @@
   bottom: -6px;
   left: 0;
   height: 1px;
-  background: var(--peak-lime);
+  background: var(--color-accent);
   content: "";
   transform: scaleX(0);
   transform-origin: left;
@@ -145,7 +145,7 @@
 }
 
 .peak-nav a:hover {
-  color: var(--peak-ivory);
+  color: var(--color-fg);
 }
 
 .peak-nav a:hover::after {
@@ -163,9 +163,9 @@
   align-items: center;
   gap: 8px;
   padding: 7px 11px;
-  border: 1px solid var(--peak-line);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -176,7 +176,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--peak-lime);
-  box-shadow: 0 0 0 4px rgba(201, 242, 109, 0.12), 0 0 12px rgba(201, 242, 109, 0.5);
+  background: var(--color-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent), 0 0 12px color-mix(in srgb, var(--color-accent) 5%, transparent);
 }
 

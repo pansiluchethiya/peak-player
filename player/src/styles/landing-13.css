@@ -22,8 +22,8 @@
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    var(--peak-beam-from, #c9f26d) 24deg,
-    var(--peak-beam-to, #d69e2e) 44deg,
+    var(--peak-beam-from, var(--color-accent)) 24deg,
+    var(--peak-beam-to, var(--color-accent)) 44deg,
     transparent 74deg
   );
   content: "";

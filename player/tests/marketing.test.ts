@@ -48,18 +48,38 @@ describe('embed landing page', () => {
     assert.doesNotMatch(player, /components\/marketing/);
   });
 
-  it('defines Peak design tokens and removes the Netflix red fallback', () => {
-    assert.match(css, /--peak-forest/);
-    assert.match(css, /--peak-ink/);
-    assert.match(css, /--peak-ivory/);
-    assert.match(css, /--peak-amber/);
+  it('defines Vercel monochrome tokens and removes the retired Peak palette', () => {
+    assert.match(css, /--color-accent/);
+    assert.match(css, /--color-fg/);
+    assert.match(css, /--color-muted/);
+    assert.match(css, /--color-border/);
+    assert.match(css, /--color-bg/);
+    assert.match(css, /--color-success/);
+    assert.match(css, /--color-error/);
+    assert.match(css, /--font-sans/);
+    assert.match(css, /--font-mono/);
+    assert.match(css, /--peak-max/);
+    assert.match(css, /--peak-ease/);
+    assert.match(css, /data-theme/);
     assert.doesNotMatch(css, /#e50914/i);
+    assert.doesNotMatch(css, /#0070f3/i);
+    assert.doesNotMatch(css, /#0c4a34/i);
+    assert.doesNotMatch(css, /#c9f26d/i);
+    assert.doesNotMatch(css, /--peak-forest|--peak-ink\b|--peak-ivory|--peak-amber\b|--peak-lime\b|--peak-line\b|--peak-surface|#1b5c42|#163f30|#05060a|#f5f6fb|#030a07|#07130f|#f2efe6/i);
     assert.match(allStyles, /prefers-reduced-motion/);
+    assert.doesNotMatch(
+      allStyles,
+      /#05060a|#f5f6fb|#0c4a34|#1b5c42|#163f30|#030a07|#c9f26d|#d69e2d|#f2efe6|#07130f|#1b3027|#0c1b16|#040908|#050c09|#06100c|#040a08|#0a1712|#13231d|#07100d|#030706|#1a2f25|#d9e7dc|#d7e7dd|#f0b8a8|#0070f3/i
+    );
   });
 
-  it('loads the display and UI faces from next/font/google', () => {
-    assert.match(layout, /Bricolage_Grotesque/);
-    assert.match(layout, /DM_Sans/);
+  it('loads the Geist display and UI faces from next/font/google', () => {
+    assert.match(layout, /Geist/);
+    assert.match(layout, /Geist_Mono/);
     assert.match(layout, /variable:/);
+    assert.match(layout, /--font-sans/);
+    assert.match(layout, /--font-mono/);
+    assert.match(layout, /data-theme/);
+    assert.match(layout, /suppressHydrationWarning/);
   });
 });

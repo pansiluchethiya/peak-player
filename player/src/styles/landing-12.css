@@ -1,8 +1,8 @@
 .peak-preview-badge {
   padding: 4px 8px;
-  border: 1px solid rgba(242, 239, 230, 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 16%, transparent);
   border-radius: 999px;
-  background: rgba(3, 8, 6, 0.4);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .peak-preview-center {
@@ -17,10 +17,10 @@
   width: 68px;
   height: 68px;
   place-items: center;
-  border: 1px solid rgba(242, 239, 230, 0.32);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 32%, transparent);
   border-radius: 50%;
-  background: rgba(7, 19, 15, 0.56);
-  color: var(--peak-ivory);
+  background: rgba(0, 0, 0, 0.56);
+  color: var(--color-fg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -37,7 +37,7 @@
   bottom: 46px;
   left: 18px;
   z-index: 2;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(22px, 3.3vw, 38px);
   font-weight: 650;
   letter-spacing: -0.045em;
@@ -49,7 +49,7 @@
   bottom: 26px;
   left: 18px;
   z-index: 2;
-  color: rgba(242, 239, 230, 0.5);
+  color: color-mix(in srgb, var(--color-fg) 5%, transparent);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -65,7 +65,7 @@
   height: 4px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(242, 239, 230, 0.18);
+  background: color-mix(in srgb, var(--color-fg) 18%, transparent);
 }
 
 .peak-preview-timeline::before {
@@ -73,7 +73,7 @@
   width: 38%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--peak-forest-soft), var(--peak-lime));
+  background: linear-gradient(90deg, var(--color-muted), var(--color-accent));
   content: "";
 }
 
@@ -86,7 +86,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: rgba(242, 239, 230, 0.62);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
 }
 
 .peak-preview-controls svg {
@@ -106,12 +106,12 @@
   flex-direction: column;
   gap: 0;
   padding: 18px 16px;
-  background: #06100c;
+  background: var(--color-bg);
 }
 
 .peak-dialog-rail-title {
   margin-bottom: 12px;
-  color: rgba(242, 239, 230, 0.38);
+  color: color-mix(in srgb, var(--color-fg) 38%, transparent);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -123,8 +123,8 @@
   align-items: center;
   gap: 8px;
   padding: 9px 0;
-  border-top: 1px solid rgba(242, 239, 230, 0.07);
-  color: var(--peak-ivory-muted);
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 7%, transparent);
+  color: var(--color-muted);
   font-size: 11px;
 }
 
@@ -133,8 +133,8 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--peak-lime);
-  box-shadow: 0 0 8px rgba(201, 242, 109, 0.5);
+  background: var(--color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 5%, transparent);
 }
 
 .peak-dialog-source > div {
@@ -143,19 +143,19 @@
 }
 
 .peak-dialog-source strong {
-  color: var(--peak-ivory);
+  color: var(--color-fg);
   font-size: 11px;
   font-weight: 650;
 }
 
 .peak-dialog-source div span {
-  color: rgba(242, 239, 230, 0.42);
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
   font-size: 9px;
 }
 
 .peak-dialog-source em {
   margin-left: auto;
-  color: var(--peak-lime);
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 8.5px;
   font-style: normal;
@@ -163,20 +163,20 @@
 }
 
 .peak-dialog-source:nth-child(4n) .peak-dialog-source-dot {
-  background: var(--peak-amber);
-  box-shadow: 0 0 8px rgba(214, 158, 46, 0.5);
+  background: var(--color-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 5%, transparent);
 }
 
 .peak-dialog-source:nth-child(5n) .peak-dialog-source-dot {
-  background: rgba(242, 239, 230, 0.35);
+  background: color-mix(in srgb, var(--color-fg) 35%, transparent);
   box-shadow: none;
 }
 
 .peak-dialog-note {
   margin: auto 0 0;
   padding-top: 14px;
-  border-top: 1px solid rgba(242, 239, 230, 0.07);
-  color: rgba(242, 239, 230, 0.36);
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 7%, transparent);
+  color: color-mix(in srgb, var(--color-fg) 36%, transparent);
   font-size: 9.5px;
   line-height: 1.55;
 }

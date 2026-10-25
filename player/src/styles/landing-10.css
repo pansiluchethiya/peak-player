@@ -2,7 +2,7 @@
   max-width: 80ch;
   margin: -6px 0 0;
   padding: 0 4px 24px;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 13.5px;
   line-height: 1.68;
 }
@@ -16,13 +16,13 @@
   gap: clamp(32px, 5vw, 72px);
   width: min(var(--peak-max), 100%);
   margin: 0 auto;
-  border-top: 1px solid var(--peak-line);
+  border-top: 1px solid var(--color-border);
 }
 
 .peak-status-copy h2 {
   max-width: 15ch;
   margin: 0;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(2rem, 3.4vw, 3.25rem);
   font-weight: 650;
   letter-spacing: -0.045em;
@@ -32,16 +32,16 @@
 .peak-status-copy p {
   max-width: 44ch;
   margin: 18px 0 22px;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.65;
 }
 
 .peak-status-card {
   overflow: hidden;
-  border: 1px solid var(--peak-line);
+  border: 1px solid var(--color-border);
   border-radius: 18px;
-  background: rgba(9, 27, 20, 0.56);
+  background: rgba(0, 0, 0, 0.56);
 }
 
 .peak-status-card-head {
@@ -50,8 +50,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--peak-line);
-  color: var(--peak-ivory-muted);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
   font-size: 10px;
   letter-spacing: 0.04em;
 }
@@ -60,7 +60,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -77,7 +77,7 @@
   align-items: center;
   gap: 10px;
   padding: 13px 16px;
-  border-bottom: 1px solid rgba(242, 239, 230, 0.06);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 6%, transparent);
 }
 
 .peak-status-row:last-child {
@@ -87,7 +87,7 @@
 .peak-status-row > svg:first-child {
   width: 15px;
   height: 15px;
-  color: var(--peak-amber);
+  color: var(--color-accent);
 }
 
 .peak-status-row > span {
@@ -101,14 +101,14 @@
 }
 
 .peak-status-row small {
-  color: rgba(242, 239, 230, 0.42);
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
   font-size: 9px;
 }
 
 .peak-status-check {
   width: 14px;
   height: 14px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
 }
 
 /* Final CTA and footer ---------------------------------------------------- */
@@ -120,7 +120,7 @@
   gap: 28px;
   padding: clamp(80px, 11vw, 150px) clamp(20px, 5vw, 80px);
   overflow: hidden;
-  border-top: 1px solid var(--peak-line);
+  border-top: 1px solid var(--color-border);
   text-align: center;
 }
 
@@ -131,7 +131,7 @@
   width: min(64rem, 120vw);
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201, 242, 109, 0.12), transparent 62%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 62%);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -144,7 +144,7 @@
 .peak-final-copy h2 {
   max-width: 16ch;
   margin: 0 auto;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(2.5rem, 5vw, 5rem);
   font-weight: 670;
   letter-spacing: -0.055em;
@@ -154,7 +154,7 @@
 .peak-final-copy p {
   max-width: 48ch;
   margin: 20px auto 0;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.65;
 }
@@ -174,15 +174,15 @@
   align-items: center;
   gap: 20px 40px;
   padding: 26px clamp(20px, 5vw, 80px);
-  border-top: 1px solid var(--peak-line);
-  background: rgba(3, 10, 7, 0.55);
+  border-top: 1px solid var(--color-border);
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .peak-footer-brand {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.02em;

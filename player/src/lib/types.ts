@@ -66,7 +66,7 @@ export interface Branding {
 export const DEFAULT_BRANDING: Branding = {
   name: 'Peak',
   logoUrl: '/logo.svg',
-  accentColor: '#2f6b4f',
+  accentColor: 'var(--color-accent)',
   tagline: 'Cinema, elevated.',
 };
 

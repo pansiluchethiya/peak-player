@@ -44,7 +44,7 @@
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  color: #f5f6fb;
+  color: var(--color-fg);
   cursor: pointer;
   transition: background 160ms ease, transform 160ms ease;
 }
@@ -97,7 +97,7 @@
   margin-top: 2px;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(245, 246, 251, 0.75);
+  color: color-mix(in srgb, var(--color-fg) 75%, transparent);
 }
 
 /* ==========================================================================

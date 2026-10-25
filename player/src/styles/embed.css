@@ -22,9 +22,9 @@
   z-index: 5;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(5, 6, 10, 0.82);
+  background: rgba(0, 0, 0, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #f5f6fb;
+  color: var(--color-fg);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -40,8 +40,8 @@
   gap: 8px;
   padding: 32px;
   text-align: center;
-  background: radial-gradient(circle at 50% 35%, rgba(47, 107, 79, 0.28), #05060a 70%);
-  color: #f5f6fb;
+  background: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.28), var(--color-bg) 70%);
+  color: var(--color-fg);
 }
 
 .external-embed-disabled strong {
@@ -52,7 +52,7 @@
 
 .external-embed-disabled span {
   max-width: 46ch;
-  color: rgba(245, 246, 251, 0.66);
+  color: color-mix(in srgb, var(--color-fg) 66%, transparent);
   line-height: 1.55;
 }
 
@@ -64,10 +64,10 @@
   min-height: 100vh;
   padding: 32px 20px 64px;
   background:
-    radial-gradient(circle at 12% 0%, rgba(47, 107, 79, 0.32), transparent 34rem),
-    radial-gradient(circle at 90% 12%, rgba(214, 158, 46, 0.16), transparent 28rem),
-    #05060a;
-  color: #f5f6fb;
+    radial-gradient(circle at 12% 0%, rgba(0, 0, 0, 0.32), transparent 34rem),
+    radial-gradient(circle at 90% 12%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 28rem),
+    var(--color-bg);
+  color: var(--color-fg);
 }
 
 .embed-demo-shell {
@@ -86,7 +86,7 @@
 
 .embed-demo-kicker {
   margin: 0 0 8px;
-  color: #d69e2e;
+  color: var(--color-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -103,7 +103,7 @@
 .embed-demo-header p {
   max-width: 58ch;
   margin: 10px 0 0;
-  color: rgba(245, 246, 251, 0.66);
+  color: color-mix(in srgb, var(--color-fg) 66%, transparent);
   line-height: 1.6;
 }
 
@@ -112,7 +112,7 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   font-size: 12px;
-  color: rgba(245, 246, 251, 0.72);
+  color: color-mix(in srgb, var(--color-fg) 72%, transparent);
 }
 
 .embed-demo-grid {
@@ -157,7 +157,7 @@
 
 .embed-demo-card p {
   margin: 0 0 12px;
-  color: rgba(245, 246, 251, 0.62);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -174,7 +174,7 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 9px;
   background: rgba(0, 0, 0, 0.35);
-  color: #f5f6fb;
+  color: var(--color-fg);
   user-select: text;
 }
 
@@ -183,8 +183,8 @@
   padding: 9px 12px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 9px;
-  background: rgba(47, 107, 79, 0.55);
-  color: #f5f6fb;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--color-fg);
   cursor: pointer;
 }
 

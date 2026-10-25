@@ -1,7 +1,7 @@
 .peak-auth-copy h2 {
   max-width: 16ch;
   margin: 0;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(2rem, 3.4vw, 3.25rem);
   font-weight: 650;
   letter-spacing: -0.045em;
@@ -11,7 +11,7 @@
 .peak-auth-copy > p {
   max-width: 50ch;
   margin: 18px 0 0;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.65;
 }
@@ -28,7 +28,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 12.5px;
   line-height: 1.55;
 }
@@ -38,7 +38,7 @@
   width: 15px;
   height: 15px;
   margin-top: 1px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
 }
 
 .peak-auth-actions {
@@ -52,7 +52,7 @@
 /* Docs -------------------------------------------------------------------- */
 
 .peak-docs {
-  border-top: 1px solid var(--peak-line);
+  border-top: 1px solid var(--color-border);
 }
 
 .peak-docs-card {
@@ -62,18 +62,18 @@
   width: min(var(--peak-max), 100%);
   margin: 0 auto;
   padding: clamp(28px, 4.5vw, 54px);
-  border: 1px solid rgba(201, 242, 109, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
   border-radius: 26px;
   background:
-    radial-gradient(circle at 100% 0%, rgba(201, 242, 109, 0.12), transparent 30rem),
-    linear-gradient(145deg, rgba(18, 81, 59, 0.52), rgba(7, 19, 15, 0.78));
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 30rem),
+    linear-gradient(145deg, rgba(0, 0, 0, 0.52), rgba(0, 0, 0, 0.78));
   box-shadow: 0 38px 100px rgba(0, 0, 0, 0.3);
 }
 
 .peak-docs-copy h2 {
   max-width: 15ch;
   margin: 0;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(2rem, 3.4vw, 3.25rem);
   font-weight: 650;
   letter-spacing: -0.045em;
@@ -83,7 +83,7 @@
 .peak-docs-copy > p {
   max-width: 48ch;
   margin: 18px 0 0;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 14px;
   line-height: 1.65;
 }
@@ -100,7 +100,7 @@
   display: grid;
   align-content: center;
   gap: 0;
-  border-top: 1px solid rgba(242, 239, 230, 0.14);
+  border-top: 1px solid color-mix(in srgb, var(--color-fg) 14%, transparent);
 }
 
 .peak-docs-row {
@@ -109,11 +109,11 @@
   align-items: center;
   gap: 12px;
   padding: 14px 4px;
-  border-bottom: 1px solid rgba(242, 239, 230, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 1%, transparent);
 }
 
 .peak-docs-row > span {
-  color: var(--peak-lime);
+  color: var(--color-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 9px;
 }
@@ -124,7 +124,7 @@
 }
 
 .peak-docs-row small {
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 10px;
   white-space: nowrap;
 }
@@ -132,17 +132,17 @@
 /* FAQ --------------------------------------------------------------------- */
 
 .peak-faq {
-  border-top: 1px solid var(--peak-line);
+  border-top: 1px solid var(--color-border);
 }
 
 .peak-faq-list {
   width: min(var(--peak-max), 100%);
   margin: 0 auto;
-  border-top: 1px solid var(--peak-line);
+  border-top: 1px solid var(--color-border);
 }
 
 .peak-faq-item {
-  border-bottom: 1px solid var(--peak-line);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .peak-faq-item summary {
@@ -151,8 +151,8 @@
   justify-content: space-between;
   gap: 24px;
   padding: 22px 4px;
-  color: var(--peak-ivory);
-  font-family: var(--font-display), sans-serif;
+  color: var(--color-fg);
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(16px, 1.7vw, 20px);
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -169,7 +169,7 @@
   flex: none;
   width: 18px;
   height: 18px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
 }
 
 .peak-faq-plus::before,

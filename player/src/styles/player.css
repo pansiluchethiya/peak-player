@@ -7,7 +7,7 @@
   inset: 0;
   overflow: hidden;
   background: #000;
-  --accent: var(--peak-forest-soft);
+  --accent: var(--color-accent);
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
@@ -73,7 +73,7 @@
   pointer-events: none;
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 20%, transparent 40%),
-    linear-gradient(0deg, rgba(3, 4, 8, 0.92) 0%, rgba(3, 4, 8, 0.55) 25%, transparent 45%);
+    linear-gradient(0deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 25%, transparent 45%);
   transition: opacity 300ms ease;
 }
 
@@ -116,7 +116,7 @@
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: rgba(14, 16, 24, 0.78);
+  background: rgba(0, 0, 0, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #fff;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);

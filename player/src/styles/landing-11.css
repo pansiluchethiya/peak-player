@@ -12,22 +12,22 @@
 }
 
 .peak-footer nav a {
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 11px;
   font-weight: 600;
   transition: color 160ms ease;
 }
 
 .peak-footer nav a:hover {
-  color: var(--peak-lime);
+  color: var(--color-accent);
 }
 
 .peak-footer > p {
   grid-column: 1 / -1;
   margin: 0;
   padding-top: 16px;
-  border-top: 1px solid var(--peak-line);
-  color: rgba(242, 239, 230, 0.34);
+  border-top: 1px solid var(--color-border);
+  color: color-mix(in srgb, var(--color-fg) 34%, transparent);
   font-size: 10px;
   line-height: 1.5;
 }
@@ -40,10 +40,10 @@
   gap: 9px;
   min-height: 48px;
   padding: 0 18px;
-  border: 1px solid rgba(242, 239, 230, 0.26);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 26%, transparent);
   border-radius: 999px;
-  background: rgba(7, 19, 15, 0.5);
-  color: var(--peak-ivory);
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--color-fg);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -53,8 +53,8 @@
 }
 
 .peak-hero-dialog:hover {
-  border-color: rgba(201, 242, 109, 0.5);
-  background: rgba(201, 242, 109, 0.1);
+  border-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 1%, transparent);
   transform: translateY(-1px);
 }
 
@@ -64,8 +64,8 @@
   height: 28px;
   place-items: center;
   border-radius: 50%;
-  background: var(--peak-lime);
-  color: var(--peak-ink);
+  background: var(--color-accent);
+  color: var(--color-fg);
 }
 
 .peak-hero-play-icon {
@@ -82,7 +82,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(3, 8, 6, 0.82);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -92,9 +92,9 @@
   width: min(1040px, 100%);
   max-height: calc(100vh - 40px);
   overflow: auto;
-  border: 1px solid rgba(242, 239, 230, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-fg) 18%, transparent);
   border-radius: 22px;
-  background: var(--peak-ink-raised);
+  background: var(--color-fg);
   box-shadow: 0 50px 140px rgba(0, 0, 0, 0.7);
 }
 
@@ -104,11 +104,11 @@
   justify-content: space-between;
   gap: 18px;
   padding: 16px 18px;
-  border-bottom: 1px solid var(--peak-line);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .peak-dialog-head strong {
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.03em;
@@ -117,7 +117,7 @@
 .peak-eyebrow {
   display: block;
   margin-bottom: 3px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -129,17 +129,17 @@
   width: 36px;
   height: 36px;
   place-items: center;
-  border: 1px solid var(--peak-line);
+  border: 1px solid var(--color-border);
   border-radius: 50%;
   background: transparent;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   cursor: pointer;
   transition: background 160ms ease, color 160ms ease;
 }
 
 .peak-dialog-close:hover {
-  background: rgba(242, 239, 230, 0.08);
-  color: var(--peak-ivory);
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
 }
 
 .peak-dialog-close svg {
@@ -151,7 +151,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 250px;
   gap: 1px;
-  background: var(--peak-line);
+  background: var(--color-border);
 }
 
 .peak-dialog-frame {
@@ -159,8 +159,8 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background:
-    radial-gradient(circle at 72% 34%, rgba(214, 158, 46, 0.2), transparent 30%),
-    linear-gradient(150deg, #1a2f25, #07100d 62%, #030706);
+    radial-gradient(circle at 72% 34%, color-mix(in srgb, var(--color-accent) 2%, transparent), transparent 30%),
+    linear-gradient(150deg, var(--color-muted), var(--color-muted) 62%, var(--color-muted));
 }
 
 .peak-preview-topline {
@@ -173,7 +173,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  color: rgba(242, 239, 230, 0.5);
+  color: color-mix(in srgb, var(--color-fg) 5%, transparent);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -184,7 +184,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--peak-amber);
-  box-shadow: 0 0 10px rgba(214, 158, 46, 0.6);
+  background: var(--color-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 

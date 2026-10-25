@@ -1,20 +1,28 @@
-import type { Metadata } from 'next';
-import { Bricolage_Grotesque, DM_Sans } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
-const display = Bricolage_Grotesque({
+const geistSans = Geist({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-display',
+  variable: '--font-sans',
   weight: ['400', '500', '600', '700', '800'],
 });
 
-const ui = DM_Sans({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-ui',
+  variable: '--font-mono',
   weight: ['400', '500', '600', '700'],
 });
+
+/* Blocking theme script: the player is dark-first (AMOLED #000000). We read a
+ * saved preference from localStorage, otherwise default to "dark", and set
+ * data-theme on <html> before the page paints to avoid a theme flash.
+ * suppressHydrationWarning on <html> lets React skip the attribute mismatch. */
+const themeScript = `
+(function(){try{var t=localStorage.getItem('peak-theme');if(t!=='light'&&t!=='dark'){t='dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
+`.trim();
 
 export const metadata: Metadata = {
   title: 'Peak — the embeddable player for every source',
@@ -26,9 +34,21 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { color: '#000000', media: '(prefers-color-scheme: dark)' },
+    { color: '#ffffff', media: '(prefers-color-scheme: light)' },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${ui.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

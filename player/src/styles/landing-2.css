@@ -3,10 +3,10 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border: 1px solid rgba(201, 242, 109, 0.32);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 32%, transparent);
   border-radius: 999px;
-  background: rgba(201, 242, 109, 0.08);
-  color: var(--peak-lime-soft);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -14,8 +14,8 @@
 }
 
 .peak-header-cta:hover {
-  border-color: var(--peak-lime);
-  background: rgba(201, 242, 109, 0.15);
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   transform: translateY(-1px);
 }
 
@@ -35,7 +35,7 @@
   padding: 0 20px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-family: var(--font-ui), sans-serif;
+  font-family: var(--font-mono), sans-serif;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -54,26 +54,26 @@
 }
 
 .peak-button.primary {
-  background: var(--peak-lime);
-  color: var(--peak-ink);
-  box-shadow: 0 14px 36px rgba(201, 242, 109, 0.14);
+  background: var(--color-accent);
+  color: var(--color-fg);
+  box-shadow: 0 14px 36px color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
 .peak-button.primary:hover {
-  background: var(--peak-lime-soft);
+  background: var(--color-accent);
   transform: translateY(-2px);
-  box-shadow: 0 18px 42px rgba(201, 242, 109, 0.22);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 .peak-button.ghost {
-  border-color: var(--peak-line-strong);
-  background: rgba(242, 239, 230, 0.03);
-  color: var(--peak-ivory);
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-fg) 3%, transparent);
+  color: var(--color-fg);
 }
 
 .peak-button.ghost:hover {
-  border-color: rgba(242, 239, 230, 0.36);
-  background: rgba(242, 239, 230, 0.07);
+  border-color: color-mix(in srgb, var(--color-fg) 36%, transparent);
+  background: color-mix(in srgb, var(--color-fg) 7%, transparent);
   transform: translateY(-2px);
 }
 
@@ -81,7 +81,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: var(--peak-lime-soft);
+  color: var(--color-accent);
   font-size: 13px;
   font-weight: 700;
 }
@@ -101,8 +101,8 @@
   align-items: center;
   gap: 9px;
   margin: 0 0 16px;
-  color: var(--peak-lime);
-  font-family: var(--font-ui), sans-serif;
+  color: var(--color-accent);
+  font-family: var(--font-mono), sans-serif;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.22em;
@@ -128,7 +128,7 @@
 .peak-section-heading h2 {
   max-width: 19ch;
   margin: 0;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-size: clamp(2rem, 3.6vw, 3.4rem);
   font-weight: 650;
   letter-spacing: -0.045em;
@@ -138,7 +138,7 @@
 .peak-section-heading > p {
   max-width: 43ch;
   margin: 0;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 15px;
   line-height: 1.65;
 }
@@ -157,8 +157,8 @@
   inset: 0;
   z-index: -2;
   background:
-    linear-gradient(rgba(242, 239, 230, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(242, 239, 230, 0.035) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--color-fg) 3.5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-fg) 3.5%, transparent) 1px, transparent 1px);
   background-size: 72px 72px;
   content: "";
   mask-image: radial-gradient(ellipse at 45% 30%, black 10%, transparent 72%);
@@ -172,11 +172,11 @@
   z-index: -1;
   width: 60rem;
   height: 60rem;
-  border: 1px solid rgba(201, 242, 109, 0.09);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 9%, transparent);
   border-radius: 50%;
   box-shadow:
-    0 0 0 8rem rgba(201, 242, 109, 0.018),
-    0 0 0 16rem rgba(201, 242, 109, 0.012);
+    0 0 0 8rem color-mix(in srgb, var(--color-accent) 1.8%, transparent),
+    0 0 0 16rem color-mix(in srgb, var(--color-accent) 1.2%, transparent);
   content: "";
 }
 

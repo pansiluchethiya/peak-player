@@ -5,20 +5,20 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 15px;
-  color: var(--peak-ivory-muted);
+  color: var(--color-muted);
   font-size: 10px;
   letter-spacing: 0.04em;
 }
 
 .peak-event-head {
-  border-bottom: 1px solid var(--peak-line);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .peak-event-head > span:first-child {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: var(--peak-lime);
+  color: var(--color-accent);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -31,7 +31,7 @@
 }
 
 .peak-event-head > span:last-child {
-  color: rgba(242, 239, 230, 0.35);
+  color: color-mix(in srgb, var(--color-fg) 35%, transparent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 9px;
 }
@@ -40,7 +40,7 @@
   margin: 0;
   padding: 18px 16px;
   overflow-x: auto;
-  color: #d9e7dc;
+  color: var(--color-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11.5px;
   line-height: 1.72;
@@ -48,13 +48,13 @@
 
 .peak-event-footer {
   justify-content: flex-start;
-  border-top: 1px solid var(--peak-line);
-  color: rgba(242, 239, 230, 0.42);
+  border-top: 1px solid var(--color-border);
+  color: color-mix(in srgb, var(--color-fg) 42%, transparent);
   font-size: 10px;
 }
 
 .peak-event-footer svg {
-  color: var(--peak-amber);
+  color: var(--color-accent);
 }
 
 /* Partner auth ------------------------------------------------------------ */
@@ -66,7 +66,7 @@
   gap: clamp(36px, 6vw, 88px);
   width: min(var(--peak-max), 100%);
   margin: 0 auto;
-  border-top: 1px solid var(--peak-line);
+  border-top: 1px solid var(--color-border);
 }
 
 .peak-auth-art {
@@ -75,12 +75,12 @@
   min-height: 430px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--peak-line);
+  border: 1px solid var(--color-border);
   border-radius: 26px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(18, 81, 59, 0.55), transparent 56%),
-    linear-gradient(160deg, rgba(242, 239, 230, 0.03), transparent),
-    var(--peak-ink-raised);
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.55), transparent 56%),
+    linear-gradient(160deg, color-mix(in srgb, var(--color-fg) 3%, transparent), transparent),
+    var(--color-fg);
 }
 
 .peak-auth-orbit {
@@ -93,11 +93,11 @@
 .peak-orbit-ring {
   position: absolute;
   inset: 8%;
-  border: 1px solid rgba(201, 242, 109, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
   border-radius: 50%;
   box-shadow:
-    inset 0 0 40px rgba(201, 242, 109, 0.04),
-    0 0 0 32px rgba(201, 242, 109, 0.025);
+    inset 0 0 40px color-mix(in srgb, var(--color-accent) 4%, transparent),
+    0 0 0 32px color-mix(in srgb, var(--color-accent) 2.5%, transparent);
 }
 
 .peak-orbit-ring::before,
@@ -109,7 +109,7 @@
 
 .peak-orbit-ring::before {
   inset: 18%;
-  border: 1px dashed rgba(242, 239, 230, 0.14);
+  border: 1px dashed color-mix(in srgb, var(--color-fg) 14%, transparent);
 }
 
 .peak-orbit-ring::after {
@@ -117,8 +117,8 @@
   left: 50%;
   width: 5px;
   height: 5px;
-  background: var(--peak-amber);
-  box-shadow: 0 0 14px 4px rgba(214, 158, 46, 0.45);
+  background: var(--color-accent);
+  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--color-accent) 45%, transparent);
   transform: translate(-50%, -50%);
 }
 
@@ -131,11 +131,11 @@
   width: 78px;
   height: 78px;
   place-items: center;
-  border: 1px solid rgba(201, 242, 109, 0.3);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 3%, transparent);
   border-radius: 50%;
-  background: rgba(7, 19, 15, 0.9);
-  color: var(--peak-lime);
-  box-shadow: 0 0 48px rgba(201, 242, 109, 0.16);
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--color-accent);
+  box-shadow: 0 0 48px color-mix(in srgb, var(--color-accent) 16%, transparent);
   transform: translate(-50%, -50%);
 }
 
@@ -152,10 +152,10 @@
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid var(--peak-line-strong);
+  border: 1px solid var(--color-border);
   border-radius: 50%;
-  background: rgba(8, 23, 17, 0.94);
-  color: var(--peak-ivory-muted);
+  background: rgba(0, 0, 0, 0.94);
+  color: var(--color-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 10px;
   font-weight: 700;
@@ -165,22 +165,22 @@
 .peak-orbit-node.a {
   top: 3%;
   left: 50%;
-  border-color: rgba(201, 242, 109, 0.35);
-  color: var(--peak-lime);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-accent);
   transform: translateX(-50%);
 }
 
 .peak-orbit-node.b {
   right: 2%;
   bottom: 17%;
-  border-color: rgba(214, 158, 46, 0.35);
-  color: var(--peak-amber-soft);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-accent-hover);
 }
 
 .peak-orbit-node.c {
   bottom: 17%;
   left: 2%;
-  border-color: rgba(18, 81, 59, 0.6);
+  border-color: rgba(0, 0, 0, 0.6);
 }
 
 @keyframes peak-orbit-breathe {

@@ -12,8 +12,8 @@ interface BorderBeamProps {
 
 export function BorderBeam({
   className,
-  colorFrom = '#c9f26d',
-  colorTo = '#d69e2e',
+  colorFrom = 'var(--color-accent)',
+  colorTo = 'var(--color-accent)',
   delay = 0,
   duration = 8,
   size = 180,

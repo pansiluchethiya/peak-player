@@ -12,7 +12,7 @@
   list-style: none;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
-  color: rgba(245, 246, 251, 0.68);
+  color: color-mix(in srgb, var(--color-fg) 68%, transparent);
 }
 
 .embed-demo-events li {
@@ -27,14 +27,14 @@
   overflow: auto;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.42);
-  color: #d7e7dd;
+  color: var(--color-muted);
   font-size: 12px;
   line-height: 1.55;
 }
 
 .embed-demo-error {
   margin: 0 0 14px;
-  color: #f0b8a8;
+  color: var(--color-error);
   font-size: 13px;
   line-height: 1.5;
 }
