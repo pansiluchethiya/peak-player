@@ -12,7 +12,8 @@
     "docs:dev": "npm --prefix docs run dev",
     "docs:build": "npm --prefix docs run build",
     "docs:check": "npm run check:docs",
-    "check": "npm run lint && npm run check:player && npm run check:docs"
+    "check:css": "node scripts/check-css-size.mjs",
+    "check": "npm run lint && npm run check:player && npm run check:docs && npm run check:css"
   },
   "dependencies": {
     "aromanize": "^0.1.5",
