@@ -10,6 +10,14 @@ services:
       # - TMDB_API_KEYS=["key1","key2"]
       - API_PORT=8787
       - BIND_HOST=0.0.0.0
+      # Public browser-facing URLs (not container-internal hostnames)
+      - PLAYER_PUBLIC_URL=${PLAYER_PUBLIC_URL:-http://localhost:3001}
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:8787}
+      # Replace these defaults before exposing the stack publicly
+      - EMBED_TOKEN_SECRET=${EMBED_TOKEN_SECRET:-change-me-embed-token-secret}
+      - PROXY_SIGNING_SECRET=${PROXY_SIGNING_SECRET:-change-me-proxy-signing-secret}
+      - PLAYER_ALLOWED_ORIGINS=${PLAYER_ALLOWED_ORIGINS:-http://localhost:3001}
+      - EMBED_PARTNERS=${EMBED_PARTNERS:-[]}
       # FebBox cookies (comma separated) if you want Showbox immediately functional
       - FEBBOX_COOKIES=${FEBBOX_COOKIES:-}
     ports:
@@ -34,7 +42,10 @@ services:
     container_name: peak-player
     environment:
       - API_URL=http://peak:8787
-      - PUBLIC_API_URL=http://localhost:8787
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:8787}
+      - PLAYER_PUBLIC_URL=${PLAYER_PUBLIC_URL:-http://localhost:3001}
+      - EMBED_TOKEN_SECRET=${EMBED_TOKEN_SECRET:-change-me-embed-token-secret}
+      - PLAYER_ALLOWED_ORIGINS=${PLAYER_ALLOWED_ORIGINS:-http://localhost:3001}
       - PORT=3001
     ports:
       - "${PLAYER_PORT:-3001}:3001"

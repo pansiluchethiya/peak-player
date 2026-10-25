@@ -9,10 +9,11 @@ const { listProviders, getProvider, getCookieStats } = require('./providers/regi
 const { createProxyRoutes, processStreamsForProxy } = require('./proxy/proxyServer');
 const { resolveImdbId } = require('./utils/tmdb');
 const { applyFilters } = require('./utils/streamFilters');
-const { getEmbed } = require('./utils/embed');
+const { createEmbedSession, getEmbed } = require('./utils/embed');
 const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders } = require('./utils/playerService');
 const { createPlaybackSession, getPlaybackSession } = require('./utils/playbackSession');
 const { getTelemetrySummary, recordPlaybackEvent } = require('./utils/telemetry');
+const { getAllProviderHealth } = require('./utils/providerHealth');
 const iptvStore = require('./utils/iptvStore');
 const iptvSync = require('./utils/iptvSync');
 
@@ -499,7 +500,7 @@ app.get('/api/v1/playback/sessions/:id', (req, res) => {
   res.json({ success: true, ...session });
 });
 
-app.post('/api/v1/playback/events', (req, res) => {
+function recordPlaybackEvents(req, res) {
   const payload = req.body;
   const entries = Array.isArray(payload) ? payload : [payload];
   const recorded = entries.map(recordPlaybackEvent).filter(Boolean);
@@ -507,10 +508,48 @@ app.post('/api/v1/playback/events', (req, res) => {
     return res.status(400).json({ success: false, error: 'INVALID_EVENT' });
   }
   res.json({ success: true, recorded: recorded.length });
+}
+
+app.post('/api/v1/playback/events', recordPlaybackEvents);
+app.post('/api/v1/playback/telemetry', recordPlaybackEvents);
+
+app.get('/api/v1/playback/health', (req, res) => {
+  res.json({
+    success: true,
+    providers: getAllProviderHealth(),
+    telemetry: getTelemetrySummary(),
+  });
 });
 
 app.get('/api/v1/telemetry/summary', (req, res) => {
   res.json({ success: true, ...getTelemetrySummary() });
+});
+
+app.post('/api/v1/embed/sessions', async (req, res) => {
+  const body = req.body || {};
+  try {
+    const result = await createEmbedSession({
+      apiKey: req.get('x-api-key'),
+      type: body.type,
+      id: body.id,
+      season: body.season,
+      episode: body.episode,
+      source: body.source,
+      poster: body.poster,
+      ttlSeconds: body.ttlSeconds,
+    });
+    if (result.error) {
+      return res.status(result.status || 400).json({
+        success: false,
+        error: result.error,
+        message: result.message,
+      });
+    }
+    res.json({ success: true, ...result });
+  } catch (error) {
+    metrics.lastError = error.message;
+    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: error.message });
+  }
 });
 
 // Backend embed API. Returns the custom Peak player URL for the frontend iframe.
