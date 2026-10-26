@@ -1,0 +1,8 @@
+.peak-video-skin {
+  --media-accent-color: var(--color-accent);
+  --media-accent-text-color: var(--color-bg);
+  --media-border-color: var(--color-border);
+  --media-border-radius: var(--radius-md);
+  --media-font-family: var(--font-sans);
+  --media-object-fit: contain;
+}

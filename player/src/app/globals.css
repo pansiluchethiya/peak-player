@@ -1,5 +1,7 @@
 @import "tailwindcss";
+@import "../components/player/videojs/styles/tailwind.css";
 @import "../styles/tokens.css";
+@import "../styles/skin.css";
 @import "../styles/reset.css";
 @import "../styles/base.css";
 @import "../styles/chrome.css";
@@ -30,3 +32,5 @@
 @import "../styles/landing-14.css";
 @import "../styles/landing-15.css";
 @import "../styles/theme.css";
+
+@source "../components/player/videojs";
