@@ -1,16 +1,30 @@
+'use client';
+
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { HealthChip } from '@/components/HealthChip';
 import { Menu } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-export function Header({ title = 'Overview' }: { title?: string; actions?: ReactNode }) {
+export function Header({
+  title = 'Overview',
+  actions,
+  navOpen = false,
+  onToggleNav,
+}: {
+  title?: string;
+  actions?: ReactNode;
+  navOpen?: boolean;
+  onToggleNav?: () => void;
+}) {
   return (
     <header className="admin-topbar">
       <button
         type="button"
-        className="icon-btn"
-        aria-label="Open navigation"
+        className="icon-btn admin-nav-toggle"
+        aria-label={navOpen ? 'Close navigation' : 'Open navigation'}
         aria-controls="admin-sidebar"
-        aria-expanded
+        aria-expanded={navOpen}
+        onClick={onToggleNav}
       >
         <Menu />
       </button>
@@ -19,10 +33,8 @@ export function Header({ title = 'Overview' }: { title?: string; actions?: React
         <strong className="admin-topbar-page">{title}</strong>
       </div>
       <div className="admin-topbar-actions">
-        <span className="admin-health-chip" role="status" aria-live="polite">
-          <span className="health-dot" aria-hidden="true" />
-          <span>Checking API</span>
-        </span>
+        {actions}
+        <HealthChip />
         <ThemeToggle />
       </div>
     </header>

@@ -1,8 +1,9 @@
 import './globals.css';
-import type { Metadata, ReactNode } from 'react';
+import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
-const themeBootstrap = `(function(){const K='peak_theme';let t;try{t=localStorage.getItem(K)}catch(e){}if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}const r=document.documentElement;r.dataset.theme=t;r.classList.toggle('dark',t==='dark');r.style.colorScheme=t;let m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#000000':'#ffffff')})()`;
+const themeBootstrap = `(function(){const K='peak_theme',L='ns_theme';let t;try{t=localStorage.getItem(K)||localStorage.getItem(L)}catch(e){}if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}try{localStorage.setItem(K,t);localStorage.removeItem(L)}catch(e){}const r=document.documentElement;r.dataset.theme=t;r.classList.toggle('dark',t==='dark');r.style.colorScheme=t;let m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='dark'?'#000000':'#ffffff')})()`;
 
 export const metadata: Metadata = {
   title: {
