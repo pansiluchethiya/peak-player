@@ -9,6 +9,7 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 | 1 | done | e903e7b | check pipeline + test:api, CSS budget exemptions, split player.css into stage/feedback, landing background, readable error/nav text, devIndicators off |
 | 2 | done | 873c3ee | routes/streamRoutes.js four handlers, real ?source= selection + second guard, eventsPath query params, apiServer wiring, playerService tests |
 | 3 | done | 49bd578 | pinned @videojs/react+hlsjs-video+mux-data 10.2.0, removed video.js direct dep and its CSS import, engineSource/errors adapters + 12 tests |
+| 4 | done | 8a13012 | components.json, vendored videojs skin (45 files) + README, VideoSkin wrapper, skin.css token map, tailwind source scan |
 
 ## Deviations / rulings
 
