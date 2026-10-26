@@ -7,6 +7,7 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 |---|---|---|---|
 | plan | done | 26568a4 | plan committed |
 | 1 | done | e903e7b | check pipeline + test:api, CSS budget exemptions, split player.css into stage/feedback, landing background, readable error/nav text, devIndicators off |
+| 2 | done | 873c3ee | routes/streamRoutes.js four handlers, real ?source= selection + second guard, eventsPath query params, apiServer wiring, playerService tests |
 
 ## Deviations / rulings
 
