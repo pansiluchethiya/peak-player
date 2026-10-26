@@ -8,6 +8,7 @@ const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: rootDir,
   reactStrictMode: true,
+  devIndicators: false,
 };
 
 export default nextConfig;

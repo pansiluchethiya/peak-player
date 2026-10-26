@@ -7,7 +7,8 @@ const layout = readFileSync(new URL('../src/app/layout.tsx', import.meta.url), '
 const css = readFileSync(new URL('../src/styles/tokens.css', import.meta.url), 'utf8');
 const allStyles = [
   'tokens.css', 'reset.css', 'base.css', 'chrome.css', 'chrome-2.css', 'chrome-3.css',
-  'chrome-4.css', 'player.css', 'player-2.css', 'player-3.css', 'marketing.css',
+  'chrome-4.css', 'player.css', 'player-stage.css', 'player-feedback.css',
+  'player-2.css', 'player-3.css', 'marketing.css',
   'embed.css', 'embed-2.css', 'landing.css', 'landing-2.css', 'landing-3.css',
   'landing-4.css', 'landing-5.css', 'landing-6.css', 'landing-7.css', 'landing-8.css',
   'landing-9.css', 'landing-10.css', 'landing-11.css', 'landing-12.css', 'landing-13.css',

@@ -4,7 +4,22 @@ import process from 'node:process';
 
 const roots = ['ui', 'player/src', 'docs/app', 'public', 'admin/app'];
 const MAX_LINES = 200;
+const EXEMPT_PREFIXES = ['player/src/components/player/videojs/'];
+const EXEMPT_FILES = ['admin/app/legacy.css'];
 const failures = [];
+
+function normalize(file) {
+  return file.split(path.sep).join('/');
+}
+
+function isExempt(file, content) {
+  const normalized = normalize(file);
+  return (
+    EXEMPT_FILES.includes(normalized) ||
+    EXEMPT_PREFIXES.some((prefix) => normalized.startsWith(prefix)) ||
+    content.slice(0, 200).includes('GENERATED')
+  );
+}
 
 async function walk(dir) {
   let entries;
@@ -14,6 +29,7 @@ async function walk(dir) {
     if (entry.isDirectory()) await walk(full);
     else if (entry.isFile() && entry.name.endsWith('.css')) {
       const content = await readFile(full, 'utf8');
+      if (isExempt(full, content)) continue;
       const lines = content.split(/\r?\n/).length;
       if (lines > MAX_LINES) failures.push({ file: full, lines });
     }

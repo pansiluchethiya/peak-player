@@ -150,7 +150,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.55;
-  color: color-mix(in srgb, var(--color-fg) 7%, transparent);
+  color: color-mix(in srgb, #ffffff 62%, transparent);
 }
 
 .error-actions,

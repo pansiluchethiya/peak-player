@@ -10,7 +10,7 @@
   background:
     radial-gradient(circle at 8% -4%, rgba(0, 0, 0, 0.55), transparent 34rem),
     radial-gradient(circle at 96% 8%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 30rem),
-    var(--color-fg);
+    var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-mono), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   user-select: text;
@@ -107,7 +107,7 @@
 }
 
 .peak-brand small {
-  color: var(--color-muted);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   font-family: var(--font-mono), sans-serif;
   font-size: 9px;
   font-weight: 700;
@@ -124,7 +124,7 @@
 
 .peak-nav a {
   position: relative;
-  color: var(--color-muted);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -165,7 +165,7 @@
   padding: 7px 11px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  color: var(--color-muted);
+  color: color-mix(in srgb, var(--color-fg) 62%, transparent);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
