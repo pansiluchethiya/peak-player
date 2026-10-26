@@ -17,16 +17,29 @@ export async function fetchBranding(apiBase: string, signal?: AbortSignal): Prom
   }
 }
 
-function streamPath(media: Media): string {
-  if (media.type === 'tv') return `/api/v1/stream/tv/${encodeURIComponent(media.id)}/${media.season ?? 1}/${media.episode ?? 1}`;
-  if (media.type === 'live_tv') return `/api/v1/stream/live_tv/${encodeURIComponent(media.id)}`;
-  return `/api/v1/stream/movie/${encodeURIComponent(media.id)}`;
+function streamUrl(prefix: string, media: Media, options: { source?: string }): string {
+  const params = new URLSearchParams();
+  let path: string;
+  if (media.type === 'tv') {
+    path = `${prefix}/tv/${encodeURIComponent(media.id)}`;
+    params.set('season', String(media.season ?? 1));
+    params.set('episode', String(media.episode ?? 1));
+  } else if (media.type === 'live_tv') {
+    path = `${prefix}/live_tv/${encodeURIComponent(media.id)}`;
+  } else {
+    path = `${prefix}/movie/${encodeURIComponent(media.id)}`;
+  }
+  if (options.source) params.set('source', options.source);
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }
 
-function eventsPath(media: Media): string {
-  if (media.type === 'tv') return `/api/v1/stream/events/tv/${encodeURIComponent(media.id)}/${media.season ?? 1}/${media.episode ?? 1}`;
-  if (media.type === 'live_tv') return `/api/v1/stream/events/live_tv/${encodeURIComponent(media.id)}`;
-  return `/api/v1/stream/events/movie/${encodeURIComponent(media.id)}`;
+export function streamPath(media: Media, options: { source?: string } = {}): string {
+  return streamUrl('/api/v1/stream', media, options);
+}
+
+export function eventsPath(media: Media, options: { source?: string } = {}): string {
+  return streamUrl('/api/v1/stream/events', media, options);
 }
 
 export interface StreamEventHandlers {
@@ -42,9 +55,9 @@ export function fetchStreamEvents(
   apiBase: string,
   media: Media,
   fingerprint: Fingerprint,
-  options: { invalidate?: boolean; embed?: boolean } & StreamEventHandlers = {},
+  options: { invalidate?: boolean; embed?: boolean; source?: string } & StreamEventHandlers = {},
 ): { close: () => void } {
-  const { onMeta, onSource, onSubtitle, onDiagnostic, onDone, onError, invalidate, embed } = options;
+  const { onMeta, onSource, onSubtitle, onDiagnostic, onDone, onError, invalidate, embed, source: selectedSource } = options;
 
   const params = new URLSearchParams({
     fpHash: fingerprint.hash,
@@ -56,7 +69,9 @@ export function fetchStreamEvents(
   if (invalidate) params.set('invalidate', '1');
   if (embed) params.set('embed', '1');
 
-  const url = `${base(apiBase)}${eventsPath(media)}?${params.toString()}`;
+  const path = eventsPath(media, { source: selectedSource });
+  const separator = path.includes('?') ? '&' : '?';
+  const url = `${base(apiBase)}${path}${separator}${params.toString()}`;
   const source = new EventSource(url);
 
   const handleMessage = <T>(event: string, handler?: (data: T) => void) => {
@@ -97,7 +112,7 @@ export async function fetchStream(
   apiBase: string,
   media: Media,
   fingerprint: Fingerprint,
-  options: { invalidate?: boolean; signal?: AbortSignal } = {},
+  options: { invalidate?: boolean; signal?: AbortSignal; source?: string } = {},
 ): Promise<StreamResponse> {
   const params = new URLSearchParams({
     fpHash: fingerprint.hash,
@@ -108,7 +123,9 @@ export async function fetchStream(
   });
   if (options.invalidate) params.set('invalidate', '1');
 
-  const response = await fetch(`${base(apiBase)}${streamPath(media)}?${params.toString()}`, {
+  const path = streamPath(media, { source: options.source });
+  const separator = path.includes('?') ? '&' : '?';
+  const response = await fetch(`${base(apiBase)}${path}${separator}${params.toString()}`, {
     signal: options.signal,
   });
   if (!response.ok) {

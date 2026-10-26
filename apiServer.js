@@ -10,7 +10,8 @@ const { createProxyRoutes, processStreamsForProxy } = require('./proxy/proxyServ
 const { resolveImdbId } = require('./utils/tmdb');
 const { applyFilters } = require('./utils/streamFilters');
 const { createEmbedSession, getEmbed } = require('./utils/embed');
-const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders } = require('./utils/playerService');
+const { createStreamRoutes } = require('./routes/streamRoutes');
+const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders, providerOrder } = require('./utils/playerService');
 const { createPlaybackSession, getPlaybackSession } = require('./utils/playbackSession');
 const { getTelemetrySummary, recordPlaybackEvent } = require('./utils/telemetry');
 const { getAllProviderHealth } = require('./utils/providerHealth');
@@ -385,110 +386,21 @@ app.get('/api/v1/providers', (req,res) => {
   res.json(getPlayerProviders());
 });
 
-app.get('/api/v1/stream/:type/:id', async (req,res) => {
-  const { type, id } = req.params;
-  const validTypes = ['movie','tv','series','live_tv'];
-  if (!validTypes.includes(type)) {
-    return res.status(400).json({ error: 'INVALID_TYPE', message: 'type must be movie, tv, series, or live_tv' });
-  }
-  if (type === 'live_tv') {
-    if (!/^channel_[a-z0-9-]+_[a-f0-9]+$/.test(String(id))) {
-      return res.status(400).json({ error: 'INVALID_ID', message: 'id must be a channel id (channel_<slug>_<hash>)' });
-    }
-  } else if (!/^\d+$/.test(String(id))) {
-    return res.status(400).json({ error: 'INVALID_ID', message: 'id must be a numeric TMDB id' });
-  }
-  const season = req.query.season ? Number(req.query.season) : null;
-  const episode = req.query.episode ? Number(req.query.episode) : null;
-  try {
-    metrics.streamRequests++;
-    const payload = await getPlayerStream({
-      type,
-      id,
-      season,
-      episode,
-      serverUrl: requestBaseUrl(req),
-      config,
-    });
-     metrics.streamsReturned += payload.sources.length;
-    res.json(payload);
-  } catch (e) {
-    metrics.lastError = e.message;
-    res.status(500).json({ error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-// Progressive streaming API (SSE)
-app.get('/api/v1/stream/events/:type/:id', (req,res) => {
-  const { type, id } = req.params;
-  const validTypes = ['movie','tv','series','live_tv'];
-  if (!validTypes.includes(type)) {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.flushHeaders();
-    res.write(`event: error\ndata: ${JSON.stringify({ error: 'INVALID_TYPE', message: 'type must be movie, tv, series, or live_tv' })}\n\n`);
-    return res.end();
-  }
-  if (type === 'live_tv') {
-    if (!/^channel_[a-z0-9-]+_[a-f0-9]+$/.test(String(id))) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.flushHeaders();
-      res.write(`event: error\ndata: ${JSON.stringify({ error: 'INVALID_ID', message: 'id must be a channel id (channel_<slug>_<hash>)' })}\n\n`);
-      return res.end();
-    }
-  } else if (!/^\d+$/.test(String(id))) {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.flushHeaders();
-    res.write(`event: error\ndata: ${JSON.stringify({ error: 'INVALID_ID', message: 'id must be a numeric TMDB id' })}\n\n`);
-    return res.end();
-  }
-
-  const season = req.query.season ? Number(req.query.season) : null;
-  const episode = req.query.episode ? Number(req.query.episode) : null;
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders();
-
-  const cancelled = { value: false };
-  req.on('close', () => {
-    cancelled.value = true;
-  });
-  req.on('aborted', () => {
-    cancelled.value = true;
-  });
-
-  const onEvent = (event, data) => {
-    if (cancelled.value) return;
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-  };
-
-  getPlayerStreamEvents({
-    type,
-    id,
-    season,
-    episode,
-    serverUrl: requestBaseUrl(req),
-    config,
-    onEvent,
-    cancelled,
-    invalidate: req.query.invalidate === '1' || req.query.invalidate === 'true',
-    embed: req.query.embed === '1',
-  })
-    .then(() => {
-      if (!cancelled.value) res.end();
-    })
-    .catch((err) => {
-      if (cancelled.value) return;
-      const safeMessage = err instanceof Error ? err.message : String(err);
-      res.write(`event: error\ndata: ${JSON.stringify({ error: 'INTERNAL_ERROR', message: safeMessage })}\n\n`);
-      res.end();
-    });
+createStreamRoutes(app, {
+  getPlayerStream,
+  getPlayerStreamEvents,
+  serverUrl: requestBaseUrl,
+  validSource: (name) => providerOrder().includes(name),
+  config,
+  onRequest: () => {
+    metrics.streamRequests += 1;
+  },
+  onSources: (count) => {
+    metrics.streamsReturned += count;
+  },
+  onError: (error) => {
+    metrics.lastError = error instanceof Error ? error.message : String(error);
+  },
 });
 
 function validPlaybackTarget(type, id) {

@@ -3,8 +3,10 @@
 const assert = require('node:assert/strict');
 const { beforeEach, describe, it } = require('node:test');
 const {
+  aggregateCacheKey,
   cacheTtlMs,
   clearEventCache,
+  getPlayerStream,
   getPlayerStreamEvents,
   prepareStreams,
 } = require('../utils/playerService');
@@ -52,11 +54,12 @@ function collector() {
   };
 }
 
-async function runEvents({ deps = {}, config = { playerCacheTtlMs: 900000 } } = {}) {
+async function runEvents({ deps = {}, config = { playerCacheTtlMs: 900000 }, source } = {}) {
   const sink = collector();
   await getPlayerStreamEvents({
     type: 'movie',
     id: '550',
+    source,
     serverUrl: 'http://peak.test',
     config,
     onEvent: sink.onEvent,
@@ -150,6 +153,52 @@ describe('getPlayerStreamEvents', () => {
       sources.map((source) => source.codec),
       ['hls', 'mp4'],
     );
+  });
+
+  it('queries only the selected provider and rejects an unknown source', async () => {
+    const queried = [];
+    const deps = {
+      providerOrder: () => ['alpha', 'beta'],
+      fetchProvider: async (name) => {
+        queried.push(name);
+        return {
+          name,
+          streams: [hls({ provider: name })],
+          diagnostic: { provider: name, ok: true, latencyMs: 1 },
+        };
+      },
+    };
+
+    await runEvents({ deps, source: 'beta' });
+    assert.deepEqual(queried, ['beta']);
+
+    await assert.rejects(
+      runEvents({ deps, source: 'missing' }),
+      (error) => error.code === 'INVALID_SOURCE',
+    );
+    assert.deepEqual(queried, ['beta']);
+  });
+
+  it('rejects an empty selected source instead of fanning out', async () => {
+    const queried = [];
+    await assert.rejects(
+      runEvents({
+        source: '',
+        deps: {
+          providerOrder: () => ['alpha', 'beta'],
+          fetchProvider: async (name) => {
+            queried.push(name);
+            return {
+              name,
+              streams: [hls({ provider: name })],
+              diagnostic: { provider: name, ok: true, latencyMs: 1 },
+            };
+          },
+        },
+      }),
+      (error) => error.code === 'INVALID_SOURCE',
+    );
+    assert.deepEqual(queried, []);
   });
 
   it('replays cached sources through the same ranking path and marks cacheHit', async () => {
@@ -281,6 +330,53 @@ describe('getPlayerStreamEvents', () => {
       'NO_EMBEDDABLE_SOURCE',
     );
     assert.equal(JSON.stringify(sink.events).includes('third-party.example'), false);
+  });
+});
+
+describe('getPlayerStream', () => {
+  it('queries only the selected provider and isolates the cache key', async () => {
+    const queried = [];
+    const deps = {
+      providerOrder: () => ['alpha', 'beta'],
+      fetchProvider: async (name) => {
+        queried.push(name);
+        return {
+          name,
+          streams: [hls({ provider: name })],
+          diagnostic: { provider: name, ok: true, latencyMs: 1 },
+        };
+      },
+      getDetails: async () => ({ title: 'Test Movie', release_date: '1999-01-01' }),
+      resolveImdbId: async () => null,
+      prepareStreams: prepare,
+    };
+    const request = {
+      type: 'movie',
+      id: '550',
+      serverUrl: 'http://peak.test',
+      config: { playerCacheTtlMs: 900000 },
+      deps,
+    };
+
+    const selected = await getPlayerStream({ ...request, source: 'beta' });
+    assert.deepEqual(queried, ['beta']);
+    assert.deepEqual(selected.sources.map((source) => source.provider), ['beta']);
+
+    const unfiltered = await getPlayerStream(request);
+    assert.deepEqual(queried, ['beta', 'alpha', 'beta']);
+    assert.deepEqual(
+      unfiltered.sources.map((source) => source.provider).sort(),
+      ['alpha', 'beta'],
+    );
+
+    assert.notEqual(
+      aggregateCacheKey('movie', '550', null, null, 'beta'),
+      aggregateCacheKey('movie', '550', null, null),
+    );
+    assert.equal(
+      aggregateCacheKey('movie', '550', null, null, null),
+      aggregateCacheKey('movie', '550', null, null),
+    );
   });
 });
 
