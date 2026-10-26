@@ -245,26 +245,263 @@ Mint a test token: `curl -s http://localhost:3011/api/embed/demo`.
 Spec: `docs/superpowers/specs/2026-10-26-peak-player-platform-design.md`
 (committed as `a0abafe`, 612 lines, 19 sections).
 
-In one line each:
+### 7.1 Engine and skin
 
-- **D1** — one engine: `@videojs/react@10.2.0` with its `hls` adapter. Delete
-  `video.js@8`, the hand-written hls.js path, and `VideoJsPlayer.tsx`.
-- **D2** — vendored Shadcn skin source, so the UI is editable and there is only
-  ever one UI.
-- **D3–D6** — Mux Data (silently inert without a key), thumbnails (image
-  stream, ffmpeg sprite fallback), custom mica captions, a control superset
-  (episode nav, quality, audio, speed, captions, live/DVR, stats, chapters,
-  cast, share, aspect, keyboard help, colour correction, codenamed server
-  switcher, 300 %/500 % volume boost).
-- **D7–D11** — metadata + artwork service with a fallback chain that cannot
-  fail; IPTV catalogue seeded from iptv-org, validated, synced every 3 h, with
-  full EPG; three preference modes (browser / server / user); muted autoplay;
-  i18n-ready English.
-- **D12** — SDK v2 with full parity and exhaustive docs.
+- **One engine.** `@videojs/react@10.2.0` with its built-in `hls` media adapter
+  (which uses hls.js internally). Delete `video.js@8`, our hand-written hls.js
+  path, and `VideoJsPlayer.tsx`. Identical UI by construction — there is no
+  second code path that can drift.
+- **Vendored Shadcn skin source**, not the packaged skin. The real skin
+  components, control bar, menus and CSS are copied into
+  `player/src/components/player/` as editable local files. This is what makes
+  the control superset and the custom mica caption renderer possible.
+- Presets in scope: `video`, `audio`, `live-video`, `live-audio`,
+  `background-video`. Skins available: `default`, `neutral`, `compat`,
+  `scaffold`, `none`.
+- **Mux Data** (`mux-data` extension) — env key `NEXT_PUBLIC_MUX_DATA_ENV_KEY`
+  plus a server-side `MUX_DATA_ENV_KEY` for embed sessions. **Silently inert
+  when unset**: no console noise, no failed requests. Works with any HLS
+  source, not only Mux-hosted.
 
-Phases: **P1** engine + skin, **P2** metadata + artwork, **P3** IPTV + EPG,
-**P4** controls + preferences + SDK + docs. Each ends with `npm run check`
-green and a visual sweep.
+### 7.1a Requested capability checklist
+
+Every capability the user explicitly asked for, and where it lands:
+
+| Requested | Requirement |
+|---|---|
+| `thumbnails` | scrub previews from `#EXT-X-IMAGE-STREAM-INF` / `#EXT-X-TILES`, ffmpeg sprite fallback |
+| `picture-in-picture` | PiP button; native PiP is disabled while the WebGL colour pipeline is on |
+| `playback-errors` | typed error surface with retry and next-source, never a dead spinner |
+| `user-preferences` | three modes (7.8), versioned schema, per-key locking |
+| `background-video` | muted, looping, chrome-free mode for hero/ambient use |
+| `internationalization` | i18n-ready English catalogue (7.8) |
+| `mux-data` | Mux analytics; completely inert when no key is configured |
+| `fullscreen` | button + keyboard shortcut + theatre mode |
+| `quality` | Auto plus an explicit level menu with resolution and bitrate |
+| `live-streams` | live preset, DVR scrubber, go-to-live, latency badge |
+| `keyboard-shortcuts` | help overlay and a customizable keymap |
+| `captions` | custom WebVTT renderer with the mica box (7.4) |
+| `poster` | pre-play poster + translucent 800 ms paused overlay (7.2) |
+| `controls` | the full superset in 7.3 — explicitly more than the default player |
+| `autoplay` | muted autoplay, provider toggle in admin, viewer toggle in settings |
+
+Plus the features the user added in conversation: colour correction (7.3),
+codenamed server switcher (7.3), 300 %/500 % volume booster (7.6), top-right
+breadcrumb (7.2), paused-poster overlay (7.2), and the full IPTV/EPG catalogue
+(7.7).
+
+### 7.2 UI layers and overlays
+
+Eight stacked layers, bottom to top:
+
+1. **Ambient background** — blurred colour bed derived from the artwork.
+2. **Video surface** — the media element, `object-fit: contain`.
+3. **Poster overlay** — see below.
+4. **Mica captions** — see 7.4.
+5. **Breadcrumb** — top right, `Home > Movies > <Movie Title>`. **Clickable in
+   the standalone player, plain text in the embed** (navigating an iframe away
+   would break a partner's page).
+6. **Header** — title, year, episode label, status.
+7. **Control bar** — see 7.3.
+8. **Overlays** — error card, next-episode card, stats, keyboard help, settings.
+
+**Poster overlay (user called this "very important"):**
+
+- Serves as the **pre-play poster** so the player opens on artwork rather than a
+  black box.
+- Reappears **800 ms after pause** — brief pause taps don't flash it.
+- **Translucent**: the video stays visible behind it. Poster + short
+  description sit over a dimmed, blurred scrim, not an opaque card.
+- Artwork always resolves (7.5).
+
+### 7.3 Control superset — "even more controls than the default player"
+
+| Group | Controls |
+|---|---|
+| Transport | play/pause, seek ±10 s, scrubber, volume, mute, fullscreen, PiP |
+| Menus | quality (Auto + every level with resolution and bitrate), audio track, playback speed 0.25×–2×, captions, chapters, server switcher |
+| Episode | previous episode, next episode, up-next countdown, autoplay-next toggle |
+| Live TV | go-to-live, LIVE badge with latency, DVR-window scrubber, behind-live indicator |
+| Utilities | stats for nerds, keyboard-shortcuts help, settings panel, share timestamp, copy embed link, snapshot to PNG, Google Cast |
+| Presentation | aspect mode fit/fill/zoom, theatre mode, colour correction |
+| Audio | volume booster (7.6) |
+
+**Thumbnails on scrub** — parse `#EXT-X-IMAGE-STREAM-INF` / `#EXT-X-TILES` from
+the proxied manifest and show previews when present. If that fails, fall back to
+**server-side ffmpeg sprite generation, cached**. Existing shell:
+`player/src/components/ThumbnailPreview.tsx` plus `.thumbnail-preview-card`
+styles in `player/src/styles/chrome-2.css`; nothing currently supplies
+`getThumbnailUrl`.
+
+**Stats for nerds** — current level, bitrate, dropped frames, buffer health,
+resolution, codec, provider, failover history.
+
+**Keyboard shortcuts** — help overlay plus a customizable keymap.
+
+**Colour correction:**
+
+- Default path is **CSS filters + presets**: brightness, contrast, saturation,
+  hue-rotate. Presets Cinema / Vivid / Warm / Cool / Night, plus reset.
+  Persisted per user.
+- An **optional WebGL pipeline** (real gamma, white balance, sharpening, LUTs)
+  sits behind a menu option, off by default, clearly labelled: it breaks native
+  PiP and costs GPU/RAM.
+
+**Server switcher with codenames.** The UI shows only the codename plus a subtle
+status line such as `0.8s · 1080p`. Switching re-resolves the stream against the
+chosen provider via the existing `?source=` / `?provider=` parameter.
+
+| Provider | Codename | | Provider | Codename |
+|---|---|---|---|---|
+| netmirror | **NOVA** | | 4khdhub | **ATLAS** |
+| vixsrc | **VESPER** | | castletv | **CITADEL** |
+| vidlink | **ORION** | | dahmermovies | **DUNE** |
+| videasy | **LYRA** | | hdghartv | **HELIOS** |
+| zxcstreams | **KESTREL** | | onetouchtv | **ONYX** |
+| vaplayer | **HALCYON** | | streamflix | **NOCTIS** |
+| showbox | **MERIDIAN** | | | |
+
+### 7.4 Captions — mica material
+
+Custom **DOM** caption renderer: we parse WebVTT ourselves and render cue text
+into an overlay element. Native `<track>` cue rendering is disabled. This buys
+full control over font, line-height, position and per-partner theming, which
+native cues cannot do.
+
+The caption box uses real mica:
+
+```css
+background: rgb(255 255 255 / 6%) over rgb(0 0 0 / 55%);
+backdrop-filter: blur(18px) saturate(140%);
+border-radius: 12px;
+box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);  /* 1px inner highlight */
+```
+
+Caption menu: language, size, opacity, edge style, **mica on/off**, persisted.
+
+### 7.5 Metadata and artwork — must always resolve
+
+**Artwork chain** (first candidate that loads wins; 404, decode error or a 4 s
+timeout advances to the next):
+
+1. Partner override (poster in the embed token or query)
+2. TMDB `poster_path`
+3. TMDB `backdrop_path` (16:9 when there is no portrait)
+4. TMDB episode `still_path` (TV)
+5. Series poster (TV)
+6. Provider artwork, if a scraper payload carries an image
+7. **Generated typographic card** — title, year and type on a hash-derived
+   gradient. Pure DOM, zero network, cannot fail.
+8. Bundled `/poster-fallback.svg`
+
+Resolved URLs are cached in `sessionStorage` per title; `<img onError>` walks the
+chain.
+
+**Metadata resolver** — `GET /api/v1/media/:type/:id?season=&episode=` returns
+`{ title, year, overview, tagline, runtime, genres, rating, poster:{candidates},
+backdrop, stills }`. Order:
+
+1. TMDB — only if a real key is configured (today it is a placeholder and 401s)
+2. **Wikidata SPARQL** — `P4947` movie TMDB id, `P4983` TV TMDB id, `P345` IMDb
+   id, `P18` image, enwiki article via `schema:about` + `schema:isPartOf`.
+   Requires a `User-Agent` header.
+3. **Wikipedia REST summary** — verified to return the real theatrical poster,
+   a `description` carrying year and type, and an `extract` for the synopsis.
+4. **TVMaze** — `lookup/shows?imdb=<tt>` then
+   `shows/:id/episodesbynumber?season=&number=` for episode stills.
+5. Generated fallback.
+
+Cache 6 h, negative cache 15 min. All external calls stay server-side — no CORS,
+no keys in the browser. `playerService.js` gains a `media:{...}` block in its
+payload.
+
+### 7.6 Audio — volume booster
+
+WebAudio graph:
+
+```
+MediaElementSource → GainNode → DynamicsCompressor
+  (threshold -3 dB, knee 6, ratio 12, attack 3 ms, release 250 ms) → destination
+```
+
+- **0–300 % normal.** 300 % is +9.5 dB and covers every realistic quiet-mix case.
+- **500 % behind an "Unlock 500 %" toggle** with a headphone warning; the value
+  turns **amber above 300 %**. 500 % is +14 dB — the limiter stops clipping but
+  not hearing damage, and it flattens dynamics.
+- Output is still capped by the system volume.
+
+### 7.7 Live TV, IPTV and EPG
+
+User requirement, verbatim: *"i want to get all of the sport live tvs and also
+very iptv working channel with every metadata from it. no exceptions. and it
+syncs every 3 hours to see all the new urls and playlists or whatever"*.
+
+- **Seeding** from iptv-org (`streams.json`, `channels.json`, `categories.json`,
+  `countries.json`, `languages.json`, `guides.json`, `logos.json`) **plus custom
+  playlists**, operator-configurable.
+- **Sync every 3 hours** (`IPTV_SYNC_INTERVAL_MS=10800000`), discovering new
+  URLs and playlists.
+- **Validation** with bounded concurrency (`IPTV_VALIDATE_CONCURRENCY=8`,
+  `IPTV_VALIDATE_TIMEOUT_MS=6000`), persisting `status ok|dead|unknown`,
+  `httpStatus`, `latencyMs`, `checkedAt`; 24 h re-check with exponential backoff.
+- **Dead channels are hidden from the player**; health is shown in admin.
+- **Full EPG** — now/next plus a scrollable schedule panel. XMLTV ingest with
+  7-day retention. `GET /api/v1/live/tv/epg/:id` → `{ now, next, schedule[] }`.
+- **Admin `/iptv`** gains seed status, playlist table, sync-now, channel health
+  table and seed toggles.
+- Env: `IPTV_SEED_ENABLED=true`, `IPTV_SEED_CATEGORIES=*`,
+  `IPTV_SEED_COUNTRIES=*`.
+
+### 7.8 Preferences, autoplay, i18n
+
+**Three preference modes** — "it's actually 3 options for partners/deployers,
+you get to chose from browser and server or letting the user decide":
+
+| Mode | Behaviour |
+|---|---|
+| `browser` (default) | localStorage only, per browser |
+| `server` | synced across sites for that deployment |
+| `user` | viewer toggles "Sync my settings across sites" in the player settings |
+
+Selected globally with `PLAYER_PREFERENCE_MODE`, overridable per integration via
+an embed-token `prefsMode`.
+
+`PlayerPreferences` schema: volume, muted, boost, boostUnlocked, speed, quality,
+audioTrack, captions `{ enabled, language, size, opacity, edge, mica }`,
+colourPreset, aspect, autoplayNext, autoplay, locale. Versioned `v: 1` with
+migration. Precedence: **provider default < partner token override < user
+preference**; each key can be `locked: true`.
+
+**Autoplay** — muted autoplay with tap-to-unmute. Toggleable by the provider in
+the admin portal (`autoplay`, `autoplayMuted`) and by the viewer in settings.
+The frontend site's settings page comes later.
+
+**i18n** — English only but built i18n-ready: typed catalogue at
+`player/src/components/player/i18n/messages.en.ts`, no literal strings in
+components, `Intl.*` for formatting, logical CSS properties for RTL safety.
+
+### 7.9 SDK v2 and docs
+
+- `PeakEmbed.v2` namespace, **v1 preserved**, `PeakEmbed.version = 2`.
+- Full parity across transport, presentation, navigation, utility and state —
+  every control in 7.3 is scriptable.
+- **18 event names**, 8 error codes: `NOT_READY`, `UNSUPPORTED`,
+  `INVALID_ARGUMENT`, `STREAM_UNAVAILABLE`, `TOKEN_EXPIRED`,
+  `ORIGIN_NOT_ALLOWED`, `PERMISSION_DENIED`, `UNKNOWN`.
+- Docs "extensively without no exceptions": extend `reference/sdk.mdx`,
+  `reference/postmessage.mdx`, `guides/live-tv.mdx`; add `reference/events.mdx`,
+  `reference/errors.mdx`, `guides/embedding.mdx`,
+  `guides/migrating-to-sdk-v2.mdx`, `guides/player-controls.mdx`,
+  `guides/preferences.mdx`; update both `meta.json` nav files.
+- A **docs coverage test** asserts every exported method and event name appears
+  in the reference pages.
+
+### 7.10 Phases
+
+**P1** engine + skin → **P2** metadata + artwork → **P3** IPTV + EPG →
+**P4** controls + preferences + SDK + docs.
+
+Each phase ends with `npm run check` green and a visual sweep.
 
 ---
 

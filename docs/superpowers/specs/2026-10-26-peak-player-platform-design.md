@@ -153,6 +153,33 @@ player/src/
 
 ## 6. Player UI
 
+### 6.0 Requested capability checklist
+
+Every capability explicitly requested from the `@videojs/react` guide set, and
+where this spec delivers it:
+
+| Requested | Requirement | Section |
+|---|---|---|
+| `thumbnails` | scrub previews from `#EXT-X-IMAGE-STREAM-INF` / `#EXT-X-TILES`; ffmpeg sprite fallback | 6.2 |
+| `picture-in-picture` | PiP button; native PiP disabled while the WebGL colour pipeline is active | 6.2, 6.4 |
+| `playback-errors` | typed error surface with retry and next-source; never a dead spinner | 14 |
+| `user-preferences` | three modes, versioned schema, per-key locking | 9 |
+| `background-video` | muted, looping, chrome-free preset for hero/ambient use | 5, 6.2 |
+| `internationalization` | i18n-ready English catalogue, `Intl.*`, logical CSS | 11 |
+| `mux-data` | Mux analytics; completely inert when no key is configured | 4 (D3) |
+| `fullscreen` | button, keyboard shortcut, theatre mode | 6.2 |
+| `quality` | Auto plus explicit level menu with resolution and bitrate | 6.2 |
+| `live-streams` | live preset, DVR scrubber, go-to-live, latency badge | 6.2, 8 |
+| `keyboard-shortcuts` | help overlay and customizable keymap | 6.2 |
+| `captions` | custom WebVTT renderer with mica box | 6.3 |
+| `poster` | pre-play poster and translucent 800 ms paused overlay | 6.1 |
+| `controls` | the superset in 6.2 — explicitly more than the default player | 6.2 |
+| `autoplay` | muted autoplay, provider toggle in admin, viewer toggle in settings | 10 |
+
+Additional features requested in conversation: colour correction (6.4), codenamed
+server switcher (6.6), 300 %/500 % volume booster (6.5), top-right breadcrumb
+(6.1), paused-poster overlay (6.1), full IPTV/EPG catalogue (8).
+
 ### 6.1 Layers
 
 1. **Ambient background** — blurred artwork, black stage, accent-aware.
