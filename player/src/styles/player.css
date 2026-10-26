@@ -20,6 +20,25 @@
 }
 
 .player-video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  outline: none;
+}
+
+/* Video.js takes ownership of the element it is initialised with, so the
+   React-rendered node is an empty host div that the media engine mounts into. */
+.player-video > .video-js,
+.player-video > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.player-video video {
   width: 100%;
   height: 100%;
   object-fit: contain;
