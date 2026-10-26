@@ -4,6 +4,7 @@
 - **Status:** Approved for planning
 - **Branch:** `feat/player-embed-platform`
 - **Supersedes:** the Video.js 8 + hand-written hls.js player in `player/src/components/VideoJsPlayer.tsx`
+- **Session handoff:** read `2026-10-26-peak-player-platform-handoff.md` in this directory first — it records the uncommitted working-tree state, the verified/unverified bugs, and the environment (ports, env vars, RAM rules) a fresh session needs.
 
 ---
 
