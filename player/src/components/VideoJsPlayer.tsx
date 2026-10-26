@@ -73,7 +73,14 @@ interface LevelOption extends HlsLevelLike {
 export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  // React must never own the <video> element. Video.js takes ownership of the
+  // element it is initialised with and removes it from the DOM on dispose(), so
+  // a React-rendered <video> is orphaned after the first source change (or the
+  // StrictMode double-mount in development). Instead we render an empty host
+  // div and let the media engine create the <video> inside it.
+  const videoHostRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const playerRef = useRef<any>(null); // Video.js player instance
   const hlsRef = useRef<Hls | null>(null);
   const pendingSeekRef = useRef<number | null>(null);
@@ -88,6 +95,9 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
   const [payload, setPayload] = useState<StreamResponse | null>(null);
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState<string | null>(null);
+  // True only when every source has been exhausted. Transient source failures
+  // fail over silently and must not surface as embed errors to the parent page.
+  const [fatalError, setFatalError] = useState(false);
   const [request, setRequest] = useState({ token: 0, invalidate: false });
 
   const [sourceIndex, setSourceIndex] = useState(0);
@@ -351,11 +361,27 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
 
   // --- Source loading: Video.js primary, hls.js fallback ---
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !source) return;
+    const host = videoHostRef.current;
+    if (!host || !source) return;
+
+    // Create (or reuse) a media element that React does not manage. Video.js
+    // disposes the element it wraps, so a fresh node is created after any
+    // previous player was torn down.
+    let video = videoRef.current;
+    if (!video || !video.isConnected) {
+      host.innerHTML = '';
+      video = document.createElement('video');
+      video.className = 'player-video';
+      video.setAttribute('playsinline', '');
+      video.crossOrigin = 'anonymous';
+      host.appendChild(video);
+      videoRef.current = video;
+      setVideoEl(video);
+    }
 
     setStatus('loading');
     setError(null);
+    setFatalError(false);
     setHlsLevels([]);
     setSelectedLevel(null);
     setCurrentAutoLevel(null);
@@ -519,8 +545,12 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
       if (playerRef.current) { try { playerRef.current.dispose(); } catch {} playerRef.current = null; }
       if (hls) hls.destroy();
       if (hlsRef.current === hls) hlsRef.current = null;
-      video.removeAttribute('src');
-      video.load();
+      if (video.isConnected) {
+        video.removeAttribute('src');
+        video.load();
+      }
+      videoRef.current = null;
+      setVideoEl(null);
       wasPlayingRef.current = false;
       setPlaying(false);
     };
@@ -528,7 +558,7 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
 
   // --- Video event listeners for embed bridge ---
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoEl;
     if (!video) return;
 
     const onTime = () => {
@@ -543,6 +573,7 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
     const onPlay = () => { setPlaying(true); if (!wasPlayingRef.current) { wasPlayingRef.current = true; sendEmbedEvent('play'); } };
     const onPause = () => { setPlaying(false); wasPlayingRef.current = false; sendEmbedEvent('pause'); };
     const onVolume = () => { setVolume(video.volume); setMuted(video.muted); };
+    const onDuration = () => setDuration(Number.isFinite(video.duration) ? video.duration : 0);
     const onEnded = () => {
       setPlaying(false); wasPlayingRef.current = false;
       sendEmbedEvent('ended', { currentTime: video.currentTime, duration: Number.isFinite(video.duration) ? video.duration : 0 });
@@ -551,7 +582,7 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
 
     video.addEventListener('timeupdate', onTime);
     video.addEventListener('progress', updateBuffered);
-    video.addEventListener('durationchange', () => setDuration(Number.isFinite(video.duration) ? video.duration : 0));
+    video.addEventListener('durationchange', onDuration);
     video.addEventListener('play', onPlay);
     video.addEventListener('playing', onPlay);
     video.addEventListener('pause', onPause);
@@ -561,30 +592,30 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
     return () => {
       video.removeEventListener('timeupdate', onTime);
       video.removeEventListener('progress', updateBuffered);
-      video.removeEventListener('durationchange', () => {});
+      video.removeEventListener('durationchange', onDuration);
       video.removeEventListener('play', onPlay);
       video.removeEventListener('playing', onPlay);
       video.removeEventListener('pause', onPause);
       video.removeEventListener('volumechange', onVolume);
       video.removeEventListener('ended', onEnded);
     };
-  }, [media.type, embed, updateBuffered, sendEmbedEvent]);
+  }, [videoEl, media.type, embed, updateBuffered, sendEmbedEvent]);
 
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoEl;
     if (!video) return;
     video.playbackRate = speed;
     playerRef.current?.playbackRate(speed);
-  }, [speed]);
+  }, [speed, videoEl]);
 
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoEl;
     if (!video) return;
     const tracks = video.textTracks;
     for (let i = 0; i < tracks.length; i += 1) {
       tracks[i].mode = i === subtitleIndex ? 'showing' : 'disabled';
     }
-  }, [subtitleIndex, payload?.subtitles.length, status]);
+  }, [subtitleIndex, payload?.subtitles.length, status, videoEl]);
 
   useEffect(() => {
     if (nextCountdown === null) return;
@@ -710,7 +741,12 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
     const to = nextSourceIndex(sources, sourceIndex, attemptedSourcesRef.current);
     if (to < 0) {
       if (reloadCount < 2) { setReloadCount((v) => v + 1); reload(true, false); }
-      else { setStatus('error'); setError('All sources failed after 2 retries. Please try again later.'); setPlaying(false); }
+      else {
+        setFatalError(true);
+        setStatus('error');
+        setError('All sources failed after 2 retries. Please try again later.');
+        setPlaying(false);
+      }
       return;
     }
     if (switchTimerRef.current) return;
@@ -775,9 +811,9 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
   }, [embed, sourceDescriptor, sendEmbedEvent]);
 
   useEffect(() => {
-    if (!embed || status !== 'error') return;
+    if (!embed || !fatalError) return;
     sendEmbedEvent('error', { code: 'STREAM_UNAVAILABLE', message: 'The stream could not be played.' });
-  }, [embed, status, sendEmbedEvent]);
+  }, [embed, fatalError, sendEmbedEvent]);
 
   // --- Embed commands from parent ---
   useEffect(() => {
@@ -905,12 +941,9 @@ export function VideoJsEmbedPlayer({ apiBase, media, embed }: Props) {
         />
       )}
 
-      <video
-        ref={videoRef}
+      <div
+        ref={videoHostRef}
         className={isEmbedSource ? 'player-video hidden' : 'player-video'}
-        playsInline
-        autoPlay
-        crossOrigin="anonymous"
       />
 
       <MobileGestureLayer

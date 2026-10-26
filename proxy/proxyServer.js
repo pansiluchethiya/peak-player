@@ -300,14 +300,22 @@ function extractOriginalUrl(proxyUrl) {
 function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
     const lines = content.split('\n');
     const out = []; const segmentUrls = [];
+    // A URI line immediately following #EXT-X-STREAM-INF is a variant playlist,
+    // even when the provider omits a .m3u8 extension (e.g. /playlist/123?type=video).
+    let expectVariantPlaylist = false;
     for (const line of lines) {
         if (line.startsWith('#')) {
+            expectVariantPlaylist = line.startsWith('#EXT-X-STREAM-INF');
             if (line.startsWith('#EXT-X-KEY:')) {
-                const regex = /https?:\/\/[^""\s]+/g; const keyUrl = regex.exec(line)?.[0];
-                if (keyUrl) {
-                    const proxyUrl = proxyUrlFor('/ts-proxy', baseProxyUrl, keyUrl, headers);
-                    out.push(line.replace(keyUrl, proxyUrl));
-                    if (!isCacheDisabled()) prefetchSegment(keyUrl, headers);
+                // Key URIs may be absolute or relative to the playlist URL.
+                const uriMatch = line.match(/URI="([^"]+)"/);
+                if (uriMatch) {
+                    try {
+                        const keyUrl = new URL(uriMatch[1], targetUrl).href;
+                        const proxyUrl = proxyUrlFor('/ts-proxy', baseProxyUrl, keyUrl, headers);
+                        out.push(line.replace(uriMatch[1], () => proxyUrl));
+                        if (!isCacheDisabled()) prefetchSegment(keyUrl, headers);
+                    } catch { out.push(line); }
                 } else out.push(line);
             } else if (line.startsWith('#EXT-X-MEDIA:') || line.startsWith('#EXT-X-I-FRAME-STREAM-INF:')) {
                 const uriMatch = line.match(/URI="([^"]+)"/);
@@ -315,14 +323,14 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
                     try {
                         const mediaUrl = new URL(uriMatch[1], targetUrl).href;
                         const proxyUrl = proxyUrlFor('/m3u8-proxy', baseProxyUrl, mediaUrl, headers);
-                        out.push(line.replace(uriMatch[1], proxyUrl));
+                        out.push(line.replace(uriMatch[1], () => proxyUrl));
                     } catch { out.push(line); }
                 } else out.push(line);
             } else out.push(line);
         } else if (line.trim()) {
             try {
                 const abs = new URL(line, targetUrl).href;
-                if (/\.m3u8(\?|$)/i.test(abs)) {
+                if (expectVariantPlaylist || /\.m3u8(\?|$)/i.test(abs)) {
                     out.push(proxyUrlFor('/m3u8-proxy', baseProxyUrl, abs, headers));
                 } else if (/\.ts(\?|$)/i.test(abs)) {
                     segmentUrls.push(abs);
@@ -333,8 +341,14 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
                 } else if (/\.m4s(\?|$)/i.test(abs) || /\.aac(\?|$)/i.test(abs) || /\.mp4(\?|$)/i.test(abs)) {
                     segmentUrls.push(abs);
                     out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
-                } else out.push(line);
+                } else if (/[?&](token|expires|sig|signature)=/i.test(abs)) {
+                    // Extension-less media paths still need proxying for CORS and
+                    // signed-header forwarding.
+                    segmentUrls.push(abs);
+                    out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
+                } else out.push(abs);
             } catch { out.push(line); }
+            expectVariantPlaylist = false;
         } else out.push(line);
     }
     if (segmentUrls.length && !isCacheDisabled()) {

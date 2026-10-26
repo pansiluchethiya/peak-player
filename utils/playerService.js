@@ -13,7 +13,9 @@ const { processStreamsForProxy } = require('../proxy/proxyServer');
 const DEFAULT_SOURCE = 'netmirror';
 const PREFERRED_ORDER = ['netmirror','zxcstreams','vaplayer','vixsrc','dahmermovies','vidlink','hdghartv','streamflix'];
 const PLAYER_LOGO = '/logo.svg';
-const PLAYER_ACCENT = '#2f6b4f';
+// The player is always rendered on a black stage, so the monochrome AMOLED
+// accent is the dark-theme token value rather than the light-theme #333333.
+const PLAYER_ACCENT = '#e5e5e5';
 
 const DEFAULT_CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_CACHE_TTL_MS = 30 * 60 * 1000;

@@ -1,0 +1,25 @@
+/* admin/app/legacy-overrides.css
+ * Hand-maintained fixes applied after the ported legacy stylesheet.
+ * Imported last in globals.css so these win over legacy.css.
+ */
+
+/* The auth story panel is permanently dark (black gradient) in both themes.
+ * In light mode the accent/ink tokens flip to dark grays, which makes the
+ * kicker, the "at its peak." emphasis, the feature icons and the ADMIN chip
+ * almost invisible on that panel. Pin the whole panel to the light palette. */
+.auth-story,
+.brand-on-dark {
+  --accent: #e5e5e5;
+  --accent-strong: #ededed;
+  --sidebar-active: #e5e5e5;
+  --ink: #ededed;
+  --ink-soft: #c4c4c4;
+  --muted: #a3a3a3;
+  --faint: #8a8a8a;
+}
+
+/* The ridge scenery is decorative; keep it from swallowing clicks on the card
+ * when the story column is narrow. */
+.auth-scenery {
+  pointer-events: none;
+}

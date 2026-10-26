@@ -2,17 +2,45 @@
 import { Header } from '@/components/Header';
 import { Sidebar } from '@/components/Sidebar';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 /**
  * Shared layout shell for all authenticated admin pages.
  * Wraps the Sidebar + Header chrome and renders children in the content area.
+ * Owns the mobile navigation drawer state so the topbar toggle and the
+ * sidebar stay in sync.
  */
 export function AdminShell({ title, children }: { title: string; children: React.ReactNode }) {
+  const [navOpen, setNavOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close the drawer after navigating and when the viewport grows past the
+  // breakpoint where the sidebar is permanent.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navOpen]);
+
   return (
-    <div className="admin-app" data-has-sidebar="true">
-      <Sidebar />
+    <div className="admin-app" data-has-sidebar="true" data-nav-open={navOpen ? 'true' : 'false'}>
+      <Sidebar open={navOpen} />
+      <button
+        type="button"
+        className="admin-nav-backdrop"
+        aria-label="Close navigation"
+        tabIndex={navOpen ? 0 : -1}
+        onClick={() => setNavOpen(false)}
+      />
       <div className="admin-main">
-        <Header title={title} />
+        <Header title={title} navOpen={navOpen} onToggleNav={() => setNavOpen((v) => !v)} />
         <main className="admin-content" id="mainContent" tabIndex={-1}>
           {children}
         </main>

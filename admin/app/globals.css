@@ -5,6 +5,8 @@
  *   3. shared ui layer (fonts, tokens, base reset) — AMOLED palette
  *   4. AMOLED overrides for fumadocs fd-* tokens
  *   5. admin chrome + dashboard + auth shells
+ *   6. legacy control-plane tokens + the class rules carried over from the
+ *      static admin (btn, field, auth-*, page-head, ...)
  */
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
@@ -14,3 +16,6 @@
 @import '../../ui/base.css';
 @import './theme.css';
 @import './admin.css';
+@import '../../public/admin/tokens.css';
+@import './legacy.css';
+@import './legacy-overrides.css';
