@@ -21,9 +21,9 @@ describe('keymap', () => {
   });
 
   it('mergeKeymap overlays custom bindings', () => {
-    const custom = mergeKeymap(DEFAULT_KEYMAP, { x: ['captions'] });
-    assert.equal(commandForKey(custom.map, 'x')?.[0], 'captions');
-    assert.equal(commandForKey(custom.map, ' ')?.[0], 'togglePlay');
+    const resolved = mergeKeymap(DEFAULT_KEYMAP, { x: ['captions'] });
+    assert.equal(commandForKey(resolved.map, 'x')?.[0], 'captions');
+    assert.equal(commandForKey(resolved.map, ' ')?.[0], 'togglePlay');
   });
 
   it('handleKeydown returns true for mapped, false for unmapped', () => {
