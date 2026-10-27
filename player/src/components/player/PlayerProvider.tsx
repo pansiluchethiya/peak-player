@@ -414,15 +414,26 @@ export function PlayerProvider({
   }, [apiBase, embed, media.type, media.id, media.season, media.episode, request]);
 
   // --- Document title ---
+  // Next re-applies the route metadata title after the provider publishes new
+  // state, so a one-shot effect loses the media title on later navigations.
+  // Observe the head and reassert the media title whenever Next rewrites it.
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const title = mediaMetadata?.title?.trim();
-    if (!title) {
-      if (branding.name) document.title = branding.name;
-      return;
-    }
-    const withYear = mediaMetadata?.year ? `${title} (${mediaMetadata.year})` : title;
-    document.title = withYear === branding.name ? withYear : `${withYear} — ${branding.name}`;
+    const desired = !title
+      ? branding.name
+      : (() => {
+          const withYear = mediaMetadata?.year ? `${title} (${mediaMetadata.year})` : title;
+          return withYear === branding.name ? withYear : `${withYear} — ${branding.name}`;
+        })();
+    if (!desired) return;
+    const apply = () => {
+      if (document.title !== desired) document.title = desired;
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
   }, [branding.name, mediaMetadata]);
 
   // --- Apply stored preferences when an engine attaches ---

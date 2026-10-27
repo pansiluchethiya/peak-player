@@ -222,6 +222,11 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
               title={t('error-title')}
               message={errorMessage}
               diagnostics={embed ? undefined : payload?.diagnostics}
+              artwork={
+                title || artwork.media ? (
+                  <ArtworkChain {...artwork} className="error-poster" />
+                ) : undefined
+              }
               onTryAnother={handleTryAnother}
               onReload={() => reload(true)}
             />

@@ -71,6 +71,9 @@
   background: #000;
   object-fit: cover;
 }
+.error-layer.has-artwork { flex-direction: column; gap: 14px; }
+.error-artwork { width: 84px; }
+.error-poster { width: 84px; aspect-ratio: 2 / 3; border-radius: 10px; }
 .peak-poster-overlay.is-paused .peak-poster-art {
   width: 76px;
 }
