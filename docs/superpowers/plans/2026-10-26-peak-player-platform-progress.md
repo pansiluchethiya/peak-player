@@ -24,3 +24,5 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 | 6 | done | f40273c | Header/Breadcrumb/PosterOverlay, typed English i18n catalogue + t(), muted autoplay policy + tap-to-unmute, optional inert Mux, 20s terminal STREAM_UNAVAILABLE, ErrorState retry/reload; vendored Title removed and documented |
 
 | P1 gate | pass | 3bd0524 | check green; 1440/390 dark+light sweeps of /movie/550 and /embed/demo clean; external-only source expected with placeholder TMDB key; player contrast fix + duplicate diagnostic key |
+
+| 7 | done | 891e8ec | keyless resolver TMDB→Wikidata→Wikipedia→TVMaze→generated, 4s stage budgets, injected deps, no-throw fallback; tmdb getEpisodeDetails/isRealTmdbKey; 10 resolver tests |
