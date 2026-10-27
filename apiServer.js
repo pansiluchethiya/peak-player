@@ -13,6 +13,8 @@ const { createEmbedSession, getEmbed } = require('./utils/embed');
 const { createStreamRoutes } = require('./routes/streamRoutes');
 const { createMediaRoutes } = require('./routes/mediaRoutes');
 const { createThumbnailRoutes } = require('./routes/thumbnailRoutes');
+const { createLiveRoutes } = require('./routes/liveRoutes');
+const { getEpg } = require('./utils/iptvEpg');
 const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders, providerOrder } = require('./utils/playerService');
 const { getMedia } = require('./utils/mediaResolver');
 const { getSprite, DEFAULT_CACHE_DIR: thumbnailCacheDir } = require('./utils/thumbnailService');
@@ -419,6 +421,10 @@ createThumbnailRoutes(app, {
   getSprite,
   cacheDir: thumbnailCacheDir,
 });
+
+// Live TV EPG for the player's channel guide. Mounted before the API
+// fallthrough so unknown channel ids reach the handler (and get an empty guide).
+createLiveRoutes(app, { getEpg });
 
 function validPlaybackTarget(type, id) {
   const validTypes = ['movie', 'tv', 'series', 'live_tv'];

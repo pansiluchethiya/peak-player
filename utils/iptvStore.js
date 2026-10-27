@@ -39,6 +39,15 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS idx_iptv_channels_group ON iptv_channels(group_title);
   CREATE INDEX IF NOT EXISTS idx_iptv_channels_tvg ON iptv_channels(tvg_id);
+  CREATE TABLE IF NOT EXISTS iptv_epg (
+    channel_id TEXT NOT NULL,
+    start TEXT NOT NULL,
+    stop TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    PRIMARY KEY (channel_id, start, stop)
+  );
 `;
 
 const CHANNEL_HEALTH_COLUMNS = {
@@ -425,6 +434,94 @@ function listDueChannels({ now = Date.now(), limit = 1000 } = {}) {
   return rows.map(rowToChannel);
 }
 
+const EPG_PAST_MS = 12 * 60 * 60 * 1000;
+const EPG_FUTURE_MS = 7 * 24 * 60 * 60 * 1000;
+const EPG_MAX_ROWS = 1000;
+
+// EPG timestamps are stored as ISO strings so window comparisons are plain
+// lexicographic comparisons in SQLite. Invalid values are rejected rather than
+// silently replaced with "now", which is what `toIso` does for health timestamps.
+function epgIso(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = value instanceof Date
+    ? value.getTime()
+    : typeof value === 'number'
+      ? value
+      : Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+}
+
+// Replaces a channel's guide in one transaction: a guide refresh must never
+// leave a channel with a half-written schedule.
+function replaceEpg(channelId, programmes) {
+  ensureIptvTables();
+  if (channelId === undefined || channelId === null || channelId === '') return 0;
+  const channel = String(channelId);
+  const db = getDb();
+  const rows = [];
+  const seen = new Set();
+  (Array.isArray(programmes) ? programmes : []).forEach((programme) => {
+    if (!programme) return;
+    const start = epgIso(programme.start);
+    const stop = epgIso(programme.stop);
+    const title = typeof programme.title === 'string' ? programme.title.trim() : '';
+    if (!start || !stop || !title) return;
+    const key = `${start}|${stop}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push([
+      channel,
+      start,
+      stop,
+      title,
+      programme.description ?? programme.desc ?? null,
+      programme.category ?? null,
+    ]);
+  });
+  const run = db.transaction(() => {
+    db.prepare('DELETE FROM iptv_epg WHERE channel_id = ?').run(channel);
+    const stmt = db.prepare(
+      `INSERT OR REPLACE INTO iptv_epg (channel_id, start, stop, title, description, category)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    rows.forEach((row) => stmt.run(...row));
+  });
+  run();
+  return rows.length;
+}
+
+// Window-bounded read: the player only needs the current programme plus the
+// coming week, so older rows never inflate the response.
+function getEpgProgrammes(channelId, { from, to, limit } = {}) {
+  ensureIptvTables();
+  const fromIso = epgIso(from) || new Date(Date.now() - EPG_PAST_MS).toISOString();
+  const toIsoValue = epgIso(to) || new Date(Date.now() + EPG_FUTURE_MS).toISOString();
+  const cappedLimit = Math.min(Math.max(Math.floor(Number(limit) || EPG_MAX_ROWS), 1), EPG_MAX_ROWS);
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM iptv_epg
+       WHERE channel_id = ? AND stop > ? AND start < ?
+       ORDER BY start ASC, stop ASC
+       LIMIT ?`,
+    )
+    .all(String(channelId), fromIso, toIsoValue, cappedLimit);
+  return rows.map((row) => ({
+    channel: row.channel_id,
+    start: row.start,
+    stop: row.stop,
+    title: row.title,
+    description: row.description ?? null,
+    category: row.category ?? null,
+  }));
+}
+
+function pruneEpg(before) {
+  ensureIptvTables();
+  const cutoff = epgIso(before);
+  if (!cutoff) return 0;
+  return getDb().prepare('DELETE FROM iptv_epg WHERE stop < ?').run(cutoff).changes;
+}
+
 module.exports = {
   ensureIptvTables,
   ensureSeedPlaylist,
@@ -443,6 +540,9 @@ module.exports = {
   getChannel,
   setChannelEnabled,
   listGroups,
+  replaceEpg,
+  getEpgProgrammes,
+  pruneEpg,
   SEED_PLAYLIST_URL,
   SEED_PLAYLIST_NAME,
 };
