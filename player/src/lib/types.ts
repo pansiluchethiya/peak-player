@@ -88,6 +88,15 @@ export const DEFAULT_BRANDING: Branding = {
   tagline: 'Cinema, elevated.',
 };
 
+export interface EpgProgramme {
+  channelId: string;
+  start: string;
+  stop: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+}
+
 export interface Fingerprint {
   hash: string;
   userAgent: string;

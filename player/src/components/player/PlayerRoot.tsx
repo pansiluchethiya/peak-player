@@ -22,6 +22,8 @@ import {
   usePlayerContext,
 } from './PlayerProvider';
 import { VideoSkin } from './VideoSkin';
+import { LiveButton } from './controls/LiveButton';
+import { SchedulePanel } from './overlays/SchedulePanel';
 
 export type PlayerPreset = 'video' | 'live-video' | 'bg';
 
@@ -55,6 +57,7 @@ interface PlayerSurfaceProps {
 
 function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
   const {
+    apiBase,
     api,
     branding,
     currentSourceIndex,
@@ -204,6 +207,13 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
             locale={preferences.locale}
           />
           <Breadcrumb type={media.type} title={title} embed={Boolean(embed)} />
+
+          {media.type === 'live_tv' ? (
+            <div className="peak-live-chrome" style={{ position: 'absolute', inset: 'var(--space-2, 16px) auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+              <LiveButton />
+              <SchedulePanel apiBase={apiBase} channelId={media.id} />
+            </div>
+          ) : null}
 
           {status === 'loading' && (
             <LoadingSkeleton
