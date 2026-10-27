@@ -100,4 +100,13 @@ export const messages = {
   'minutes': '{minutes} min',
   'no-description': 'No description available.',
   untitled: 'Untitled',
+  'quality-auto': 'Auto',
+  'audio-default': 'Default',
+  'captions-off': 'Off',
+  'aspect-fit': 'Fit',
+  'aspect-fill': 'Fill',
+  'aspect-zoom': 'Zoom',
+  'chapter-1': 'Chapter 1',
+  close: 'Close',
+  cast: 'Cast',
 } as const;

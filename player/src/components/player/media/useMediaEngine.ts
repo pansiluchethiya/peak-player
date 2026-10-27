@@ -1,11 +1,12 @@
 'use client';
 
 import { getMediaElement, useMedia } from '@videojs/react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { PeakPlayerError } from '../errors';
 import { t } from '../i18n';
 import { usePlayerContext } from '../PlayerProvider';
 import type { CaptionPreferences } from '../prefs/schema';
+import { VolumeBoost } from '../audio/VolumeBoost';
 
 /**
  * Imperative surface of the media engine. Only {@link PlayerProvider} calls these;
@@ -57,6 +58,7 @@ export function useMediaEngine(register: (handle: EngineHandle | null) => void):
   const store = useEnginePlayer();
   const media = useMedia();
   const { setEngineStateReader } = usePlayerContext();
+  const boostRef = useRef<VolumeBoost | null>(null);
 
   const readEngineState = useCallback((): EngineSnapshot => {
     const state = store.state;
@@ -116,10 +118,13 @@ export function useMediaEngine(register: (handle: EngineHandle | null) => void):
         store.setPlaybackRate(value);
       },
       // Volume boost is an audio-graph concern (MediaElementSource → GainNode →
-      // DynamicsCompressor) delivered in Task 17. Until then the provider stores
-      // the preference and the element stays at its normal 0..1 volume.
-      setBoost: (_value: number, _unlocked: boolean) => {
+      // DynamicsCompressor) delivered in Task 17 via the VolumeBoost class.
+      setBoost: (value: number, unlocked: boolean) => {
         requireElement();
+        const element = getMediaElement(media) as HTMLVideoElement | null;
+        if (!element) throw new PeakPlayerError('UNSUPPORTED', t('media-unavailable'));
+        if (!boostRef.current) boostRef.current = new VolumeBoost(new (window.AudioContext || (window as unknown as { AudioContext: typeof AudioContext }).AudioContext)(), element);
+        boostRef.current.setBoost(value, unlocked);
       },
       setQuality: (level: 'auto' | string) => {
         requireElement();

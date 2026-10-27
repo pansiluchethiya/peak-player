@@ -44,6 +44,7 @@ import {
   type PlayerPreferences,
 } from './prefs/schema';
 import { resolvePreferenceMode, type PreferenceMode } from './prefs/modes';
+import { providerForCodename, codenameForProvider } from '../../lib/servers';
 import type { PlayerPreset } from './PlayerRoot';
 
 /**
@@ -616,7 +617,10 @@ export function PlayerProvider({
         mergePreferences({ aspect: mode });
       },
       switchServer: async (codename: string) => {
-        const needle = codename.trim().toLowerCase();
+        // Resolve the codename to a provider id (case-insensitive). Fall back
+        // to a direct provider match for callers that pass the raw provider.
+        const resolved = providerForCodename(codename) ?? codename;
+        const needle = resolved.toLowerCase();
         const index = latestRef.current.sources.findIndex(
           (source) => source.provider.toLowerCase() === needle,
         );
@@ -626,6 +630,7 @@ export function PlayerProvider({
         setErrorCode(null);
         setStatus('ready');
         setCurrentSourceIndex(index);
+        mergePreferences({ server: latestRef.current.sources[index]?.provider ?? codename });
         setSourceNonce((value) => value + 1);
       },
       nextEpisode: async () => {

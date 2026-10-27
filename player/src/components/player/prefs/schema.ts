@@ -40,6 +40,8 @@ export interface PlayerPreferences {
   autoplayNext: boolean;
   autoplay: boolean;
   locale: string;
+  /** Currently selected provider codename (if any). */
+  server: string | null;
 }
 
 export const DEFAULT_PREFERENCES: PlayerPreferences = {
@@ -63,6 +65,7 @@ export const DEFAULT_PREFERENCES: PlayerPreferences = {
   autoplayNext: true,
   autoplay: true,
   locale: 'en',
+  server: null,
 };
 
 export const MIN_SPEED = 0.25;
@@ -115,6 +118,7 @@ export function migratePreferences(raw: unknown): PlayerPreferences {
     autoplayNext: input.autoplayNext === false ? false : true,
     autoplay: input.autoplay === false ? false : true,
     locale: typeof input.locale === 'string' && input.locale ? (input.locale as string) : 'en',
+    server: typeof input.server === 'string' && input.server ? (input.server as string) : null,
   };
 }
 

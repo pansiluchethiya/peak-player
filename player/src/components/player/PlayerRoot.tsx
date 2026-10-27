@@ -24,6 +24,8 @@ import {
 import { VideoSkin } from './VideoSkin';
 import { LiveButton } from './controls/LiveButton';
 import { SchedulePanel } from './overlays/SchedulePanel';
+import { CaptionsOverlay } from './overlays/CaptionsOverlay';
+import { ControlBar } from './controls/ControlBar';
 
 export type PlayerPreset = 'video' | 'live-video' | 'bg';
 
@@ -207,6 +209,10 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
             locale={preferences.locale}
           />
           <Breadcrumb type={media.type} title={title} embed={Boolean(embed)} />
+
+          {!isExternal ? (
+            <ControlBar subtitles={subtitles.map((s) => ({ url: s.url, lang: s.lang ?? '', label: s.label ?? '' }))} />
+          ) : null}
 
           {media.type === 'live_tv' ? (
             <div className="peak-live-chrome" style={{ position: 'absolute', inset: 'var(--space-2, 16px) auto', display: 'flex', gap: 12, alignItems: 'center' }}>
