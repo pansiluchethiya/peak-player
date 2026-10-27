@@ -127,6 +127,11 @@ function normalizeConfig(base) {
   cfg.iptvValidateTimeoutMs = Number.isFinite(validateTimeout) && validateTimeout > 0
     ? validateTimeout
     : 6000;
+  // Outer seed/sync/validate/guide cadence: three hours.
+  const syncInterval = Number.parseInt(cfg.iptvSyncIntervalMs, 10);
+  cfg.iptvSyncIntervalMs = Number.isFinite(syncInterval) && syncInterval > 0
+    ? syncInterval
+    : 10800000;
   // TMDB ID used by the dashboard's "Run Provider Functional Checks" feature
   if (!cfg.providerCheckTmdbId) cfg.providerCheckTmdbId = '278';
   return cfg;
@@ -166,6 +171,7 @@ function applyConfigToEnv(cfg){
   process.env.IPTV_SEED_COUNTRIES = cfg.iptvSeedCountries || '*';
   process.env.IPTV_VALIDATE_CONCURRENCY = String(cfg.iptvValidateConcurrency);
   process.env.IPTV_VALIDATE_TIMEOUT_MS = String(cfg.iptvValidateTimeoutMs);
+  process.env.IPTV_SYNC_INTERVAL_MS = String(cfg.iptvSyncIntervalMs);
   // Showbox specific
   if (cfg.showboxCacheDir) process.env.SHOWBOX_CACHE_DIR = cfg.showboxCacheDir; else delete process.env.SHOWBOX_CACHE_DIR;
   // Proxy settings removed; ensure legacy envs are cleared
@@ -202,7 +208,8 @@ function loadConfig() {
     iptvSeedCategories: process.env.IPTV_SEED_CATEGORIES,
     iptvSeedCountries: process.env.IPTV_SEED_COUNTRIES,
     iptvValidateConcurrency: process.env.IPTV_VALIDATE_CONCURRENCY,
-    iptvValidateTimeoutMs: process.env.IPTV_VALIDATE_TIMEOUT_MS
+    iptvValidateTimeoutMs: process.env.IPTV_VALIDATE_TIMEOUT_MS,
+    iptvSyncIntervalMs: process.env.IPTV_SYNC_INTERVAL_MS
   };
   
   // Dynamic provider enable flags from env
