@@ -29,3 +29,5 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 
 | 7 | done | 891e8ec | keyless media resolver (TMDB real key -> Wikidata -> Wikipedia -> TVMaze -> generated), mediaResolver tests, tmdb episode cache/isRealTmdbKey |
 | 8 | done | 1543502 | GET /api/v1/media/:type/:id, 6h/15min media cache, stream JSON + SSE media payload, removed literal Peak fallback, player media client/types |
+
+| 9 | done | 84fec9a | artworkResolver six-candidate chain + generated fallback, ArtworkChain/TypographicCard/poster-fallback.svg wired into PlayerRoot, session cache, thumbnail sprite service + POST/GET routes, HLS image-track parser |
