@@ -187,6 +187,9 @@ async function createEmbedSession({
   poster,
   ttlSeconds,
   now,
+  prefsMode,
+  preferences,
+  prefsLocked,
 } = {}) {
   const partner = findPartnerByApiKey(apiKey);
   if (!partner) {
@@ -200,19 +203,31 @@ async function createEmbedSession({
   const embed = await getEmbed({ type, id, season, episode, source, poster });
   if (embed.error) return embed;
 
+  const tokenPayload = {
+    v: 1,
+    partnerId: partner.id,
+    type: embed.type,
+    id: embed.id,
+    season: embed.season,
+    episode: embed.episode,
+    origins: partner.origins,
+  };
+
+  // Persist preference mode + seed preferences in the signed token so the
+  // player can resolve them server-side without extra round-trips.
+  const VALID_MODES = ['browser', 'server', 'user'];
+  if (typeof prefsMode === 'string' && VALID_MODES.includes(prefsMode)) {
+    tokenPayload.preferenceMode = prefsMode;
+  }
+  if (preferences && typeof preferences === 'object') {
+    tokenPayload.preferences = preferences;
+  }
+  if (Array.isArray(prefsLocked)) {
+    tokenPayload.prefsLocked = prefsLocked;
+  }
+
   const issuedAt = Number.isFinite(now) ? now : Date.now();
-  const token = signEmbedToken(
-    {
-      v: 1,
-      partnerId: partner.id,
-      type: embed.type,
-      id: embed.id,
-      season: embed.season,
-      episode: embed.episode,
-      origins: partner.origins,
-    },
-    { ttlSeconds: normalizeTtlSeconds(ttlSeconds), now: issuedAt },
-  );
+  const token = signEmbedToken(tokenPayload, { ttlSeconds: normalizeTtlSeconds(ttlSeconds), now: issuedAt });
 
   const verified = verifyEmbedToken(token, { now: issuedAt });
   if (!verified.ok) {
@@ -237,7 +252,8 @@ async function createEmbedSession({
     season: embed.season,
     episode: embed.episode,
     poster: embed.poster,
-    source: embed.source,
+     source: embed.source,
+     preferenceMode: tokenPayload.preferenceMode,
   };
 }
 

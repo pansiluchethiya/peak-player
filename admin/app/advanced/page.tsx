@@ -29,6 +29,8 @@ export default function AdvancedPage() {
   const [enableProxy, setEnableProxy] = useState(false);
   const [disableUrlValidation, setDisableUrlValidation] = useState(false);
   const [disable4khdhubUrlValidation, setDisable4khdhubUrlValidation] = useState(false);
+  const [autoplay, setAutoplay] = useState(true);
+  const [autoplayMuted, setAutoplayMuted] = useState(true);
   const [providerCheckTmdbId, setProviderCheckTmdbId] = useState('');
 
   const load = async () => {
@@ -47,6 +49,9 @@ export default function AdvancedPage() {
       setEnableProxy(m.enableProxy === true);
       setDisableUrlValidation(m.disableUrlValidation === true);
       setDisable4khdhubUrlValidation(m.disable4khdhubUrlValidation === true);
+      setDisable4khdhubUrlValidation(m.disable4khdhubUrlValidation === true);
+      setAutoplay(m.autoplay !== false);
+      setAutoplayMuted(m.autoplayMuted !== false);
       setProviderCheckTmdbId(m.providerCheckTmdbId ? String(m.providerCheckTmdbId) : '278');
       setStatus('ready');
     } catch (e) {
@@ -70,6 +75,8 @@ export default function AdvancedPage() {
         enableProxy,
         disableUrlValidation,
         disable4khdhubUrlValidation,
+        autoplay,
+        autoplayMuted,
         providerCheckTmdbId: providerCheckTmdbId || null,
       };
       const res = await fetch('/api/config', {
@@ -187,6 +194,24 @@ export default function AdvancedPage() {
                   </button>
                 </td>
                 <td>Skip 4KHDHub-specific URL validation</td>
+              </tr>
+              <tr>
+                <td>Autoplay</td>
+                <td>
+                  <button type="button" className={clsx(buttonVariants({ variant: autoplay ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(autoplay, setAutoplay)}>
+                    {autoplay ? 'On' : 'Off'}
+                  </button>
+                </td>
+                <td>Start playback automatically on supported browsers</td>
+              </tr>
+              <tr>
+                <td>Start muted</td>
+                <td>
+                  <button type="button" disabled={autoplay} className={clsx(buttonVariants({ variant: autoplayMuted ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(autoplayMuted, setAutoplayMuted)}>
+                    {autoplayMuted ? 'On' : 'Off'}
+                  </button>
+                </td>
+                <td>Force muted autoplay (policy)</td>
               </tr>
             </tbody>
           </table>

@@ -69,3 +69,79 @@ export const MIN_SPEED = 0.25;
 export const MAX_SPEED = 2;
 export const MAX_BOOST = 5;
 export const UNLOCKED_BOOST = 3;
+
+const PREFERENCE_KEYS: (keyof PlayerPreferences)[] = [
+  'volume', 'muted', 'boost', 'boostUnlocked', 'speed', 'quality', 'audioTrack',
+  'captions', 'colourPreset', 'aspect', 'autoplayNext', 'autoplay', 'locale',
+];
+
+const CAPTION_SIZES: CaptionSize[] = ['sm', 'md', 'lg', 'xl'];
+const CAPTION_EDGES: CaptionEdge[] = ['none', 'shadow', 'outline', 'background'];
+const ASPECT_MODES: AspectMode[] = ['fit', 'fill', 'zoom'];
+
+function clamp(value: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
+function pickEnum<T>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return (allowed as readonly unknown[]).includes(value) ? (value as T) : fallback;
+}
+
+export function migratePreferences(raw: unknown): PlayerPreferences {
+  const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const captionsInput = input.captions && typeof input.captions === 'object'
+    ? (input.captions as Record<string, unknown>)
+    : {};
+  const captions: CaptionPreferences = {
+    enabled: captionsInput.enabled === false ? false : true,
+    language: typeof captionsInput.language === 'string' ? (captionsInput.language as string) : null,
+    size: pickEnum(captionsInput.size, CAPTION_SIZES, 'md'),
+    opacity: clamp(captionsInput.opacity, 0, 1, 1),
+    edge: pickEnum(captionsInput.edge, CAPTION_EDGES, 'none'),
+    mica: captionsInput.mica === false ? false : true,
+  };
+  return {
+    volume: clamp(input.volume, 0, 1, 1),
+    muted: input.muted === false ? false : true,
+    boost: clamp(input.boost, 0, MAX_BOOST, 1),
+    boostUnlocked: input.boostUnlocked === true,
+    speed: pickEnum(input.speed, [0.25, 0.5, 0.75, 1, 1.25, 1.5, 175, 2], clamp(input.speed, MIN_SPEED, MAX_SPEED, 1)) as number,
+    quality: typeof input.quality === 'string' && input.quality ? input.quality : 'auto',
+    audioTrack: typeof input.audioTrack === 'string' ? (input.audioTrack as string) : null,
+    captions,
+    colourPreset: typeof input.colourPreset === 'string' && input.colourPreset ? (input.colourPreset as string) : 'cinema',
+    aspect: pickEnum(input.aspect, ASPECT_MODES, 'fit'),
+    autoplayNext: input.autoplayNext === false ? false : true,
+    autoplay: input.autoplay === false ? false : true,
+    locale: typeof input.locale === 'string' && input.locale ? (input.locale as string) : 'en',
+  };
+}
+
+export function mergePreferences(base: PlayerPreferences, patch: unknown): PlayerPreferences {
+  if (!patch || typeof patch !== 'object') return base;
+  return migratePreferences({ ...base, ...(patch as Record<string, unknown>) });
+}
+
+export interface ResolvePreferencesInput {
+  defaults: PlayerPreferences;
+  partner?: Partial<PlayerPreferences>;
+  user?: Partial<PlayerPreferences>;
+  locked?: string[];
+}
+
+export function resolvePreferences(input: ResolvePreferencesInput): PlayerPreferences {
+  const { defaults, partner, user, locked = [] } = input;
+  const patch: Record<string, unknown> = { ...partner, ...user };
+  for (const key of locked) {
+    // Locked keys fall back to the partner value when present, else the default.
+    const partnerValue = partner ? partner[key as keyof PlayerPreferences] : undefined;
+    if (partnerValue !== undefined) {
+      patch[key as string] = partnerValue;
+    } else {
+      delete patch[key as string];
+    }
+  }
+  return migratePreferences({ ...defaults, ...patch });
+}
+

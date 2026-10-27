@@ -659,6 +659,17 @@ createIptvAdminRoutes(app, {
   config,
   saveConfigPatch,
 });
+const { createPreferenceRoutes } = require('./routes/preferenceRoutes');
+const { readPreferences, writePreferences } = require('./utils/preferenceStore');
+createPreferenceRoutes(app, {
+  mode: (req) => {
+    const mode = req.headers['x-peak-embed-prefs-mode'];
+    if (mode === 'server' || mode === 'user') return mode;
+    return config.playerPreferenceMode || 'browser';
+  },
+  store: { readPreferences, writePreferences },
+  requireAuth,
+});
 
 const PORT = config.port;
 const HOST = process.env.BIND_HOST || '0.0.0.0';

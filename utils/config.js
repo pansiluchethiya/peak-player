@@ -97,7 +97,7 @@ function normalizeConfig(base) {
   // Dynamic provider enable flags
   const providerNames = getProviderNames();
   const boolKeys = providerNames.map(name => `enable${name.charAt(0).toUpperCase() + name.slice(1)}Provider`);
-  boolKeys.push('disableCache', 'enablePStreamApi', 'disableUrlValidation', 'disable4khdhubUrlValidation', 'enableProxy', 'iptvSeedEnabled');
+  boolKeys.push('disableCache', 'enablePStreamApi', 'disableUrlValidation', 'disable4khdhubUrlValidation', 'enableProxy', 'iptvSeedEnabled', 'autoplay', 'autoplayMuted');
   
   boolKeys.forEach(k=>{ if (cfg[k] === 'true') cfg[k] = true; else if (cfg[k] === 'false') cfg[k] = false; });
   
@@ -172,6 +172,10 @@ function applyConfigToEnv(cfg){
   process.env.IPTV_VALIDATE_CONCURRENCY = String(cfg.iptvValidateConcurrency);
   process.env.IPTV_VALIDATE_TIMEOUT_MS = String(cfg.iptvValidateTimeoutMs);
   process.env.IPTV_SYNC_INTERVAL_MS = String(cfg.iptvSyncIntervalMs);
+  if (cfg.autoplay !== undefined) process.env.AUTO_PLAY = cfg.autoplay ? 'true' : 'false';
+  else delete process.env.AUTO_PLAY;
+  if (cfg.autoplayMuted !== undefined) process.env.AUTO_PLAY_MUTED = cfg.autoplayMuted ? 'true' : 'false';
+  else delete process.env.AUTO_PLAY_MUTED;
   // Showbox specific
   if (cfg.showboxCacheDir) process.env.SHOWBOX_CACHE_DIR = cfg.showboxCacheDir; else delete process.env.SHOWBOX_CACHE_DIR;
   // Proxy settings removed; ensure legacy envs are cleared
@@ -209,7 +213,10 @@ function loadConfig() {
     iptvSeedCountries: process.env.IPTV_SEED_COUNTRIES,
     iptvValidateConcurrency: process.env.IPTV_VALIDATE_CONCURRENCY,
     iptvValidateTimeoutMs: process.env.IPTV_VALIDATE_TIMEOUT_MS,
-    iptvSyncIntervalMs: process.env.IPTV_SYNC_INTERVAL_MS
+    iptvSyncIntervalMs: process.env.IPTV_SYNC_INTERVAL_MS,
+    autoplay: process.env.AUTO_PLAY !== undefined ? process.env.AUTO_PLAY : true,
+    autoplayMuted: process.env.AUTO_PLAY_MUTED !== undefined ? process.env.AUTO_PLAY_MUTED : true,
+    playerPreferenceMode: process.env.PLAYER_PREFERENCE_MODE || 'browser',
   };
   
   // Dynamic provider enable flags from env

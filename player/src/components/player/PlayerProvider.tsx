@@ -38,10 +38,12 @@ import {
   MAX_SPEED,
   MIN_SPEED,
   UNLOCKED_BOOST,
+  migratePreferences,
   type AspectMode,
   type CaptionPreferences,
   type PlayerPreferences,
 } from './prefs/schema';
+import { resolvePreferenceMode, type PreferenceMode } from './prefs/modes';
 import type { PlayerPreset } from './PlayerRoot';
 
 /**
@@ -200,8 +202,12 @@ export function PlayerProvider({
   const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
   const [request, setRequest] = useState({ token: 0, invalidate: false });
 
-  const preferencesRef = useRef<PlayerPreferences>(DEFAULT_PREFERENCES);
-  const [preferences, setPreferencesState] = useState<PlayerPreferences>(DEFAULT_PREFERENCES);
+  const preferencesRef = useRef<PlayerPreferences>(
+    migratePreferences((embed?.preferences as Record<string, unknown>) ?? DEFAULT_PREFERENCES),
+  );
+  const [preferences, setPreferencesState] = useState<PlayerPreferences>(
+    migratePreferences((embed && embed.preferences) ?? DEFAULT_PREFERENCES),
+  );
 
   const engineHandleRef = useRef<EngineHandle | null>(null);
   const engineStateReaderRef = useRef<(() => EngineSnapshot) | null>(null);
