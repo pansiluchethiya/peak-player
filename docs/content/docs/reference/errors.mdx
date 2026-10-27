@@ -1,0 +1,35 @@
+---
+title: Player errors
+description: Every error code the player can report, with cause and recovery guidance.
+---
+
+The player reports errors in three places:
+
+1. As rejected promises from SDK calls.
+2. As `error` event payloads `{ code, message }`.
+3. Through the `/api/v1/playback/health` endpoint for server-side diagnostics.
+
+## Error codes
+
+| Code | Cause | Recovery |
+| --- | --- | --- |
+| `NOT_READY` | A command arrived before `ready`, after `destroy()`, or from a disallowed origin. | Wait for the `ready` event before calling methods. Do not use a destroyed instance. |
+| `UNSUPPORTED` | The browser does not support a requested feature (Picture-in-Picture, fullscreen, WebGL). | Hide the related button. Provide a fallback or instructional text. |
+| `INVALID_ARGUMENT` | A command received a value outside its accepted range (volume 0–1, seek ≥ 0). | Validate inputs client-side before calling the SDK. |
+| `STREAM_UNAVAILABLE` | No source in the payload was playable after failover. | Reload the session or surface a retry UI. |
+| `TOKEN_EXPIRED` | The signed embed token has expired. | Request a new session from the embed endpoint. |
+| `ORIGIN_NOT_ALLOWED` | The host page origin is not in the signed allowlist. | Re-sign the session with the correct origin. |
+| `PERMISSION_DENIED` | The browser blocked autoplay or a gesture requirement was unmet. | Prompt the user to interact (tap/click) to unmute and start. |
+| `UNKNOWN` | An unexpected runtime error with no specific code. | Log the message; surface a generic fallback. |
+
+## Command validation
+
+| Command | Argument | Validation |
+| --- | --- | --- |
+| `seek` | `seconds: number` | Finite, ≥ 0. |
+| `seekBy` | `delta: number` | Finite. |
+| `setVolume` | `value: number` | 0 ≤ value ≤ 1. |
+| `setSpeed` | `value: number` | 0.25 ≤ value ≤ 2. |
+| `setBoost` | `value: number` | 0 ≤ value ≤ 5 (0–3 unless unlocked). |
+| `setAspect` | `mode: string` | One of `fit`, `fill`, `zoom`. |
+| `switchServer` | `codename: string` | A known codename from the provider set. |

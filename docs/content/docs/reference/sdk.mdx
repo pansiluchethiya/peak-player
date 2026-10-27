@@ -158,6 +158,79 @@ useEffect(() => {
 }, [url]);
 ```
 
+## SDK v2
+
+v2 is a promise-based API on `PeakEmbed.v2`. It shares the mount interface with v1; methods
+return promises that reject with typed `{ code, message }` errors.
+
+```js
+const player = window.PeakEmbed.v2.mount({ target, url });
+await player.play();
+```
+
+### v2 methods
+
+Transport:
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `play()` | `Promise<void>` | Start or resume playback. |
+| `pause()` | `Promise<void>` | Pause playback. |
+| `seek(seconds)` | `Promise<void>` | Seek to a time (≥ 0). |
+| `seekBy(delta)` | `Promise<void>` | Seek by a relative number of seconds. |
+| `setVolume(value)` | `Promise<void>` | Set volume `0..1`. |
+| `setMuted(muted)` | `Promise<void>` | Mute or unmute. |
+| `setBoost(value)` | `Promise<void>` | Set boost multiplier `0..5`. |
+| `unlockBoost(flag)` | `Promise<void>` | Allow boost above `300%`. |
+| `setSpeed(value)` | `Promise<void>` | Set playback rate `0.25..2`. |
+
+Presentation:
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `setQuality(level)` | `Promise<void>` | `'auto'` or a rendition id. |
+| `setAudioTrack(id)` | `Promise<void>` | Select an audio track. |
+| `setCaptions(options)` | `Promise<void>` | `{ enabled, language }`. |
+| `setColourPreset(preset)` | `Promise<void>` | One of the [colour presets](/docs/guides/preferences). |
+| `setAspect(mode)` | `Promise<void>` | `fit`, `fill`, or `zoom`. |
+
+Navigation:
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `switchServer(codename)` | `Promise<void>` | Resolve a [provider codename](/docs/reference/events) and re-resolve the source. |
+| `nextEpisode()` | `Promise<void>` | Load the next episode. |
+| `previousEpisode()` | `Promise<void>` | Load the previous episode. |
+| `goToLive()` | `Promise<void>` | Jump to the live edge. |
+
+Utility:
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `requestFullscreen()` | `Promise<void>` | Enter fullscreen. |
+| `exitFullscreen()` | `Promise<void>` | Exit fullscreen. |
+| `requestPictureInPicture()` | `Promise<void>` | Enter PiP. |
+| `snapshot()` | `Promise<string>` | Data-URL of the current frame. |
+| `getShareLink()` | `Promise<string>` | Build a shareable embed link. |
+| `copyEmbedLink()` | `Promise<void>` | Copy a share link to the clipboard. |
+| `getState()` | `Promise<PlayerState>` | Current playback state snapshot. |
+| `getPreferences()` | `Promise<PlayerPreferences>` | Current preferences. |
+| `setPreferences(patch)` | `Promise<PlayerPreferences>` | Merge and persist preferences. |
+
+### v2 error handling
+
+```js
+try {
+  await player.setVolume(1.5); // INVALID_ARGUMENT
+} catch (error) {
+  console.error(error.code, error.message);
+}
+```
+
+### v1 compatibility
+
+`PeakEmbed.mount` (v1) is unchanged and coexists with v2. `PeakEmbed.version` is `2`.
+
 ## Next
 
 - [postMessage protocol](/docs/reference/postmessage)

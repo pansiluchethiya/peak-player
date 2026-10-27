@@ -1,0 +1,51 @@
+---
+title: Player events
+description: The complete event set fired by the player via the SDK and postMessage protocol.
+---
+
+The player emits events when playback state, source, or metadata changes. Register a handler with
+`player.on(event, handler)` or listen for `type === 'event'` messages on the parent window.
+
+## Transport events
+
+| Event | Payload | Fires when |
+| --- | --- | --- |
+| `ready` | `{ duration, sources, hasCaptions }` | The first playable source is attached and the player accepts commands. |
+| `play` | `{}` | Playback started (user gesture or autoplay). |
+| `pause` | `{}` | Playback was paused. |
+| `ended` | `{}` | The current source reached its end. Fires before autoplay-next logic. |
+| `timeupdate` | `{ currentTime, duration, liveEdgeStart, targetLiveWindow }` | Current time changes (~250 ms throttle). |
+| `durationchange` | `{ duration }` | The media duration becomes known or changes. |
+
+## Track events
+
+| Event | Payload | Fires when |
+| --- | --- | --- |
+| `volumechange` | `{ volume, muted, boost, boostUnlocked }` | Volume, mute, or boost changes. |
+| `ratechange` | `{ speed }` | Playback rate changes. |
+| `qualitychange` | `{ quality }` | The active video quality/rendition changes. |
+| `audiotrackchange` | `{ track }` | The active audio track changes. |
+| `captionchange` | `{ enabled, language, size, edge, mica }` | Captions are toggled or their preferences change. |
+
+## Navigation events
+
+| Event | Payload | Fires when |
+| --- | --- | --- |
+| `sourcechange` | `{ index, provider, quality, codec }` | The active source changes, including failover. Provider is sent as a codename. |
+| `serverchange` | `{ codename }` | The active provider codename changes via `switchServer`. |
+| `episodechange` | `{ type, id, title, season, episode }` | The media context changes (next/previous episode). |
+| `livechange` | `{ live, latency }` | The live edge / latency changes. |
+
+## Presentation events
+
+| Event | Payload | Fires when |
+| --- | --- | --- |
+| `fullscreenchange` | `{ fullscreen }` | Fullscreen mode is entered or exited. |
+| `pipchange` | `{ pictureInPicture }` | Picture-in-picture is entered or exited. |
+| `preferencechange` | `{ key, value }` | A preference is changed by the viewer or the SDK. |
+
+## Error events
+
+| Event | Payload | Fires when |
+| --- | --- | --- |
+| `error` | `{ code, message }` | A recoverable or terminal error occurs. See [Errors](/docs/reference/errors). |

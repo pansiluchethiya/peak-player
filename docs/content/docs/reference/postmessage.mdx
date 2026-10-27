@@ -135,6 +135,60 @@ window.addEventListener('message', (event) => {
 The channel and message shape are versioned with the player. Additive payload fields are
 non-breaking. Do not depend on undocumented fields or on provider diagnostics being present.
 
+## SDK v2 envelope
+
+v2 uses a request/response RPC over postMessage. Each request has a unique `id`; the player
+responds with the same `id`.
+
+### Request
+
+Host → player:
+
+```json
+{
+  "channel": "peak-player",
+  "type": "request",
+  "id": "req_abc123",
+  "command": "seek",
+  "value": 90
+}
+```
+
+### Response
+
+Player → host:
+
+```json
+{
+  "channel": "peak-player",
+  "type": "response",
+  "id": "req_abc123",
+  "ok": true,
+  "result": true
+}
+```
+
+On failure:
+
+```json
+{
+  "channel": "peak-player",
+  "type": "response",
+  "id": "req_abc123",
+  "ok": false,
+  "error": { "code": "INVALID_ARGUMENT", "message": "Volume must be between 0 and 100%." }
+}
+```
+
+### v2 commands
+
+The full method set is documented in [SDK](/docs/reference/sdk). The command names match the SDK
+method names exactly: `play`, `pause`, `seek`, `seekBy`, `setVolume`, `setMuted`, `setBoost`,
+`unlockBoost`, `setSpeed`, `setQuality`, `setAudioTrack`, `setCaptions`, `setColourPreset`,
+`setAspect`, `switchServer`, `nextEpisode`, `previousEpisode`, `goToLive`, `requestFullscreen`,
+`exitFullscreen`, `requestPictureInPicture`, `snapshot`, `getShareLink`, `copyEmbedLink`,
+`getState`, `getPreferences`, `setPreferences`.
+
 ## Next
 
 - [SDK reference](/docs/reference/sdk)

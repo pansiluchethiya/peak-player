@@ -1,0 +1,68 @@
+---
+title: Preferences
+description: All player preference settings, the three storage modes, and defaults.
+---
+
+## Preference schema
+
+| Key | Type | Default | Range | Description |
+| --- | --- | --- | --- | --- |
+| `volume` | number | `1` | `0..1` | Playback volume. |
+| `muted` | boolean | `false` | — | Mute state. |
+| `boost` | number | `1` | `0..5` | Volume boost multiplier. |
+| `boostUnlocked` | boolean | `false` | — | Whether boost above 3× is allowed. |
+| `speed` | number | `1` | `0.25..2` | Playback rate. |
+| `quality` | string | `'auto'` | — | `'auto'` or a rendition id. |
+| `audioTrack` | string | `null` | — | Active audio track id. |
+| `captions.enabled` | boolean | `false` | — | Captions on/off. |
+| `captions.language` | string | `null` | — | Preferred caption language. |
+| `captions.size` | string | `'md'` | `sm, md, lg, xl` | Caption size. |
+| `captions.opacity` | number | `1` | `0..1` | Caption opacity. |
+| `captions.edge` | string | `'none'` | `none, shadow, outline, background` | Caption edge style. |
+| `captions.mica` | boolean | `true` | — | Mica material background. |
+| `colourPreset` | string | `'standard'` | see presets | Colour correction preset. |
+| `aspect` | string | `'fit'` | `fit, fill, zoom` | Video aspect mode. |
+| `autoplayNext` | boolean | `true` | — | Auto-play next episode. |
+| `autoplay` | boolean | `true` | — | Autoplay on load. |
+| `locale` | string | `'en'` | — | UI locale code. |
+| `server` | string | `null` | — | Currently selected provider codename. |
+
+## Storage modes
+
+| Mode | Where it lives | Editable by | Reset |
+| --- | --- | --- | --- |
+| `browser` | `localStorage` (key `peak.preferences`) | Viewer | Clear site data. |
+| `server` | Signed into the embed token | Deployer (admin) | New session token. |
+| `user` | Account profile API | Signed-in user | Profile settings. |
+
+The deployer picks the mode; the player reads from `embed.preferences` or the active storage.
+
+## Colour presets
+
+| Preset | Label | Effect |
+| --- | --- | --- |
+| `standard` | Standard | Neutral contrast and brightness. |
+| `warm` | Warm | Sepia + hue shift. |
+| `cool` | Cool | Cool tint, desaturated. |
+| `cinema` | Cinema | High contrast, dim. |
+| `dark` | Dark | Reduced brightness for AMOLED. |
+| `bright` | Bright | Lifted brightness. |
+| `high-contrast` | High contrast | Maximum contrast. |
+
+## Changing preferences
+
+Via SDK:
+
+```js
+player.setPreferences({ muted: true, captions: { enabled: true, language: 'en' } });
+const prefs = await player.getPreferences();
+```
+
+Via UI: open the **Settings** menu (cog icon) and adjust captions, speed, colour, or aspect.
+Changes are immediately persisted to the configured storage mode and fire a `preferencechange`
+event.
+
+## See also
+
+- [SDK reference](/docs/reference/sdk)
+- [Player controls](/docs/guides/player-controls)

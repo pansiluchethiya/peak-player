@@ -331,6 +331,38 @@
         }
       }
     },
+    "/api/v1/live/tv/epg/{id}": {
+      "get": {
+        "tags": [
+          "Live TV"
+        ],
+        "summary": "Get EPG for a live TV channel",
+        "description": "Returns now/next (and nearby) programme entries for a channel id. Schedule may be null if EPG data is unavailable.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Channel id, e.g. channel_bbc_one_abc123.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "EPG schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpgResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/live/tv/channels": {
       "get": {
         "tags": [
@@ -383,6 +415,35 @@
       }
     },
     "schemas": {
+      "EpgResponse": {
+        "type": "object",
+        "description": "EPG schedule for a live TV channel. Schedule may be null.",
+        "required": ["channel"],
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel id."
+          },
+          "schedule": {
+            "type": "array",
+            "nullable": true,
+            "description": "Now/next and nearby entries, or null if unavailable.",
+            "items": {
+              "$ref": "#/components/schemas/EpgEntry"
+            }
+          }
+        }
+      },
+      "EpgEntry": {
+        "type": "object",
+        "required": ["title", "start", "stop"],
+        "properties": {
+          "title": { "type": "string" },
+          "start": { "type": "string", "format": "date-time" },
+          "stop": { "type": "string", "format": "date-time" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
       "EmbedSessionRequest": {
         "type": "object",
         "required": [
