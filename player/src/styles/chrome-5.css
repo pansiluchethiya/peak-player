@@ -2,6 +2,15 @@
    Peak player chrome (Task 6): header, breadcrumb, poster overlays, unmute.
    AMOLED monochrome: #000 canvas, #333/#e5e5e5 accent, Geist Sans + Mono.
    ========================================================================== */
+/* The stage is black in both document themes, so inherited text tokens must
+   stay light-on-dark inside the player instead of following the page theme. */
+.player-root {
+  --color-fg: #ededed;
+  --color-accent: #e5e5e5;
+  --color-accent-hover: #ffffff;
+  --accent: #e5e5e5;
+  color: var(--color-fg);
+}
 .peak-player-header { position: absolute; z-index: 34; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-direction: column; gap: 6px; max-width: min(62%, 640px); padding-block: 24px 12px; padding-inline: 28px; pointer-events: none; text-shadow: 0 2px 10px rgb(0 0 0 / 75%); }
 .peak-player-header-title { margin: 0; overflow: hidden; color: #fff; font-family: var(--font-sans), sans-serif; font-size: clamp(16px, 2vw, 22px); font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .peak-player-header-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: color-mix(in srgb, #fff 72%, transparent); font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }

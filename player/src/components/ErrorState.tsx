@@ -30,8 +30,8 @@ export function ErrorState({ title, message, diagnostics, onTryAnother, onReload
           <details className="diagnostics">
             <summary>{t('provider-diagnostics')}</summary>
             <ul>
-              {failures.map((failure) => (
-                <li key={`${failure.provider}-${failure.latencyMs}`}>
+              {failures.map((failure, index) => (
+                <li key={`${failure.provider}-${failure.latencyMs}-${index}`}>
                   <strong>{failure.provider}</strong> — {failure.error ?? t('failed')}
                 </li>
               ))}

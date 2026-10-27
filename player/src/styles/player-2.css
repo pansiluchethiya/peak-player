@@ -177,7 +177,7 @@
 
 .button.primary {
   background: var(--accent);
-  color: #fff;
+  color: #000;
 }
 
 .button.primary:hover {
