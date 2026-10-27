@@ -118,6 +118,15 @@ function normalizeConfig(base) {
   if (cfg.iptvSeedEnabled === undefined) cfg.iptvSeedEnabled = true;
   if (!cfg.iptvSeedCategories) cfg.iptvSeedCategories = '*';
   if (!cfg.iptvSeedCountries) cfg.iptvSeedCountries = '*';
+  // IPTV validation defaults: bounded probe pool with a short per-stream timeout.
+  const validateConcurrency = Number.parseInt(cfg.iptvValidateConcurrency, 10);
+  cfg.iptvValidateConcurrency = Number.isFinite(validateConcurrency) && validateConcurrency > 0
+    ? validateConcurrency
+    : 8;
+  const validateTimeout = Number.parseInt(cfg.iptvValidateTimeoutMs, 10);
+  cfg.iptvValidateTimeoutMs = Number.isFinite(validateTimeout) && validateTimeout > 0
+    ? validateTimeout
+    : 6000;
   // TMDB ID used by the dashboard's "Run Provider Functional Checks" feature
   if (!cfg.providerCheckTmdbId) cfg.providerCheckTmdbId = '278';
   return cfg;
@@ -155,6 +164,8 @@ function applyConfigToEnv(cfg){
   process.env.IPTV_SEED_ENABLED = cfg.iptvSeedEnabled ? 'true' : 'false';
   process.env.IPTV_SEED_CATEGORIES = cfg.iptvSeedCategories || '*';
   process.env.IPTV_SEED_COUNTRIES = cfg.iptvSeedCountries || '*';
+  process.env.IPTV_VALIDATE_CONCURRENCY = String(cfg.iptvValidateConcurrency);
+  process.env.IPTV_VALIDATE_TIMEOUT_MS = String(cfg.iptvValidateTimeoutMs);
   // Showbox specific
   if (cfg.showboxCacheDir) process.env.SHOWBOX_CACHE_DIR = cfg.showboxCacheDir; else delete process.env.SHOWBOX_CACHE_DIR;
   // Proxy settings removed; ensure legacy envs are cleared
@@ -189,7 +200,9 @@ function loadConfig() {
     providerCheckTmdbId: process.env.PROVIDER_CHECK_TMDB_ID || null,
     iptvSeedEnabled: process.env.IPTV_SEED_ENABLED,
     iptvSeedCategories: process.env.IPTV_SEED_CATEGORIES,
-    iptvSeedCountries: process.env.IPTV_SEED_COUNTRIES
+    iptvSeedCountries: process.env.IPTV_SEED_COUNTRIES,
+    iptvValidateConcurrency: process.env.IPTV_VALIDATE_CONCURRENCY,
+    iptvValidateTimeoutMs: process.env.IPTV_VALIDATE_TIMEOUT_MS
   };
   
   // Dynamic provider enable flags from env

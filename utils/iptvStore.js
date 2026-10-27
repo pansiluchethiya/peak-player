@@ -381,16 +381,48 @@ function setChannelEnabled(id, enabled) {
   getDb().prepare('UPDATE iptv_channels SET enabled = ? WHERE id = ?').run(enabled ? 1 : 0, id);
 }
 
-function listGroups() {
+function listGroups(filter = {}) {
   ensureIptvTables();
+  const conditions = ['enabled = 1'];
+  const params = [];
+  // Health filtering is opt-in: the player passes `status: 'ok'`, admin omits it.
+  if (filter.status) {
+    conditions.push('status = ?');
+    params.push(filter.status);
+  }
   const rows = getDb()
-    .prepare('SELECT group_title, COUNT(*) AS c FROM iptv_channels WHERE enabled = 1 GROUP BY group_title ORDER BY group_title')
-    .all();
+    .prepare(`SELECT group_title, COUNT(*) AS c FROM iptv_channels WHERE ${conditions.join(' AND ')} GROUP BY group_title ORDER BY group_title`)
+    .all(...params);
   return rows.map((row) => ({
     id: row.group_title ?? 'ungrouped',
     title: row.group_title ?? 'Ungrouped',
     count: row.c,
   }));
+}
+
+function toIso(value) {
+  if (value === undefined || value === null) return new Date().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'number') return new Date(value).toISOString();
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? new Date().toISOString() : new Date(parsed).toISOString();
+}
+
+// Channels the validator should probe: enabled rows whose backoff has elapsed
+// (or that have never been checked). Disabled rows stay untouched by the probe.
+function listDueChannels({ now = Date.now(), limit = 1000 } = {}) {
+  ensureIptvTables();
+  const at = toIso(now);
+  const cappedLimit = Math.min(Math.max(Math.floor(Number(limit) || 1000), 1), 5000);
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM iptv_channels
+       WHERE enabled = 1 AND (next_check_at IS NULL OR next_check_at <= ?)
+       ORDER BY COALESCE(next_check_at, '') ASC, position, name
+       LIMIT ?`,
+    )
+    .all(at, cappedLimit);
+  return rows.map(rowToChannel);
 }
 
 module.exports = {
@@ -407,6 +439,7 @@ module.exports = {
   setChannelHealth,
   listChannels,
   listChannelsFlat,
+  listDueChannels,
   getChannel,
   setChannelEnabled,
   listGroups,

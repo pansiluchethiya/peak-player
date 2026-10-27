@@ -616,7 +616,7 @@ app.get('/api/v1/live/tv/channels', (req,res) => {
     const group = req.query.group ? String(req.query.group) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : 200;
     const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
-    const result = iptvStore.listChannels({ q, group, limit, cursor, enabled: true });
+    const result = iptvStore.listChannels({ q, group, limit, cursor, enabled: true, status: 'ok' });
     const channels = result.channels.map((c) => ({
       id: c.id,
       name: c.name,
@@ -633,7 +633,8 @@ app.get('/api/v1/live/tv/channels', (req,res) => {
 
 app.get('/api/v1/live/tv/groups', (req,res) => {
   try {
-    const groups = iptvStore.listGroups();
+    // Player groups only count healthy channels; dead rows stay admin-only.
+    const groups = iptvStore.listGroups({ status: 'ok' });
     res.json({ success: true, groups });
   } catch (e) {
     res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
