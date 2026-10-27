@@ -1,5 +1,6 @@
-import { VideoJsEmbedPlayer } from '@/components/VideoJsPlayer';
+import { PlayerRoot } from '@/components/player';
 import { apiBase, embedConfig } from '@/lib/embedPage';
+import type { Media } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,11 +19,19 @@ export default async function EmbedTvPage({
   const { id, season, episode } = await params;
   const { poster } = await searchParams;
   const embed = await embedConfig();
+  const media: Media = {
+    type: 'tv',
+    id,
+    season: positive(season),
+    episode: positive(episode),
+    poster,
+  };
   return (
-    <VideoJsEmbedPlayer
+    <PlayerRoot
       apiBase={apiBase()}
-      media={{ type: 'tv', id, season: positive(season), episode: positive(episode), poster }}
+      media={media}
       embed={embed}
+      preset={media.type === 'live_tv' ? 'live-video' : 'video'}
     />
   );
 }

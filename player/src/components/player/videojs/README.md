@@ -44,6 +44,12 @@ below afterwards.
    transitively imports `./captions.css` and `./theme.css`. No extra `@import`s are
    added to `skin.css` (duplicating them would double-emit the skin CSS).
 
+6. **`chromeInert` on the skin entry.** Task 5 added an optional `chromeInert` prop.
+   When true, the chrome layers (`Poster`, indicators, `Title`, controls, hotkeys,
+   gestures, status indicators) are wrapped in a `display: contents` element carrying
+   `inert` and `aria-hidden`, while `children` (the media element or external iframe)
+   stay interactive. Used for external providers that own their own transport.
+
 ## Not ours to change yet
 
 `<Title />` and `<VideoHotkeys />` are still rendered by `video/skin.tsx`. They are

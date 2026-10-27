@@ -1,4 +1,35 @@
 /* ==========================================================================
+   Single Player Stage (PlayerRoot)
+   ========================================================================== */
+
+.player-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  background: #000;
+}
+
+.player-stage .media-skin {
+  height: 100%;
+}
+
+.player-stage-bg .player-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* External providers own transport; keep the skin visible but inert. */
+.player-stage[data-transport='external'] .video-controls {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ==========================================================================
    Ambient Background Layer
    ========================================================================== */
 

@@ -14,7 +14,7 @@ const allStyles = [
   'landing-9.css', 'landing-10.css', 'landing-11.css', 'landing-12.css', 'landing-13.css',
   'landing-14.css', 'theme.css',
 ].map((f) => readFileSync(new URL(`../src/styles/${f}`, import.meta.url), 'utf8')).join('\n');
-const player = readFileSync(new URL('../src/components/Player.tsx', import.meta.url), 'utf8');
+const player = readFileSync(new URL('../src/components/player/PlayerRoot.tsx', import.meta.url), 'utf8');
 
 describe('embed landing page', () => {
   it('presents the Peak player, signed embed flow, and quick start', () => {
