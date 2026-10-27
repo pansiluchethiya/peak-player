@@ -11,6 +11,27 @@ export type EmbedEventName =
   | 'sourcechange'
   | 'error';
 
+/** Full v2 event set (spec §12). */
+export type EmbedEventNameV2 =
+  | 'ready'
+  | 'play'
+  | 'pause'
+  | 'ended'
+  | 'timeupdate'
+  | 'durationchange'
+  | 'volumechange'
+  | 'ratechange'
+  | 'qualitychange'
+  | 'audiotrackchange'
+  | 'captionchange'
+  | 'serverchange'
+  | 'episodechange'
+  | 'livechange'
+  | 'fullscreenchange'
+  | 'pipchange'
+  | 'preferencechange'
+  | 'error';
+
 export type EmbedCommandName =
   | 'play'
   | 'pause'
@@ -18,6 +39,16 @@ export type EmbedCommandName =
   | 'setVolume'
   | 'setSubtitle'
   | 'setQuality';
+
+/** Full v2 command set (spec §12). */
+export const V2_COMMANDS = new Set<string>([
+  'play', 'pause', 'seek', 'seekBy', 'setVolume', 'setMuted', 'setBoost',
+  'unlockBoost', 'setSpeed', 'setQuality', 'setAudioTrack', 'setCaptions',
+  'setColourPreset', 'setAspect', 'switchServer', 'nextEpisode',
+  'previousEpisode', 'goToLive', 'requestFullscreen', 'exitFullscreen',
+  'requestPictureInPicture', 'snapshot', 'getShareLink', 'copyEmbedLink',
+  'getState', 'getPreferences', 'setPreferences',
+]);
 
 export type EmbedEventPayload = Record<string, unknown>;
 
@@ -119,4 +150,62 @@ export function postToParent(
   if (!safeOrigin) return false;
   target.postMessage(message, safeOrigin);
   return true;
+}
+
+/** ---- SDK v2 transport ---- */
+
+export interface EmbedRequest {
+  channel: typeof EMBED_CHANNEL;
+  type: 'request';
+  id: string;
+  command: string;
+  value?: unknown;
+}
+
+export interface EmbedResponse {
+  channel: typeof EMBED_CHANNEL;
+  type: 'response';
+  id: string;
+  ok: boolean;
+  result?: unknown;
+  error?: { code: string; message: string };
+}
+
+export interface EmbedV2EventMessage {
+  channel: typeof EMBED_CHANNEL;
+  type: 'event';
+  version: 2;
+  timestamp: number;
+  event: EmbedEventNameV2;
+  payload?: Record<string, unknown>;
+}
+
+/** Validate a v2 request envelope. */
+export function parseEmbedRequest(data: unknown): EmbedRequest | null {
+  if (!isRecord(data)) return null;
+  if (
+    data.channel !== EMBED_CHANNEL ||
+    data.type !== 'request' ||
+    typeof data.id !== 'string' ||
+    typeof data.command !== 'string' ||
+    !V2_COMMANDS.has(data.command)
+  ) {
+    return null;
+  }
+  return data as unknown as EmbedRequest;
+}
+
+/** Build a v2 event message with version + timestamp merged into the payload. */
+export function createEmbedEventV2(
+  event: EmbedEventNameV2,
+  payload?: Record<string, unknown>,
+): EmbedV2EventMessage {
+  return {
+    channel: EMBED_CHANNEL,
+    type: 'event',
+    version: 2,
+    timestamp: Date.now(),
+    event,
+    ...(payload ? { payload } : {}),
+  };
 }

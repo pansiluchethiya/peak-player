@@ -33,6 +33,14 @@ import { t } from './i18n';
 import { engineSource } from './media/source';
 import type { EngineHandle, EngineSnapshot } from './media/useMediaEngine';
 import {
+  EMBED_CHANNEL,
+  createEmbedEvent,
+  createEmbedEventV2,
+  isAllowedOrigin,
+  parseEmbedRequest,
+  type EmbedRequest,
+} from '../../lib/embedBridge';
+import {
   DEFAULT_PREFERENCES,
   MAX_BOOST,
   MAX_SPEED,
@@ -162,6 +170,40 @@ const DISCOVERY_TIMEOUT_MS = 20_000;
 function isAutoplayBlocked(reason: unknown): boolean {
   if (reason instanceof DOMException) return reason.name === 'NotAllowedError';
   return reason instanceof Error && reason.name === 'NotAllowedError';
+}
+
+/** Maps a v2 SDK command to the corresponding PlayerApi call (spec §12.1). */
+function dispatchCommand(command: string, value: unknown, playerApi: PlayerApi): unknown {
+  switch (command) {
+    case 'play': return playerApi.play();
+    case 'pause': return playerApi.pause();
+    case 'seek': return playerApi.seek(Number(value));
+    case 'seekBy': return playerApi.seekBy(Number(value));
+    case 'setVolume': return playerApi.setVolume(Number(value));
+    case 'setMuted': return playerApi.setMuted(Boolean(value));
+    case 'setBoost': return playerApi.setBoost(Number(value));
+    case 'unlockBoost': return playerApi.unlockBoost(Boolean(value));
+    case 'setSpeed': return playerApi.setSpeed(Number(value));
+    case 'setQuality': return playerApi.setQuality(String(value));
+    case 'setAudioTrack': return playerApi.setAudioTrack(String(value));
+    case 'setCaptions': return playerApi.setCaptions(value as Record<string, unknown>);
+    case 'setColourPreset': return playerApi.setColourPreset(String(value));
+    case 'setAspect': return playerApi.setAspect(String(value) as 'fit' | 'fill' | 'zoom');
+    case 'switchServer': return playerApi.switchServer(String(value));
+    case 'nextEpisode': return playerApi.nextEpisode();
+    case 'previousEpisode': return playerApi.previousEpisode();
+    case 'goToLive': return playerApi.goToLive();
+    case 'requestFullscreen': return playerApi.requestFullscreen();
+    case 'exitFullscreen': return playerApi.exitFullscreen();
+    case 'requestPictureInPicture': return playerApi.requestPictureInPicture();
+    case 'snapshot': return playerApi.snapshot();
+    case 'getShareLink': return playerApi.getShareLink();
+    case 'copyEmbedLink': return playerApi.copyEmbedLink();
+    case 'getState': return playerApi.getState();
+    case 'getPreferences': return playerApi.getPreferences();
+    case 'setPreferences': return playerApi.setPreferences(value as Partial<PlayerPreferences>);
+    default: throw new PeakPlayerError('UNSUPPORTED', `Unknown command: ${command}`);
+  }
 }
 
 function initialSourceIndex(sources: Source[]): number {
@@ -789,6 +831,40 @@ export function PlayerProvider({
       window.removeEventListener('keydown', handler);
     };
   }, [api, needsInteraction]);
+
+  // --- SDK v2 postMessage request bridge (spec §12.1) ---
+  // Receives typed requests from the parent frame, dispatches them through the
+  // PlayerApi, and responds with ok/result or a typed error envelope.
+  useEffect(() => {
+    const allowedOrigins = embed?.origins ?? [];
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin === 'null' || !isAllowedOrigin(event.origin, allowedOrigins)) return;
+      const request = parseEmbedRequest(event.data);
+      if (!request) return;
+
+      const { command, value, id } = request;
+
+      const sendResponse = (response: { ok: boolean; result?: unknown; error?: { code: string; message: string } }) => {
+        if (event.source && typeof event.source.postMessage === 'function') {
+          event.source.postMessage(
+            { channel: EMBED_CHANNEL, type: 'response', id, ...response },
+            { targetOrigin: event.origin } as unknown as WindowPostMessageOptions,
+          );
+        }
+      };
+
+      try {
+        const result = await dispatchCommand(command, value, api);
+        sendResponse({ ok: true, result });
+      } catch (error) {
+        const code = error instanceof PeakPlayerError ? error.code : 'UNKNOWN';
+        sendResponse({ ok: false, error: { code, message: error instanceof Error ? error.message : String(error) } });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [embed?.origins, api]);
 
   const contextValue = useMemo<PlayerContextValue>(
     () => ({

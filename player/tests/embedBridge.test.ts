@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   createEmbedEvent,
+  createEmbedEventV2,
   isAllowedOrigin,
   parseEmbedCommand,
+  parseEmbedRequest,
   postToParent,
 } from '../src/lib/embedBridge';
 
@@ -96,5 +98,30 @@ describe('embed bridge events', () => {
 
     assert.equal(postToParent(target, '*', createEmbedEvent('ready')), false);
     assert.equal(postToParent(null, 'https://partner.example', createEmbedEvent('ready')), false);
+  });
+
+  it('parses v2 request envelopes', () => {
+    assert.deepEqual(
+      parseEmbedRequest({ channel: 'peak-player', type: 'request', id: 'req_1', command: 'getState' }),
+      { channel: 'peak-player', type: 'request', id: 'req_1', command: 'getState' },
+    );
+    assert.equal(
+      parseEmbedRequest({ channel: 'peak-player', type: 'request', id: 'req_2', command: 'explode' }),
+      null,
+    );
+    assert.equal(
+      parseEmbedRequest({ channel: 'peak-player', type: 'command', id: 'req_3', command: 'play' }),
+      null,
+    );
+  });
+
+  it('creates v2 events with version and timestamp', () => {
+    const event = createEmbedEventV2('ready', { title: 'Test' });
+    assert.equal(event.channel, 'peak-player');
+    assert.equal(event.type, 'event');
+    assert.equal(event.version, 2);
+    assert.equal(typeof event.timestamp, 'number');
+    assert.equal(event.event, 'ready');
+    assert.deepEqual(event.payload, { title: 'Test' });
   });
 });
