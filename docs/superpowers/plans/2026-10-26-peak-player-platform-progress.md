@@ -37,3 +37,5 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 | 10 | done | 05fb0e58 | in-place IPTV schema migration (seeded/guide + six health columns), idempotent iptv-org seed playlist, transactional upsert preserving enabled/health, iptv-org seeder + config flags, admin numeric-enabled fix, temp-DB test isolation |
 
 | 11 | done | bdeafb76 | probeChannel + bounded validateChannels + nextCheckAt backoff, due-channel store query/health update, player channel/group routes require enabled+ok, admin keeps all health; Task 13 must boot-validate and preserve health on sync |
+
+| 12 | done | b2d9970d | XMLTV parser with entity/offset handling, transactional replaceEpg + windowed getEpgProgrammes + pruneEpg, now/next boundary logic, refreshGuides (30s timeout, per-guide failure isolation), GET /api/v1/live/tv/epg/:id; 12 focused tests |
