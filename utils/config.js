@@ -97,7 +97,7 @@ function normalizeConfig(base) {
   // Dynamic provider enable flags
   const providerNames = getProviderNames();
   const boolKeys = providerNames.map(name => `enable${name.charAt(0).toUpperCase() + name.slice(1)}Provider`);
-  boolKeys.push('disableCache', 'enablePStreamApi', 'disableUrlValidation', 'disable4khdhubUrlValidation', 'enableProxy');
+  boolKeys.push('disableCache', 'enablePStreamApi', 'disableUrlValidation', 'disable4khdhubUrlValidation', 'enableProxy', 'iptvSeedEnabled');
   
   boolKeys.forEach(k=>{ if (cfg[k] === 'true') cfg[k] = true; else if (cfg[k] === 'false') cfg[k] = false; });
   
@@ -114,6 +114,10 @@ function normalizeConfig(base) {
   // Proxy features removed; always use direct connections
   if (cfg.disableUrlValidation === undefined) cfg.disableUrlValidation = false;
   if (cfg.disable4khdhubUrlValidation === undefined) cfg.disable4khdhubUrlValidation = false;
+  // IPTV seed defaults: seed everything from iptv-org unless narrowed by the operator.
+  if (cfg.iptvSeedEnabled === undefined) cfg.iptvSeedEnabled = true;
+  if (!cfg.iptvSeedCategories) cfg.iptvSeedCategories = '*';
+  if (!cfg.iptvSeedCountries) cfg.iptvSeedCountries = '*';
   // TMDB ID used by the dashboard's "Run Provider Functional Checks" feature
   if (!cfg.providerCheckTmdbId) cfg.providerCheckTmdbId = '278';
   return cfg;
@@ -148,6 +152,9 @@ function applyConfigToEnv(cfg){
   process.env.ENABLE_PROXY = cfg.enableProxy ? 'true':'false';
   if (cfg.providerCheckTmdbId) process.env.PROVIDER_CHECK_TMDB_ID = String(cfg.providerCheckTmdbId);
   else delete process.env.PROVIDER_CHECK_TMDB_ID;
+  process.env.IPTV_SEED_ENABLED = cfg.iptvSeedEnabled ? 'true' : 'false';
+  process.env.IPTV_SEED_CATEGORIES = cfg.iptvSeedCategories || '*';
+  process.env.IPTV_SEED_COUNTRIES = cfg.iptvSeedCountries || '*';
   // Showbox specific
   if (cfg.showboxCacheDir) process.env.SHOWBOX_CACHE_DIR = cfg.showboxCacheDir; else delete process.env.SHOWBOX_CACHE_DIR;
   // Proxy settings removed; ensure legacy envs are cleared
@@ -179,7 +186,10 @@ function loadConfig() {
     disableUrlValidation: process.env.DISABLE_URL_VALIDATION,
     disable4khdhubUrlValidation: process.env.DISABLE_4KHDHUB_URL_VALIDATION,
     enableProxy: process.env.ENABLE_PROXY,
-    providerCheckTmdbId: process.env.PROVIDER_CHECK_TMDB_ID || null
+    providerCheckTmdbId: process.env.PROVIDER_CHECK_TMDB_ID || null,
+    iptvSeedEnabled: process.env.IPTV_SEED_ENABLED,
+    iptvSeedCategories: process.env.IPTV_SEED_CATEGORIES,
+    iptvSeedCountries: process.env.IPTV_SEED_COUNTRIES
   };
   
   // Dynamic provider enable flags from env

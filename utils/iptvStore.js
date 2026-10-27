@@ -1,6 +1,9 @@
 const { getDb } = require('./db');
 const { encodeChannelId } = require('./iptvId');
 
+const SEED_PLAYLIST_NAME = 'iptv-org';
+const SEED_PLAYLIST_URL = 'seed:iptv-org';
+
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS iptv_playlists (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -9,7 +12,9 @@ const SCHEMA = `
     enabled INTEGER NOT NULL DEFAULT 1,
     channel_count INTEGER NOT NULL DEFAULT 0,
     last_sync_at TEXT,
-    last_error TEXT
+    last_error TEXT,
+    seeded INTEGER NOT NULL DEFAULT 0,
+    guide_url TEXT
   );
   CREATE TABLE IF NOT EXISTS iptv_channels (
     id TEXT PRIMARY KEY,
@@ -24,14 +29,58 @@ const SCHEMA = `
     country TEXT,
     position INTEGER NOT NULL DEFAULT 0,
     enabled INTEGER NOT NULL DEFAULT 1,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'unknown',
+    http_status INTEGER,
+    latency_ms INTEGER,
+    checked_at TEXT,
+    fail_count INTEGER NOT NULL DEFAULT 0,
+    next_check_at TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_iptv_channels_group ON iptv_channels(group_title);
   CREATE INDEX IF NOT EXISTS idx_iptv_channels_tvg ON iptv_channels(tvg_id);
 `;
 
+const CHANNEL_HEALTH_COLUMNS = {
+  status: 'status',
+  httpStatus: 'http_status',
+  latencyMs: 'latency_ms',
+  checkedAt: 'checked_at',
+  failCount: 'fail_count',
+  nextCheckAt: 'next_check_at',
+};
+
+// Tracks the database instance whose schema is already migrated, so the eight
+// PRAGMA checks run once per connection rather than on every store call.
+let migratedDb = null;
+
+function toEnabledFlag(value) {
+  return value === false || value === 0 || value === '0' || value === 'false' ? 0 : 1;
+}
+
+function ensureColumn(table, name, ddl) {
+  const db = getDb();
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (columns.some((column) => column.name === name)) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
+  return true;
+}
+
 function ensureIptvTables() {
-  getDb().exec(SCHEMA);
+  const db = getDb();
+  if (migratedDb === db) return;
+  db.exec(SCHEMA);
+  // In-place migration for databases created before the IPTV health/seed columns existed.
+  ensureColumn('iptv_playlists', 'seeded', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('iptv_playlists', 'guide_url', 'TEXT');
+  ensureColumn('iptv_channels', 'status', "TEXT NOT NULL DEFAULT 'unknown'");
+  ensureColumn('iptv_channels', 'http_status', 'INTEGER');
+  ensureColumn('iptv_channels', 'latency_ms', 'INTEGER');
+  ensureColumn('iptv_channels', 'checked_at', 'TEXT');
+  ensureColumn('iptv_channels', 'fail_count', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('iptv_channels', 'next_check_at', 'TEXT');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_iptv_channels_status ON iptv_channels(status)');
+  migratedDb = db;
 }
 
 function rowToPlaylist(row) {
@@ -43,6 +92,10 @@ function rowToPlaylist(row) {
     channelCount: row.channel_count,
     lastSyncAt: row.last_sync_at ?? null,
     lastError: row.last_error ?? null,
+    seeded: row.seeded === 1,
+    guideUrl: row.guide_url ?? null,
+    // Snake-case alias so guide consumers can read the column name directly.
+    guide_url: row.guide_url ?? null,
   };
 }
 
@@ -65,7 +118,13 @@ function rowToChannel(row) {
     language: row.language ?? null,
     country: row.country ?? null,
     position: row.position,
-    enabled: row.enabled === 1,
+    enabled: row.enabled,
+    status: row.status ?? 'unknown',
+    httpStatus: row.http_status ?? null,
+    latencyMs: row.latency_ms ?? null,
+    checkedAt: row.checked_at ?? null,
+    failCount: row.fail_count ?? 0,
+    nextCheckAt: row.next_check_at ?? null,
   };
 }
 
@@ -128,7 +187,7 @@ function replaceChannels(playlistId, channels) {
         ch.language ?? null,
         ch.country ?? null,
         ch.position ?? index,
-        ch.enabled === false ? 0 : 1,
+        toEnabledFlag(ch.enabled),
         new Date().toISOString(),
       );
     });
@@ -136,13 +195,144 @@ function replaceChannels(playlistId, channels) {
   tx();
 }
 
+function ensureSeedPlaylist({ guideUrl = null } = {}) {
+  ensureIptvTables();
+  const db = getDb();
+  const run = db.transaction(() => {
+    let row = db.prepare('SELECT * FROM iptv_playlists WHERE url = ?').get(SEED_PLAYLIST_URL);
+    if (!row) {
+      db.prepare('INSERT INTO iptv_playlists (name, url, seeded) VALUES (?, ?, 1)')
+        .run(SEED_PLAYLIST_NAME, SEED_PLAYLIST_URL);
+      row = db.prepare('SELECT * FROM iptv_playlists WHERE url = ?').get(SEED_PLAYLIST_URL);
+    } else {
+      db.prepare('UPDATE iptv_playlists SET seeded = 1 WHERE id = ?').run(row.id);
+    }
+    // A missing guide must never erase a URL that is already configured.
+    if (guideUrl) {
+      db.prepare('UPDATE iptv_playlists SET guide_url = ? WHERE id = ?').run(guideUrl, row.id);
+    }
+    return db.prepare('SELECT * FROM iptv_playlists WHERE id = ?').get(row.id);
+  });
+  return rowToPlaylist(run());
+}
+
+function normalizeChannel(channel, index) {
+  const id = channel.id || encodeChannelId(channel.name, channel.url);
+  return {
+    id,
+    name: channel.name,
+    tvgId: channel.tvgId ?? channel.tvg_id ?? null,
+    groupTitle: channel.groupTitle ?? channel.group ?? null,
+    logo: channel.logo ?? null,
+    url: channel.url,
+    headers: JSON.stringify(channel.headers ?? {}),
+    language: channel.language ?? null,
+    country: channel.country ?? null,
+    position: channel.position ?? index,
+    enabled: toEnabledFlag(channel.enabled),
+  };
+}
+
+function upsertChannels(playlistId, channels, { preserveState = true } = {}) {
+  ensureIptvTables();
+  const db = getDb();
+  // Duplicate ids in the input: the last one wins.
+  const byId = new Map();
+  (channels || []).forEach((channel, index) => {
+    const normalized = normalizeChannel(channel, index);
+    byId.set(normalized.id, normalized);
+  });
+  const entries = Array.from(byId.values());
+  const now = new Date().toISOString();
+  const conflictSet = [
+    'name = excluded.name',
+    'tvg_id = excluded.tvg_id',
+    'group_title = excluded.group_title',
+    'logo = excluded.logo',
+    'url = excluded.url',
+    'headers = excluded.headers',
+    'language = excluded.language',
+    'country = excluded.country',
+    'position = excluded.position',
+    'updated_at = excluded.updated_at',
+  ];
+  if (!preserveState) {
+    conflictSet.push('enabled = excluded.enabled');
+    conflictSet.push("status = 'unknown'");
+    conflictSet.push('http_status = NULL');
+    conflictSet.push('latency_ms = NULL');
+    conflictSet.push('checked_at = NULL');
+    conflictSet.push('fail_count = 0');
+    conflictSet.push('next_check_at = NULL');
+  }
+  const run = db.transaction(() => {
+    const keep = entries.map((entry) => entry.id);
+    if (keep.length) {
+      const placeholders = keep.map(() => '?').join(', ');
+      db.prepare(`DELETE FROM iptv_channels WHERE playlist_id = ? AND id NOT IN (${placeholders})`)
+        .run(playlistId, ...keep);
+    } else {
+      db.prepare('DELETE FROM iptv_channels WHERE playlist_id = ?').run(playlistId);
+    }
+    const stmt = db.prepare(
+      `INSERT INTO iptv_channels (id, playlist_id, name, tvg_id, group_title, logo, url, headers, language, country, position, enabled, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET ${conflictSet.join(', ')}`,
+    );
+    entries.forEach((entry) => {
+      stmt.run(
+        entry.id,
+        playlistId,
+        entry.name,
+        entry.tvgId,
+        entry.groupTitle,
+        entry.logo,
+        entry.url,
+        entry.headers,
+        entry.language,
+        entry.country,
+        entry.position,
+        entry.enabled,
+        now,
+      );
+    });
+  });
+  run();
+  return entries.length;
+}
+
+function setChannelHealth(id, health = {}) {
+  ensureIptvTables();
+  const assignments = [];
+  const params = [];
+  Object.entries(CHANNEL_HEALTH_COLUMNS).forEach(([key, column]) => {
+    if (Object.prototype.hasOwnProperty.call(health, key) && health[key] !== undefined) {
+      assignments.push(`${column} = ?`);
+      params.push(health[key]);
+    }
+  });
+  if (!assignments.length) return false;
+  const res = getDb()
+    .prepare(`UPDATE iptv_channels SET ${assignments.join(', ')} WHERE id = ?`)
+    .run(...params, id);
+  return res.changes > 0;
+}
+
 function listChannels(filter = {}) {
   ensureIptvTables();
   const db = getDb();
   const conditions = [];
   const params = [];
-  if (!filter.admin) {
+  // Enabled filtering is opt-in: the store's query API exposes the whole catalogue
+  // (health tooling needs disabled rows) while public routes pass `enabled: true`.
+  if (filter.enabled === true) {
     conditions.push('enabled = 1');
+  } else if (filter.enabled === false) {
+    conditions.push('enabled = 0');
+  }
+  if (filter.status) {
+    conditions.push('status = ?');
+    params.push(filter.status);
   }
   if (filter.q) {
     conditions.push('LOWER(name) LIKE ?');
@@ -205,6 +395,7 @@ function listGroups() {
 
 module.exports = {
   ensureIptvTables,
+  ensureSeedPlaylist,
   listPlaylists,
   getPlaylist,
   addPlaylist,
@@ -212,9 +403,13 @@ module.exports = {
   setPlaylistEnabled,
   updatePlaylistSync,
   replaceChannels,
+  upsertChannels,
+  setChannelHealth,
   listChannels,
   listChannelsFlat,
   getChannel,
   setChannelEnabled,
   listGroups,
+  SEED_PLAYLIST_URL,
+  SEED_PLAYLIST_NAME,
 };

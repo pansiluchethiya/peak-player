@@ -58,6 +58,11 @@
   const $ = (selector, root) => (root || document).querySelector(selector);
   const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
 
+  // Channels come back from SQLite as 0/1; playlists come back as booleans.
+  const isEnabledFlag = (value) => (window.peakIptvFlags
+    ? window.peakIptvFlags.isEnabled(value)
+    : value !== false && value !== 0);
+
   function escapeHTML(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -1595,7 +1600,7 @@
   function formatSyncStatus(playlist) {
     const last = playlist.lastSyncAt ? new Date(playlist.lastSyncAt) : null;
     const ago = last ? timeAgo(last.toISOString()) : 'Never';
-    let status = playlist.enabled ? 'Enabled' : 'Disabled';
+    let status = isEnabledFlag(playlist.enabled) ? 'Enabled' : 'Disabled';
     if (playlist.lastError) status = `Error: ${playlist.lastError}`;
     return `${status} · Last sync: ${ago}`;
   }
@@ -1610,7 +1615,7 @@
       return;
     }
     container.innerHTML = state.iptvPlaylists.map((playlist, index) => {
-      const enabled = playlist.enabled !== false;
+      const enabled = isEnabledFlag(playlist.enabled);
       const syncing = playlist.syncing;
       return `
         <div class="iptv-playlist-item" data-iptv-index="${index}">
@@ -1652,7 +1657,7 @@
       return;
     }
     container.innerHTML = visible.map((ch) => {
-      const enabled = ch.enabled !== false;
+      const enabled = isEnabledFlag(ch.enabled);
       return `
         <div class="iptv-channel-item" data-iptv-channel="${escapeAttr(ch.id)}">
           <div class="iptv-channel-logo">${ch.logo ? `<img src="${escapeAttr(ch.logo)}" alt="${escapeAttr(ch.name)} logo" loading="lazy" />` : '<span class="iptv-channel-placeholder" aria-hidden="true"></span>'}</div>
@@ -1748,7 +1753,7 @@
   async function handleIptvTogglePlaylist(index) {
     const playlist = state.iptvPlaylists[index];
     if (!playlist) return;
-    const wasEnabled = playlist.enabled !== false;
+    const wasEnabled = isEnabledFlag(playlist.enabled);
     try {
       const result = await fetchJSON(`/api/admin/iptv/playlists/${encodeURIComponent(playlist.id)}`, {
         method: 'PATCH',
@@ -1788,7 +1793,7 @@
   async function handleIptvToggleChannel(channelId) {
     const channel = state.iptvChannels.find((ch) => ch.id === channelId);
     if (!channel) return;
-    const wasEnabled = channel.enabled !== false;
+    const wasEnabled = isEnabledFlag(channel.enabled);
     try {
       const result = await fetchJSON(`/api/admin/iptv/channels/${encodeURIComponent(channelId)}`, {
         method: 'PATCH',

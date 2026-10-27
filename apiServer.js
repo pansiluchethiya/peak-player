@@ -616,7 +616,7 @@ app.get('/api/v1/live/tv/channels', (req,res) => {
     const group = req.query.group ? String(req.query.group) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : 200;
     const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
-    const result = iptvStore.listChannels({ q, group, limit, cursor });
+    const result = iptvStore.listChannels({ q, group, limit, cursor, enabled: true });
     const channels = result.channels.map((c) => ({
       id: c.id,
       name: c.name,
@@ -711,8 +711,8 @@ app.get('/api/admin/iptv/channels', (req,res) => {
     const q = req.query.q ? String(req.query.q) : undefined;
     const group = req.query.group ? String(req.query.group) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : 200;
-    // Admin sees all channels (including disabled)
-    const channels = iptvStore.listChannelsFlat({ q, group, limit, admin: true });
+    // Admin sees all channels: no enabled or status filter, so disabled and dead rows stay visible with health.
+    const channels = iptvStore.listChannelsFlat({ q, group, limit });
     res.json({ success: true, channels });
   } catch (e) {
     res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
