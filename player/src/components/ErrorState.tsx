@@ -1,4 +1,5 @@
 import type { Diagnostic } from '../lib/types';
+import { t } from './player/i18n';
 
 interface Props {
   title: string;
@@ -19,19 +20,19 @@ export function ErrorState({ title, message, diagnostics, onTryAnother, onReload
         <p>{message}</p>
         <div className="error-actions">
           <button type="button" className="button primary" onClick={onTryAnother}>
-            Try another source
+            {t('try-another')}
           </button>
           <button type="button" className="button ghost" onClick={onReload}>
-            Reload stream
+            {t('reload')}
           </button>
         </div>
         {failures.length > 0 && (
           <details className="diagnostics">
-            <summary>Provider diagnostics</summary>
+            <summary>{t('provider-diagnostics')}</summary>
             <ul>
               {failures.map((failure) => (
                 <li key={`${failure.provider}-${failure.latencyMs}`}>
-                  <strong>{failure.provider}</strong> — {failure.error ?? 'failed'}
+                  <strong>{failure.provider}</strong> — {failure.error ?? t('failed')}
                 </li>
               ))}
             </ul>

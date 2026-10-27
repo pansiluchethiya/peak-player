@@ -1,20 +1,25 @@
 'use client';
 
-import { useMedia } from '@videojs/react';
-import { useCallback, useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, type CSSProperties } from 'react';
 import { AmbientBackground } from '../AmbientBackground';
 import { ErrorState } from '../ErrorState';
 import { LoadingSkeleton } from '../LoadingSkeleton';
+import { nextSourceIndex, sourceKey } from '../../lib/playback';
+import { autoplayPolicy } from '../../lib/presentation';
 import type { EmbedConfig, Media } from '../../lib/types';
-import {
-  EnginePlayer,
-  PlayerProvider,
-  usePlayerApi,
-  usePlayerContext,
-} from './PlayerProvider';
+import { Breadcrumb } from './controls/Breadcrumb';
+import { Header } from './Header';
+import { t } from './i18n';
+import { MuxAnalytics, muxEnabled } from './media/MuxAnalytics';
 import { MediaSurface } from './media/MediaSurface';
 import { engineSource } from './media/source';
 import { useMediaEngine } from './media/useMediaEngine';
+import { PosterOverlay } from './overlays/PosterOverlay';
+import {
+  EnginePlayer,
+  PlayerProvider,
+  usePlayerContext,
+} from './PlayerProvider';
 import { VideoSkin } from './VideoSkin';
 
 export type PlayerPreset = 'video' | 'live-video' | 'bg';
@@ -27,20 +32,10 @@ export interface PlayerRootProps {
   poster?: string;
 }
 
-/** English-only for now; Task 6 moves every string into `i18n/messages.en.ts`. */
-const MESSAGES = {
-  fetchingSources: 'Fetching sources…',
-  loadingChannel: 'Loading channel…',
-  preparingStream: 'Preparing stream…',
-  errorTitle: 'Stream unavailable',
-  embedUnavailable: 'This stream is unavailable in the embedded player.',
-  errorFallback: 'Something went wrong while loading this title.',
-};
-
 /**
  * The one player every route and embed mounts. It owns discovery through
  * `PlayerProvider`, creates the single `@videojs/react` engine, and renders the
- * media surface plus the vendored AMOLED skin.
+ * media surface plus the vendored AMOLED skin and Peak chrome.
  */
 export function PlayerRoot({ apiBase, media, embed, preset = 'video', poster }: PlayerRootProps) {
   return (
@@ -69,6 +64,7 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
     error,
     reload,
     sourceNonce,
+    sources,
     subtitles,
     tryNextSource,
   } = usePlayerContext();
@@ -79,22 +75,24 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
     [media, source],
   );
   const isExternal = engine?.kind === 'external';
+  const policy = preset === 'bg' ? { shouldPlay: true, muted: true } : autoplayPolicy(preferences);
 
-  const title = mediaMetadata?.title
-    ? `${mediaMetadata.title}${mediaMetadata.year ? ` (${mediaMetadata.year})` : ''}`
-    : undefined;
-  const posterUrl = poster ?? media.poster ?? payload?.logo ?? undefined;
+  const title = mediaMetadata?.title?.trim() || undefined;
+  const posterCandidates = [poster, media.poster, mediaMetadata?.logo, payload?.logo].filter(
+    (candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0,
+  );
+  const posterUrl = posterCandidates[0];
+  const description = mediaMetadata?.overview ?? t('no-description');
+
   const loadingLabel = source
-    ? MESSAGES.preparingStream
+    ? t('preparing-stream')
     : media.type === 'live_tv'
-      ? MESSAGES.loadingChannel
-      : MESSAGES.fetchingSources;
-  const errorMessage = embed
-    ? MESSAGES.embedUnavailable
-    : error ?? MESSAGES.errorFallback;
+      ? t('loading-channel')
+      : t('fetching-sources');
+  const errorMessage = embed ? t('embed-unavailable') : error ?? t('error-fallback');
 
   // One failover attempt per source generation; `tryNextSource` only sets the
-  // error state once every source has been exhausted.
+  // terminal error once every source has been exhausted.
   const failedSourceRef = useRef<string | null>(null);
   const handleMediaError = useCallback(() => {
     const token = `${currentSourceIndex}:${sourceNonce}`;
@@ -109,6 +107,22 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
     }
   }, [api, media.type, preferences.autoplayNext]);
 
+  // "Try another" advances to the next untried source when one exists; when all
+  // sources are exhausted (or discovery found none) it restarts discovery so the
+  // button always produces visible progress instead of dead-ending.
+  const handleTryAnother = useCallback(() => {
+    const current = Math.min(Math.max(currentSourceIndex, 0), Math.max(sources.length - 1, 0));
+    const attempted = new Set<string>();
+    for (let index = 0; index <= current; index += 1) {
+      attempted.add(sourceKey(sources[index], index));
+    }
+    if (nextSourceIndex(sources, current, attempted) >= 0) {
+      tryNextSource();
+    } else {
+      reload(true);
+    }
+  }, [currentSourceIndex, reload, sources, tryNextSource]);
+
   return (
     <div
       className={`player-root player-preset-${preset}`}
@@ -119,7 +133,7 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
       {preset === 'bg' ? (
         <div className="player-stage player-stage-bg" aria-hidden="true">
           <EnginePlayer title={title} poster={posterUrl}>
-            <EngineBridge autoPlay={false} />
+            <EngineBridge />
             <MediaSurface
               key={sourceNonce}
               media={media}
@@ -140,15 +154,16 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
           data-transport={isExternal ? 'external' : undefined}
         >
           <EnginePlayer title={title} poster={posterUrl}>
-            <EngineBridge autoPlay={preferences.autoplay} />
+            <EngineBridge />
+            {muxEnabled ? <MuxAnalytics /> : null}
             <VideoSkin chromeInert={isExternal}>
               <MediaSurface
                 key={sourceNonce}
                 media={media}
                 source={source}
                 title={title}
-                autoPlay={preferences.autoplay}
-                muted={preferences.muted}
+                autoPlay={policy.shouldPlay}
+                muted={policy.muted}
                 controls={false}
                 playsInline
                 subtitles={subtitles}
@@ -156,7 +171,19 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
                 onEnded={handleEnded}
               />
             </VideoSkin>
+            {!isExternal ? (
+              <PosterOverlay poster={posterUrl} title={title} description={description} />
+            ) : null}
           </EnginePlayer>
+
+          <Header
+            title={title}
+            year={mediaMetadata?.year}
+            runtime={mediaMetadata?.runtime}
+            quality={source?.quality}
+            locale={preferences.locale}
+          />
+          <Breadcrumb type={media.type} title={title} embed={Boolean(embed)} />
 
           {status === 'loading' && (
             <LoadingSkeleton
@@ -168,10 +195,10 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
 
           {status === 'error' && (
             <ErrorState
-              title={MESSAGES.errorTitle}
+              title={t('error-title')}
               message={errorMessage}
               diagnostics={embed ? undefined : payload?.diagnostics}
-              onTryAnother={tryNextSource}
+              onTryAnother={handleTryAnother}
               onReload={() => reload(true)}
             />
           )}
@@ -183,25 +210,11 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
 
 /**
  * Lives inside `EnginePlayer` so it can reach the typed store, and registers the
- * imperative handle the provider's `PlayerApi` awaits.
+ * imperative handle the provider's `PlayerApi` awaits. Autoplay itself belongs
+ * to `PlayerProvider`, which applies `autoplayPolicy` once the handle is ready.
  */
-function EngineBridge({ autoPlay }: { autoPlay: boolean }) {
-  const { currentSourceIndex, registerEngine, sourceNonce, status } = usePlayerContext();
+function EngineBridge() {
+  const { registerEngine } = usePlayerContext();
   useMediaEngine(registerEngine);
-  const media = useMedia();
-  const api = usePlayerApi();
-  const playedRef = useRef<string | null>(null);
-
-  // The media element attaches a commit before this effect runs, so this is the
-  // first point where `handle.play()` is legal. One attempt per source generation
-  // keeps a user pause from being undone by an unrelated re-render.
-  useEffect(() => {
-    if (!autoPlay || !media || status !== 'ready') return;
-    const token = `${currentSourceIndex}:${sourceNonce}`;
-    if (playedRef.current === token) return;
-    playedRef.current = token;
-    api.play().catch(() => undefined);
-  }, [api, autoPlay, currentSourceIndex, media, sourceNonce, status]);
-
   return null;
 }

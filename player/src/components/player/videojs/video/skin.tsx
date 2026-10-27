@@ -7,7 +7,6 @@ import { BufferingIndicator } from '@/components/player/videojs/ui/buffering-ind
 import { Container } from '@/components/player/videojs/ui/container';
 import { ErrorDialog } from '@/components/player/videojs/ui/error-dialog';
 import { Poster } from '@/components/player/videojs/ui/poster';
-import { Title } from '@/components/player/videojs/ui/title';
 import { cn } from '@/components/player/videojs/lib/resolve-class-name';
 
 import { VideoGestures } from './behaviors/gestures';
@@ -46,7 +45,6 @@ export function VideoSkin({
         <Poster renderImage={renderPoster} />
         <BufferingIndicator />
         <ErrorDialog />
-        <Title />
 
         <DefaultVideoControls renderThumbnail={renderThumbnail} />
 

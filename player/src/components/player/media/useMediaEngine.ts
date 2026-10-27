@@ -3,16 +3,9 @@
 import { getMediaElement, useMedia } from '@videojs/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { PeakPlayerError } from '../errors';
+import { t } from '../i18n';
 import { usePlayerContext } from '../PlayerProvider';
 import type { CaptionPreferences } from '../prefs/schema';
-
-/** English-only for now; Task 6 moves every string into `i18n/messages.en.ts`. */
-const MESSAGES = {
-  mediaUnavailable: 'This source does not expose a media element.',
-  frameUnavailable: 'The first video frame is not available yet.',
-  captureUnsupported: 'This browser cannot capture video frames.',
-  captureBlocked: 'The video frame cannot be captured because the stream is cross-origin.',
-};
 
 /**
  * Imperative surface of the media engine. Only {@link PlayerProvider} calls these;
@@ -91,7 +84,7 @@ export function useMediaEngine(register: (handle: EngineHandle | null) => void):
   const requireElement = useCallback((): HTMLVideoElement => {
     const element = getMediaElement(media);
     if (!element) {
-      throw new PeakPlayerError('UNSUPPORTED', MESSAGES.mediaUnavailable);
+      throw new PeakPlayerError('UNSUPPORTED', t('media-unavailable'));
     }
     return element as HTMLVideoElement;
   }, [media]);
@@ -176,20 +169,20 @@ export function useMediaEngine(register: (handle: EngineHandle | null) => void):
       snapshot: async () => {
         const element = requireElement();
         if (!element.videoWidth || !element.videoHeight) {
-          throw new PeakPlayerError('NOT_READY', MESSAGES.frameUnavailable);
+          throw new PeakPlayerError('NOT_READY', t('frame-unavailable'));
         }
         const canvas = document.createElement('canvas');
         canvas.width = element.videoWidth;
         canvas.height = element.videoHeight;
         const context = canvas.getContext('2d');
         if (!context) {
-          throw new PeakPlayerError('UNSUPPORTED', MESSAGES.captureUnsupported);
+          throw new PeakPlayerError('UNSUPPORTED', t('capture-unsupported'));
         }
         try {
           context.drawImage(element, 0, 0, canvas.width, canvas.height);
           return canvas.toDataURL('image/png');
         } catch {
-          throw new PeakPlayerError('PERMISSION_DENIED', MESSAGES.captureBlocked);
+          throw new PeakPlayerError('PERMISSION_DENIED', t('capture-blocked'));
         }
       },
     };

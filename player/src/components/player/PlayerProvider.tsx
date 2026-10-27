@@ -15,6 +15,7 @@ import {
 import { fetchBranding, fetchStreamEvents } from '../../lib/api';
 import { getFingerprint } from '../../lib/fingerprint';
 import { isPlayableSource, nextSourceIndex, sourceKey } from '../../lib/playback';
+import { autoplayPolicy } from '../../lib/presentation';
 import { connectionHint, preferredSourceIndex } from '../../lib/quality';
 import {
   DEFAULT_BRANDING,
@@ -26,7 +27,9 @@ import {
   type StreamResponse,
   type Subtitle,
 } from '../../lib/types';
-import { PeakPlayerError } from './errors';
+import { PeakPlayerError, type PlayerErrorCode } from './errors';
+import { t } from './i18n';
+import { engineSource } from './media/source';
 import type { EngineHandle, EngineSnapshot } from './media/useMediaEngine';
 import {
   DEFAULT_PREFERENCES,
@@ -56,6 +59,10 @@ export type PlayerStatus = 'loading' | 'ready' | 'error';
 export interface MediaMetadata {
   title: string;
   year?: string | number;
+  /** Runtime in minutes, populated by the media resolver in Task 8. */
+  runtime?: number;
+  /** Short synopsis for the poster overlay, populated in Task 8. */
+  overview?: string;
   group?: string;
   logo?: string;
 }
@@ -119,6 +126,9 @@ export interface PlayerContextValue {
   preset: PlayerPreset;
   status: PlayerStatus;
   error: string | null;
+  errorCode: PlayerErrorCode | null;
+  /** Autoplay rejected with NotAllowedError; the next gesture unmutes. */
+  needsInteraction: boolean;
   payload: StreamResponse | null;
   mediaMetadata: MediaMetadata | null;
   branding: Branding;
@@ -138,30 +148,15 @@ export interface PlayerContextValue {
   api: PlayerApi;
 }
 
-/** English-only for now; Task 6 moves every string into `i18n/messages.en.ts`. */
-const MESSAGES = {
-  noSources: 'No playable sources were returned for this title.',
-  streamFailed: 'Could not load the stream.',
-  allSourcesFailed: 'All sources failed after 2 retries. Please try again later.',
-  notReady: 'The player engine is not ready.',
-  invalidVolume: 'Volume must be between 0 and 1.',
-  invalidSpeed: 'Speed must be between 0.25 and 2.',
-  invalidBoost: 'Volume boost must be between 0 and 5.',
-  boostLocked: 'Boost above 300% needs to be unlocked first.',
-  invalidQuality: 'The requested quality is not available.',
-  invalidTrack: 'The requested audio track is not available.',
-  invalidAspect: 'Aspect must be fit, fill, or zoom.',
-  unknownServer: 'That server is not available for this title.',
-  noEpisodes: 'Episode navigation is only available for series.',
-  clipboardUnavailable: 'Clipboard access is not available in this browser.',
-  invalidSeek: 'Seek position must be a positive number.',
-  invalidSeekDelta: 'Seek delta must be a number.',
-  invalidColourPreset: 'A colour preset is required.',
-};
-
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 const FIRST_SOURCE = 0;
+const DISCOVERY_TIMEOUT_MS = 20_000;
+
+function isAutoplayBlocked(reason: unknown): boolean {
+  if (reason instanceof DOMException) return reason.name === 'NotAllowedError';
+  return reason instanceof Error && reason.name === 'NotAllowedError';
+}
 
 function initialSourceIndex(sources: Source[]): number {
   if (sources.length === 0) return FIRST_SOURCE;
@@ -190,6 +185,9 @@ export function PlayerProvider({
 
   const [status, setStatus] = useState<PlayerStatus>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<PlayerErrorCode | null>(null);
+  const [needsInteraction, setNeedsInteraction] = useState(false);
+  const [mutedPlayback, setMutedPlayback] = useState(false);
   const [mediaMetadata, setMediaMetadata] = useState<MediaMetadata | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
@@ -204,6 +202,9 @@ export function PlayerProvider({
 
   const engineHandleRef = useRef<EngineHandle | null>(null);
   const engineStateReaderRef = useRef<(() => EngineSnapshot) | null>(null);
+  const autoplayTokenRef = useRef<string | null>(null);
+  const terminalRef = useRef(false);
+  const closeDiscoveryRef = useRef<(() => void) | null>(null);
   const [engineGeneration, setEngineGeneration] = useState(0);
 
   const embedRef = useRef(embed);
@@ -251,6 +252,19 @@ export function PlayerProvider({
     engineStateReaderRef.current = reader;
   }, []);
 
+  /**
+   * Terminal failures never recover on their own: the SSE connection is closed
+   * and late source events are ignored until `reload()` or a new request.
+   */
+  const failTerminal = useCallback((message: string, code: PlayerErrorCode = 'STREAM_UNAVAILABLE') => {
+    terminalRef.current = true;
+    closeDiscoveryRef.current?.();
+    closeDiscoveryRef.current = null;
+    setStatus('error');
+    setErrorCode(code);
+    setError(message);
+  }, []);
+
   // --- Branding ---
   useEffect(() => {
     const controller = new AbortController();
@@ -263,6 +277,10 @@ export function PlayerProvider({
     let eventSource: { close: () => void } | null = null;
     let cancelled = false;
 
+    terminalRef.current = false;
+    closeDiscoveryRef.current = null;
+    autoplayTokenRef.current = null;
+
     const accumulated: {
       metadata: MediaMetadata | null;
       sources: Source[];
@@ -272,6 +290,9 @@ export function PlayerProvider({
 
     setStatus('loading');
     setError(null);
+    setErrorCode(null);
+    setNeedsInteraction(false);
+    setMutedPlayback(false);
     setMediaMetadata(null);
     setSources([]);
     setSubtitles([]);
@@ -280,43 +301,63 @@ export function PlayerProvider({
     setSourceNonce(0);
 
     const publish = () => {
-      if (cancelled) return;
+      if (cancelled || terminalRef.current) return;
       if (accumulated.metadata) setMediaMetadata(accumulated.metadata);
       setSources([...accumulated.sources]);
       setSubtitles([...accumulated.subtitles]);
       setDiagnostics([...accumulated.diagnostics]);
     };
 
-    const handleMeta = (data: { title: string; year?: string | number; group?: string; logo?: string }) => {
-      accumulated.metadata = { title: data.title ?? '', year: data.year, group: data.group, logo: data.logo };
+    const handleMeta = (data: {
+      title: string;
+      year?: string | number;
+      runtime?: number;
+      overview?: string;
+      group?: string;
+      logo?: string;
+    }) => {
+      if (cancelled || terminalRef.current) return;
+      accumulated.metadata = {
+        title: data.title ?? '',
+        year: data.year,
+        runtime: data.runtime,
+        overview: data.overview,
+        group: data.group,
+        logo: data.logo,
+      };
       publish();
     };
 
     const handleSource = (source: Source) => {
+      if (cancelled || terminalRef.current) return;
       const first = accumulated.sources.length === 0;
       accumulated.sources.push(source);
       publish();
       if (first) {
         setCurrentSourceIndex(initialSourceIndex(accumulated.sources));
+        setError(null);
+        setErrorCode(null);
         setStatus('ready');
       }
     };
 
     const handleSubtitle = (subtitle: Subtitle) => {
+      if (cancelled || terminalRef.current) return;
       accumulated.subtitles.push(subtitle);
       publish();
     };
 
     const handleDiagnostic = (diagnostic: Diagnostic) => {
+      if (cancelled || terminalRef.current) return;
       accumulated.diagnostics.push(diagnostic);
       publish();
     };
 
     const handleDone = () => {
+      if (cancelled || terminalRef.current) return;
       publish();
       if (accumulated.sources.length === 0) {
-        setStatus('error');
-        setError(MESSAGES.noSources);
+        failTerminal(t('no-playable-sources'));
         return;
       }
       setCurrentSourceIndex((current) =>
@@ -325,9 +366,10 @@ export function PlayerProvider({
     };
 
     const handleError = (event: { error: string; message: string }) => {
-      if (cancelled) return;
-      setStatus('error');
-      setError(event.message || MESSAGES.streamFailed);
+      if (cancelled || terminalRef.current) return;
+      failTerminal(
+        event.error === 'TRANSPORT_ERROR' ? t('stream-failed') : event.message || t('stream-failed'),
+      );
     };
 
     (async () => {
@@ -344,15 +386,22 @@ export function PlayerProvider({
           onDone: handleDone,
           onError: handleError,
         });
+        // The deadline can fire while the fingerprint/EventSource is in flight.
+        // Close the late connection instead of leaving a terminal SSE leak.
+        if (cancelled || terminalRef.current) {
+          eventSource.close();
+          return;
+        }
+        closeDiscoveryRef.current = () => eventSource?.close();
       } catch (reason) {
         if (cancelled) return;
-        setStatus('error');
-        setError(reason instanceof Error ? reason.message : MESSAGES.streamFailed);
+        failTerminal(reason instanceof Error ? reason.message : t('stream-failed'));
       }
     })();
 
     return () => {
       cancelled = true;
+      closeDiscoveryRef.current = null;
       eventSource?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -376,7 +425,9 @@ export function PlayerProvider({
     if (!handle) return;
     try {
       handle.setVolume(preferencesRef.current.volume);
-      handle.setMuted(preset === 'bg' ? true : preferencesRef.current.muted);
+      // Autoplay always starts muted; the tap-to-unmute chip is the only way a
+      // stored `muted: false` becomes audible without a user gesture.
+      handle.setMuted(autoplayPolicy(preferencesRef.current).muted);
       handle.setSpeed(preferencesRef.current.speed);
     } catch {
       // The handle registers before a media element exists. `registerEngine`
@@ -384,9 +435,23 @@ export function PlayerProvider({
     }
   }, [engineGeneration, preset]);
 
+  // --- Terminal discovery deadline (spec §14: never an infinite spinner) ---
+  useEffect(() => {
+    if (status !== 'loading') return;
+    const timer = window.setTimeout(() => {
+      failTerminal(t('stream-unavailable'));
+    }, DISCOVERY_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [failTerminal, request, status]);
+
   const reload = useCallback((invalidate = false) => {
+    terminalRef.current = false;
+    autoplayTokenRef.current = null;
     setStatus('loading');
     setError(null);
+    setErrorCode(null);
+    setNeedsInteraction(false);
+    setMutedPlayback(false);
     setSources([]);
     setSubtitles([]);
     setDiagnostics([]);
@@ -404,19 +469,21 @@ export function PlayerProvider({
     }
     const next = nextSourceIndex(current.sources, current.currentSourceIndex, attempted);
     if (next < 0) {
-      setStatus('error');
-      setError(MESSAGES.allSourcesFailed);
+      failTerminal(t('all-sources-failed'));
       return;
     }
+    // A new source restarts playback, so late SSE events may publish again.
+    terminalRef.current = false;
     setError(null);
+    setErrorCode(null);
     setStatus('ready');
     setCurrentSourceIndex(next);
     setSourceNonce((value) => value + 1);
-  }, []);
+  }, [failTerminal]);
 
   const requireEngine = useCallback(async (): Promise<EngineHandle> => {
     const handle = engineHandleRef.current;
-    if (!handle) throw new PeakPlayerError('NOT_READY', MESSAGES.notReady);
+    if (!handle) throw new PeakPlayerError('NOT_READY', t('player-not-ready'));
     return handle;
   }, []);
 
@@ -446,14 +513,14 @@ export function PlayerProvider({
       },
       seek: async (seconds: number) => {
         if (!Number.isFinite(seconds) || seconds < 0) {
-          throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidSeek);
+          throw new PeakPlayerError('INVALID_ARGUMENT', t('invalid-seek'));
         }
         const handle = await requireEngine();
         await handle.seek(seconds);
       },
       seekBy: async (delta: number) => {
         if (!Number.isFinite(delta)) {
-          throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidSeekDelta);
+          throw new PeakPlayerError('INVALID_ARGUMENT', t('invalid-seek-delta'));
         }
         const handle = await requireEngine();
         const state = engineStateReaderRef.current?.();
@@ -463,7 +530,7 @@ export function PlayerProvider({
       },
       setVolume: async (value: number) => {
         if (!Number.isFinite(value) || value < 0 || value > 1) {
-          throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidVolume);
+          throw new PeakPlayerError('INVALID_ARGUMENT', t('volume-range'));
         }
         const handle = await requireEngine();
         handle.setVolume(value);
@@ -476,10 +543,10 @@ export function PlayerProvider({
       },
       setBoost: async (value: number) => {
         if (!Number.isFinite(value) || value < 0 || value > MAX_BOOST) {
-          throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidBoost);
+          throw new PeakPlayerError('INVALID_ARGUMENT', t('boost-range'));
         }
         if (value > UNLOCKED_BOOST && !preferencesRef.current.boostUnlocked) {
-          throw new PeakPlayerError('PERMISSION_DENIED', MESSAGES.boostLocked);
+          throw new PeakPlayerError('PERMISSION_DENIED', t('boost-locked'));
         }
         const handle = await requireEngine();
         handle.setBoost(value, preferencesRef.current.boostUnlocked);
@@ -492,20 +559,20 @@ export function PlayerProvider({
       },
       setSpeed: async (value: number) => {
         if (!Number.isFinite(value) || value < MIN_SPEED || value > MAX_SPEED) {
-          throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidSpeed);
+          throw new PeakPlayerError('INVALID_ARGUMENT', t('speed-range'));
         }
         const handle = await requireEngine();
         handle.setSpeed(value);
         mergePreferences({ speed: value });
       },
       setQuality: async (level: 'auto' | string) => {
-        if (!level) throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidQuality);
+        if (!level) throw new PeakPlayerError('INVALID_ARGUMENT', t('quality-unavailable'));
         const handle = await requireEngine();
         handle.setQuality(level);
         mergePreferences({ quality: level });
       },
       setAudioTrack: async (id: string) => {
-        if (!id) throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidTrack);
+        if (!id) throw new PeakPlayerError('INVALID_ARGUMENT', t('track-unavailable'));
         const handle = await requireEngine();
         handle.setAudioTrack(id);
         mergePreferences({ audioTrack: id });
@@ -516,12 +583,12 @@ export function PlayerProvider({
         mergePreferences({ captions: { ...preferencesRef.current.captions, ...options } });
       },
       setColourPreset: async (colourPreset: string) => {
-        if (!colourPreset) throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidColourPreset);
+        if (!colourPreset) throw new PeakPlayerError('INVALID_ARGUMENT', t('colour-required'));
         mergePreferences({ colourPreset });
       },
       setAspect: async (mode: AspectMode) => {
         if (mode !== 'fit' && mode !== 'fill' && mode !== 'zoom') {
-          throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.invalidAspect);
+          throw new PeakPlayerError('INVALID_ARGUMENT', t('aspect-invalid'));
         }
         mergePreferences({ aspect: mode });
       },
@@ -530,21 +597,23 @@ export function PlayerProvider({
         const index = latestRef.current.sources.findIndex(
           (source) => source.provider.toLowerCase() === needle,
         );
-        if (index < 0) throw new PeakPlayerError('INVALID_ARGUMENT', MESSAGES.unknownServer);
+        if (index < 0) throw new PeakPlayerError('INVALID_ARGUMENT', t('unknown-server'));
+        terminalRef.current = false;
         setError(null);
+        setErrorCode(null);
         setStatus('ready');
         setCurrentSourceIndex(index);
         setSourceNonce((value) => value + 1);
       },
       nextEpisode: async () => {
-        if (media.type !== 'tv') throw new PeakPlayerError('UNSUPPORTED', MESSAGES.noEpisodes);
+        if (media.type !== 'tv') throw new PeakPlayerError('UNSUPPORTED', t('no-episodes'));
         const season = media.season ?? 1;
         const episode = (media.episode ?? 1) + 1;
         const prefix = embed ? '/embed/tv' : '/tv';
         router.push(`${prefix}/${encodeURIComponent(media.id)}/${season}/${episode}`);
       },
       previousEpisode: async () => {
-        if (media.type !== 'tv') throw new PeakPlayerError('UNSUPPORTED', MESSAGES.noEpisodes);
+        if (media.type !== 'tv') throw new PeakPlayerError('UNSUPPORTED', t('no-episodes'));
         const season = media.season ?? 1;
         const episode = Math.max(1, (media.episode ?? 1) - 1);
         const prefix = embed ? '/embed/tv' : '/tv';
@@ -576,7 +645,7 @@ export function PlayerProvider({
       },
       copyEmbedLink: async () => {
         if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-          throw new PeakPlayerError('UNSUPPORTED', MESSAGES.clipboardUnavailable);
+          throw new PeakPlayerError('UNSUPPORTED', t('clipboard-unavailable'));
         }
         const origin = typeof window === 'undefined' ? '' : window.location.origin;
         const path =
@@ -621,6 +690,78 @@ export function PlayerProvider({
     };
   }, [media, embed, mergePreferences, requireEngine, router]);
 
+  // --- Muted autoplay (spec §10) ---
+  useEffect(() => {
+    if (status !== 'ready' || engineGeneration === 0) return;
+    const token = `${currentSourceIndex}:${sourceNonce}:${engineGeneration}`;
+    if (autoplayTokenRef.current === token) return;
+
+    const policy =
+      preset === 'bg'
+        ? { shouldPlay: true, muted: true }
+        : autoplayPolicy(preferencesRef.current);
+    if (!policy.shouldPlay) return;
+
+    autoplayTokenRef.current = token;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await api.setMuted(policy.muted);
+        await api.play();
+        if (!cancelled) {
+          const current = latestRef.current;
+          const source = current.sources[current.currentSourceIndex];
+          const external = source ? engineSource(source, media).kind === 'external' : false;
+          setNeedsInteraction(false);
+          setMutedPlayback(policy.muted && preset !== 'bg' && !external);
+        }
+      } catch (reason) {
+        if (!cancelled) {
+          setMutedPlayback(false);
+          if (isAutoplayBlocked(reason)) setNeedsInteraction(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, currentSourceIndex, engineGeneration, media, preset, sourceNonce, status]);
+
+  // --- First pointer/key gesture unmutes a successful muted autoplay once ---
+  useEffect(() => {
+    if (!mutedPlayback) return;
+    const handler = () => {
+      setMutedPlayback(false);
+      api.setMuted(false).catch(() => undefined);
+    };
+    window.addEventListener('pointerdown', handler, { once: true });
+    window.addEventListener('keydown', handler, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('keydown', handler);
+    };
+  }, [api, mutedPlayback]);
+
+  // --- First pointer/key gesture unmutes once after an autoplay rejection ---
+  useEffect(() => {
+    if (!needsInteraction) return;
+    const handler = () => {
+      setNeedsInteraction(false);
+      api
+        .setMuted(false)
+        .then(() => api.play())
+        .catch(() => undefined);
+    };
+    window.addEventListener('pointerdown', handler, { once: true });
+    window.addEventListener('keydown', handler, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('keydown', handler);
+    };
+  }, [api, needsInteraction]);
+
   const contextValue = useMemo<PlayerContextValue>(
     () => ({
       apiBase,
@@ -629,6 +770,8 @@ export function PlayerProvider({
       preset,
       status,
       error,
+      errorCode,
+      needsInteraction,
       payload,
       mediaMetadata,
       branding,
@@ -654,9 +797,11 @@ export function PlayerProvider({
       diagnostics,
       embed,
       error,
+      errorCode,
       media,
       mediaMetadata,
       mergePreferences,
+      needsInteraction,
       payload,
       preferences,
       preset,

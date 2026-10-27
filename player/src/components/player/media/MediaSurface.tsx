@@ -4,6 +4,7 @@ import { HlsJsVideo } from '@videojs/react/media/hlsjs-video';
 import { Video } from '@videojs/react/video';
 import { ExternalEmbed } from '../../ExternalEmbed';
 import type { Media, Source, Subtitle } from '../../../lib/types';
+import { t } from '../i18n';
 import { engineSource } from './source';
 
 export interface MediaSurfaceProps {
@@ -22,12 +23,6 @@ export interface MediaSurfaceProps {
 }
 
 const MEDIA_CLASS = 'player-video';
-
-/** English-only for now; Task 6 moves every string into `i18n/messages.en.ts`. */
-const MESSAGES = {
-  externalPlayer: 'External player',
-  externalProvider: 'external player',
-};
 
 /**
  * The single media element every surface renders. The backend source decides
@@ -68,7 +63,7 @@ export function MediaSurface({
     return (
       <ExternalEmbed
         url={engine.src}
-        title={title ? `${title} — ${MESSAGES.externalProvider}` : MESSAGES.externalPlayer}
+        title={title ? `${title} — ${t('external-provider')}` : t('external-player')}
       />
     );
   }

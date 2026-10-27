@@ -45,12 +45,24 @@ below afterwards.
    added to `skin.css` (duplicating them would double-emit the skin CSS).
 
 6. **`chromeInert` on the skin entry.** Task 5 added an optional `chromeInert` prop.
-   When true, the chrome layers (`Poster`, indicators, `Title`, controls, hotkeys,
+   When true, the chrome layers (`Poster`, indicators, controls, hotkeys,
    gestures, status indicators) are wrapped in a `display: contents` element carrying
    `inert` and `aria-hidden`, while `children` (the media element or external iframe)
    stay interactive. Used for external providers that own their own transport.
 
+7. **Generated `<Title />` removed (Task 6).** `Header` (Peak chrome) owns the
+   title so it is rendered exactly once and is localised. Edited
+   `video/skin.tsx`:
+   - removed `import { Title } from '@/components/player/videojs/ui/title';`
+   - removed `<Title />` from the chrome group, between `<ErrorDialog />` and
+     `<DefaultVideoControls />`.
+
+   Reason: the generated title duplicated the Peak header and could not be
+   translated or laid out with the rest of the chrome. The `ui/title.tsx`
+   primitive is left in place for a future upstream re-vendor; only the import
+   and render call were removed.
+
 ## Not ours to change yet
 
-`<Title />` and `<VideoHotkeys />` are still rendered by `video/skin.tsx`. They are
-removed by later tasks; leave them in place when re-vendoring.
+`<VideoHotkeys />` is still rendered by `video/skin.tsx`. Task 18 replaces the
+control bar and hotkey layer; leave them in place when re-vendoring.

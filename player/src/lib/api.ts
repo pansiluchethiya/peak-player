@@ -43,7 +43,14 @@ export function eventsPath(media: Media, options: { source?: string } = {}): str
 }
 
 export interface StreamEventHandlers {
-  onMeta?: (data: { title: string; year?: string | number; group?: string; logo?: string }) => void;
+  onMeta?: (data: {
+    title: string;
+    year?: string | number;
+    runtime?: number;
+    overview?: string;
+    group?: string;
+    logo?: string;
+  }) => void;
   onSource?: (source: { url: string; quality: string; codec: string; provider: string; adaptive?: boolean; expiresIn: number }) => void;
   onSubtitle?: (subtitle: { url: string; lang: string; label: string; provider: string }) => void;
   onDiagnostic?: (diagnostic: { provider: string; ok: boolean; latencyMs: number; error?: string }) => void;
