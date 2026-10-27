@@ -10,6 +10,7 @@ import type { EmbedConfig, Media } from '../../lib/types';
 import { Breadcrumb } from './controls/Breadcrumb';
 import { Header } from './Header';
 import { t } from './i18n';
+import { ArtworkChain } from './artwork/ArtworkChain';
 import { MuxAnalytics, muxEnabled } from './media/MuxAnalytics';
 import { MediaSurface } from './media/MediaSurface';
 import { engineSource } from './media/source';
@@ -83,6 +84,21 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
   );
   const posterUrl = posterCandidates[0];
   const description = mediaMetadata?.overview ?? t('no-description');
+
+  // Full artwork chain (spec §7.4): partner override -> resolver poster ->
+  // backdrop -> stills -> series poster -> provider artwork -> TypographicCard
+  // -> bundled /poster-fallback.svg. The same chain feeds the loading skeleton
+  // and the pre-play/paused poster so every surface resolves identically.
+  const artwork = {
+    media: mediaMetadata?.media ?? null,
+    type: media.type,
+    mediaId: media.id,
+    title,
+    year: mediaMetadata?.year ?? mediaMetadata?.media?.year ?? null,
+    partnerPoster: poster ?? media.poster ?? null,
+    providerArtwork: payload?.logo ?? mediaMetadata?.logo ?? null,
+    fallbackArt: true,
+  };
 
   const loadingLabel = source
     ? t('preparing-stream')
@@ -172,7 +188,11 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
               />
             </VideoSkin>
             {!isExternal ? (
-              <PosterOverlay poster={posterUrl} title={title} description={description} />
+              <PosterOverlay
+                artwork={<ArtworkChain {...artwork} className="peak-poster-art" />}
+                title={title}
+                description={description}
+              />
             ) : null}
           </EnginePlayer>
 
@@ -188,7 +208,11 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
           {status === 'loading' && (
             <LoadingSkeleton
               branding={branding}
-              poster={poster ?? media.poster ?? payload?.logo}
+              artwork={
+                title || artwork.media ? (
+                  <ArtworkChain {...artwork} className="loading-poster" />
+                ) : undefined
+              }
               label={loadingLabel}
             />
           )}

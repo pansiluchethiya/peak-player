@@ -1,17 +1,18 @@
+import type { CSSProperties, ReactNode } from 'react';
 import type { Branding } from '../lib/types';
 
 interface Props {
   branding: Branding;
   label: string;
-  poster?: string | null;
+  /** Resolved artwork from `ArtworkChain`; falls back to the brand logo. */
+  artwork?: ReactNode;
   backdrop?: string | null;
 }
 
-export function LoadingSkeleton({ branding, label, poster, backdrop }: Props) {
-  const tmdbImg = poster && poster.startsWith('/') ? `https://image.tmdb.org/t/p/w500${poster}` : poster;
+export function LoadingSkeleton({ branding, label, artwork, backdrop }: Props) {
   const tmdbBackdrop = backdrop && backdrop.startsWith('/') ? `https://image.tmdb.org/t/p/original${backdrop}` : backdrop;
 
-  const bgStyle: React.CSSProperties = tmdbBackdrop
+  const bgStyle: CSSProperties = tmdbBackdrop
     ? {
         backgroundImage: `url(${tmdbBackdrop})`,
         backgroundSize: 'cover',
@@ -25,11 +26,7 @@ export function LoadingSkeleton({ branding, label, poster, backdrop }: Props) {
       {tmdbBackdrop && <div className="loading-backdrop-overlay" />}
       <div className="loading-glow" />
       <div className="loading-inner">
-        {tmdbImg ? (
-          <img className="loading-poster" src={tmdbImg} alt="" loading="lazy" />
-        ) : (
-          <img className="loading-logo" src={branding.logoUrl} alt="" />
-        )}
+        {artwork ?? <img className="loading-logo" src={branding.logoUrl} alt="" />}
         <div className="loading-bar">
           <span className="loading-bar-fill" />
         </div>

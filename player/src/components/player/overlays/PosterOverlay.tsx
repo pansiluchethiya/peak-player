@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { pausedPosterVisible } from '../../../lib/presentation';
 import { t } from '../i18n';
 import { usePlayerContext } from '../PlayerProvider';
 
 export interface PosterOverlayProps {
-  /** First artwork candidate until Task 9 lands the full artwork chain. */
-  poster?: string;
+  /** Resolved artwork from `ArtworkChain` (falls back to the typographic card). */
+  artwork?: ReactNode;
   title?: string;
   description?: string;
 }
@@ -17,7 +17,7 @@ export interface PosterOverlayProps {
  * card 800 ms after pause. Playback state comes from the engine store because
  * the overlay renders inside `EnginePlayer`.
  */
-export function PosterOverlay({ poster, title, description }: PosterOverlayProps) {
+export function PosterOverlay({ artwork, title, description }: PosterOverlayProps) {
   const { api, needsInteraction, status, useEnginePlayer } = usePlayerContext();
   const paused = useEnginePlayer((state) => state.paused);
   const currentTime = useEnginePlayer((state) => state.currentTime);
@@ -75,7 +75,7 @@ export function PosterOverlay({ poster, title, description }: PosterOverlayProps
             }
           }}
         >
-          {poster ? <img className="peak-poster-art" src={poster} alt="" /> : null}
+          {artwork}
           <div className="peak-poster-copy">
             {title ? <p className="peak-poster-title">{title}</p> : null}
             {description ? <p className="peak-poster-description">{description}</p> : null}

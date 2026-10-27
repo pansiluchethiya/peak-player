@@ -12,8 +12,10 @@ const { applyFilters } = require('./utils/streamFilters');
 const { createEmbedSession, getEmbed } = require('./utils/embed');
 const { createStreamRoutes } = require('./routes/streamRoutes');
 const { createMediaRoutes } = require('./routes/mediaRoutes');
+const { createThumbnailRoutes } = require('./routes/thumbnailRoutes');
 const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders, providerOrder } = require('./utils/playerService');
 const { getMedia } = require('./utils/mediaResolver');
+const { getSprite, DEFAULT_CACHE_DIR: thumbnailCacheDir } = require('./utils/thumbnailService');
 const { createPlaybackSession, getPlaybackSession } = require('./utils/playbackSession');
 const { getTelemetrySummary, recordPlaybackEvent } = require('./utils/telemetry');
 const { getAllProviderHealth } = require('./utils/providerHealth');
@@ -319,6 +321,8 @@ app.get('/api/status', (req,res) => {
     'GET /api/v1/stream/:type/:id',
     'GET /api/v1/stream/events/:type/:id',
     'GET /api/v1/media/:type/:id',
+    'POST /api/v1/thumbnails/:type/:id',
+    'GET /api/v1/thumbnails/:file',
     'GET /api/v1/live/tv/channels',
     'GET /api/v1/live/tv/groups',
     'GET /api/admin/iptv/playlists',
@@ -407,6 +411,14 @@ createStreamRoutes(app, {
 });
 
 createMediaRoutes(app, { getMedia });
+
+// Scrub-preview sprites. Mounted beside the stream/media routes and before the
+// API fallthrough so the URL returned by POST is immediately servable.
+createThumbnailRoutes(app, {
+  getPlayerStream,
+  getSprite,
+  cacheDir: thumbnailCacheDir,
+});
 
 function validPlaybackTarget(type, id) {
   const validTypes = ['movie', 'tv', 'series', 'live_tv'];
@@ -745,6 +757,8 @@ const server = app.listen(PORT, HOST, () => {
    console.log('  GET  /api/v1/stream/:type/:id');
    console.log('  GET  /api/v1/stream/events/:type/:id');
    console.log('  GET  /api/v1/media/:type/:id');
+   console.log('  POST /api/v1/thumbnails/:type/:id');
+   console.log('  GET  /api/v1/thumbnails/:file');
    console.log('  GET  /api/v1/live/tv/channels');
    console.log('  GET  /api/v1/live/tv/groups');
    console.log('  GET  /api/v1/branding');
