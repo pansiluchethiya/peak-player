@@ -31,3 +31,5 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 | 8 | done | 1543502 | GET /api/v1/media/:type/:id, 6h/15min media cache, stream JSON + SSE media payload, removed literal Peak fallback, player media client/types |
 
 | 9 | done | 84fec9a | artworkResolver six-candidate chain + generated fallback, ArtworkChain/TypographicCard/poster-fallback.svg wired into PlayerRoot, session cache, thumbnail sprite service + POST/GET routes, HLS image-track parser |
+
+| P2 gate | pass | e10aaa25 | npm run check green (116 API, 80 player); 12-shot sweep clean for movie 550, TV 1399, unknown 999999; fixed Next title reassertion and unknown-id artwork |
