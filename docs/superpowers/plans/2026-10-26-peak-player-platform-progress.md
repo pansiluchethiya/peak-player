@@ -22,3 +22,5 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 | 5 | done | a73bf26 | one module-scope videojs store, PlayerRoot/Provider/useMediaEngine/MediaSurface, prefs schema/defaults, six routes moved, eight legacy files deleted; review fix round restored sidecar tracks, autoplay/ended, media-error failover, inert external chrome, NOT_READY guards |
 
 | 6 | done | f40273c | Header/Breadcrumb/PosterOverlay, typed English i18n catalogue + t(), muted autoplay policy + tap-to-unmute, optional inert Mux, 20s terminal STREAM_UNAVAILABLE, ErrorState retry/reload; vendored Title removed and documented |
+
+| P1 gate | pass | 3bd0524 | check green; 1440/390 dark+light sweeps of /movie/550 and /embed/demo clean; external-only source expected with placeholder TMDB key; player contrast fix + duplicate diagnostic key |
