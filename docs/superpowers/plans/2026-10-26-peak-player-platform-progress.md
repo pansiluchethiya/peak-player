@@ -20,3 +20,5 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 - Task 1: plan-mandated `var(--color-muted)` is a border token, not readable text; used a color-mix mid-tone for error copy and landing secondary text and asserted it. The CSS split also required adding the two new files to `marketing.test.ts` so its reduced-motion assertion still covers them.
 
 | 5 | done | a73bf26 | one module-scope videojs store, PlayerRoot/Provider/useMediaEngine/MediaSurface, prefs schema/defaults, six routes moved, eight legacy files deleted; review fix round restored sidecar tracks, autoplay/ended, media-error failover, inert external chrome, NOT_READY guards |
+
+| 6 | done | f40273c | Header/Breadcrumb/PosterOverlay, typed English i18n catalogue + t(), muted autoplay policy + tap-to-unmute, optional inert Mux, 20s terminal STREAM_UNAVAILABLE, ErrorState retry/reload; vendored Title removed and documented |
