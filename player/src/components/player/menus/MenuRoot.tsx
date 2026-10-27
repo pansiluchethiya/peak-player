@@ -92,6 +92,7 @@ export function MenuRoot({ trigger, options, onSelect, selected, label }: MenuRo
               role="menuitemradio"
               className="peak-menu-item"
               disabled={option.disabled}
+              aria-checked={selected === option.value}
               data-selected={selected === option.value}
               onClick={() => handleSelect(option.value)}
             >
