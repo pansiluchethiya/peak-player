@@ -272,8 +272,9 @@ export default function LoginPage() {
                   autoComplete="on"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const oldPw = (e.target.elements.oldPw as HTMLInputElement).value;
-                    const newPw = (e.target.elements.newPw as HTMLInputElement).value;
+                    const form = e.currentTarget as HTMLFormElement;
+                    const oldPw = (form.elements.namedItem('oldPw') as HTMLInputElement).value;
+                    const newPw = (form.elements.namedItem('newPw') as HTMLInputElement).value;
                     if (!oldPw) return;
                     if (newPw.length < 8) return;
                     if (newPw === oldPw) return;

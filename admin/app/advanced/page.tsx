@@ -41,7 +41,7 @@ export default function AdvancedPage() {
       const m = data.merged;
       setPort(m.port ? String(m.port) : '');
       setDefaultProviders(Array.isArray(m.defaultProviders) ? m.defaultProviders.join(', ') : '');
-      setDefaultRegion(m.defaultRegion ?? '');
+      setDefaultRegion(String(m.defaultRegion ?? ''));
       setDisableCache(m.disableCache === true);
       setEnablePStreamApi(m.enablePStreamApi !== false);
       setEnableProxy(m.enableProxy === true);
@@ -146,7 +146,7 @@ export default function AdvancedPage() {
               <tr>
                 <td>Disable cache</td>
                 <td>
-                  <button type="button" className={clsx(buttonVariants({ variant: disableCache ? 'default' : 'secondary' }), 'btn-sm')} onClick={() => toggle(disableCache, setDisableCache)}>
+                  <button type="button" className={clsx(buttonVariants({ variant: disableCache ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(disableCache, setDisableCache)}>
                     {disableCache ? 'On' : 'Off'}
                   </button>
                 </td>
@@ -155,7 +155,7 @@ export default function AdvancedPage() {
               <tr>
                 <td>Enable PStream API</td>
                 <td>
-                  <button type="button" className={clsx(buttonVariants({ variant: enablePStreamApi ? 'default' : 'secondary' }), 'btn-sm')} onClick={() => toggle(enablePStreamApi, setEnablePStreamApi)}>
+                  <button type="button" className={clsx(buttonVariants({ variant: enablePStreamApi ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(enablePStreamApi, setEnablePStreamApi)}>
                     {enablePStreamApi ? 'On' : 'Off'}
                   </button>
                 </td>
@@ -164,7 +164,7 @@ export default function AdvancedPage() {
               <tr>
                 <td>Enable proxy</td>
                 <td>
-                  <button type="button" className={clsx(buttonVariants({ variant: enableProxy ? 'default' : 'secondary' }), 'btn-sm')} onClick={() => toggle(enableProxy, setEnableProxy)}>
+                  <button type="button" className={clsx(buttonVariants({ variant: enableProxy ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(enableProxy, setEnableProxy)}>
                     {enableProxy ? 'On' : 'Off'}
                   </button>
                 </td>
@@ -173,7 +173,7 @@ export default function AdvancedPage() {
               <tr>
                 <td>Disable URL validation</td>
                 <td>
-                  <button type="button" className={clsx(buttonVariants({ variant: disableUrlValidation ? 'default' : 'secondary' }), 'btn-sm')} onClick={() => toggle(disableUrlValidation, setDisableUrlValidation)}>
+                  <button type="button" className={clsx(buttonVariants({ variant: disableUrlValidation ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(disableUrlValidation, setDisableUrlValidation)}>
                     {disableUrlValidation ? 'On' : 'Off'}
                   </button>
                 </td>
@@ -182,7 +182,7 @@ export default function AdvancedPage() {
               <tr>
                 <td>Disable 4KHDHub URL validation</td>
                 <td>
-                  <button type="button" className={clsx(buttonVariants({ variant: disable4khdhubUrlValidation ? 'default' : 'secondary' }), 'btn-sm')} onClick={() => toggle(disable4khdhubUrlValidation, setDisable4khdhubUrlValidation)}>
+                  <button type="button" className={clsx(buttonVariants({ variant: disable4khdhubUrlValidation ? 'primary' : 'secondary' }), 'btn-sm')} onClick={() => toggle(disable4khdhubUrlValidation, setDisable4khdhubUrlValidation)}>
                     {disable4khdhubUrlValidation ? 'On' : 'Off'}
                   </button>
                 </td>

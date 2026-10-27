@@ -14,7 +14,6 @@ export const metadata: Metadata = {
     'Peak administration portal — monitor providers, tune filtering, and manage your streaming API.',
   icons: {
     icon: '/assets/favicon.svg',
-    type: 'image/svg+xml',
     shortcut: '/assets/favicon.svg',
   },
 };

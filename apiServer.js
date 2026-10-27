@@ -648,105 +648,16 @@ app.get('/api/v1/live/tv/groups', (req,res) => {
 });
 
 // --- IPTV admin API (auth required) ---
-app.get('/api/admin/iptv/playlists', (req,res) => {
-  try {
-    const playlists = iptvStore.listPlaylists();
-    res.json({ success: true, playlists });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.post('/api/admin/iptv/playlists', (req,res) => {
-  try {
-    const { name, url } = req.body || {};
-    if (!name || !url) {
-      return res.status(400).json({ success: false, error: 'MISSING_FIELDS', message: 'name and url are required' });
-    }
-    if (!/^https?:\/\//i.test(url)) {
-      return res.status(400).json({ success: false, error: 'INVALID_URL', message: 'url must start with http:// or https://' });
-    }
-    const playlist = iptvStore.addPlaylist(name, url);
-    res.json({ success: true, playlist });
-  } catch (e) {
-    if (e.code === 'SQLITE_CONSTRAINT') {
-      return res.status(409).json({ success: false, error: 'DUPLICATE_URL', message: 'A playlist with this URL already exists' });
-    }
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.delete('/api/admin/iptv/playlists/:id', (req,res) => {
-  try {
-    const id = Number(req.params.id);
-    const removed = iptvStore.removePlaylist(id);
-    if (!removed) return res.status(404).json({ success: false, error: 'PLAYLIST_NOT_FOUND' });
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.post('/api/admin/iptv/playlists/:id/sync', async (req,res) => {
-  try {
-    const id = Number(req.params.id);
-    const playlist = iptvStore.getPlaylist(id);
-    if (!playlist) return res.status(404).json({ success: false, error: 'PLAYLIST_NOT_FOUND' });
-    const result = await iptvSync.syncPlaylist(id);
-    res.json({ success: true, channelCount: result.channelCount, error: result.error });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.patch('/api/admin/iptv/playlists/:id', (req,res) => {
-  try {
-    const id = Number(req.params.id);
-    const { enabled } = req.body || {};
-    if (typeof enabled !== 'boolean') {
-      return res.status(400).json({ success: false, error: 'INVALID_FIELD', message: 'enabled must be boolean' });
-    }
-    iptvStore.setPlaylistEnabled(id, enabled);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.get('/api/admin/iptv/channels', (req,res) => {
-  try {
-    const q = req.query.q ? String(req.query.q) : undefined;
-    const group = req.query.group ? String(req.query.group) : undefined;
-    const limit = req.query.limit ? Number(req.query.limit) : 200;
-    // Admin sees all channels: no enabled or status filter, so disabled and dead rows stay visible with health.
-    const channels = iptvStore.listChannelsFlat({ q, group, limit });
-    res.json({ success: true, channels });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.patch('/api/admin/iptv/channels/:id', (req,res) => {
-  try {
-    const { id } = req.params;
-    const { enabled } = req.body || {};
-    if (typeof enabled !== 'boolean') {
-      return res.status(400).json({ success: false, error: 'INVALID_FIELD', message: 'enabled must be boolean' });
-    }
-    iptvStore.setChannelEnabled(id, enabled);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
-});
-
-app.get('/api/admin/iptv/groups', (req,res) => {
-  try {
-    const groups = iptvStore.listGroups();
-    res.json({ success: true, groups });
-  } catch (e) {
-    res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: e.message });
-  }
+// All /api/admin/iptv/* routes are mounted behind requireAuth inside
+// createIptvAdminRoutes, so a missing session always yields 401. This keeps the
+// public live TV routes above untouched.
+const { createIptvAdminRoutes } = require('./routes/iptvAdminRoutes');
+createIptvAdminRoutes(app, {
+  store: iptvStore,
+  seed: iptvSync,
+  requireAuth,
+  config,
+  saveConfigPatch,
 });
 
 const PORT = config.port;

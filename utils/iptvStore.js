@@ -120,6 +120,7 @@ function rowToChannel(row) {
     playlistId: row.playlist_id,
     name: row.name,
     tvgId: row.tvg_id ?? null,
+    group: row.group_title ?? null,
     groupTitle: row.group_title ?? null,
     logo: row.logo ?? null,
     url: row.url,

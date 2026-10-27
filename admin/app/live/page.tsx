@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 interface Channel {
   id: number;
   name: string;
-  groupTitle: string;
+  group: string;
   logo?: string;
   language?: string;
   country?: string;
@@ -59,7 +59,7 @@ export default function LivePage() {
 
   const channels = data?.channels ?? [];
   const filtered = activeGroup
-    ? channels.filter((c) => c.groupTitle === activeGroup)
+    ? channels.filter((c) => c.group === activeGroup)
     : channels;
 
   return (
@@ -86,7 +86,7 @@ export default function LivePage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <button
               type="button"
-              className={clsx(buttonVariants({ variant: activeGroup ? 'secondary' : 'default' }), 'btn-sm')}
+              className={clsx(buttonVariants({ variant: activeGroup ? 'secondary' : 'primary' }), 'btn-sm')}
               onClick={() => setActiveGroup(null)}
             >
               <List size={14} /> All
@@ -95,7 +95,7 @@ export default function LivePage() {
               <button
                 key={g}
                 type="button"
-                className={clsx(buttonVariants({ variant: activeGroup === g ? 'default' : 'secondary' }), 'btn-sm')}
+                className={clsx(buttonVariants({ variant: activeGroup === g ? 'primary' : 'secondary' }), 'btn-sm')}
                 onClick={() => setActiveGroup(g)}
               >
                 {g}
@@ -139,7 +139,7 @@ export default function LivePage() {
                         <td>
                           <strong>{c.name}</strong>
                         </td>
-                        <td style={{ color: 'var(--color-fd-muted-foreground)' }}>{c.groupTitle}</td>
+                        <td style={{ color: 'var(--color-fd-muted-foreground)' }}>{c.group}</td>
                         <td>{c.language ?? '—'}</td>
                         <td>{c.country ?? '—'}</td>
                       </tr>
