@@ -31,6 +31,26 @@ function mp4(overrides = {}) {
   };
 }
 
+function mediaRecord(overrides = {}) {
+  return {
+    id: '550',
+    type: 'movie',
+    title: 'Media Title',
+    year: 1999,
+    overview: 'A media overview.',
+    tagline: null,
+    runtime: 139,
+    genres: ['Drama'],
+    rating: 8.4,
+    poster: { candidates: ['https://image.example/poster.jpg'] },
+    backdrop: null,
+    stills: [],
+    seriesPoster: 'https://image.example/series.jpg',
+    source: 'wikipedia',
+    ...overrides,
+  };
+}
+
 function validate(stream) {
   if (stream.dead) return { ok: false, status: 403, reason: 'http 403' };
   return {
@@ -65,6 +85,7 @@ async function runEvents({ deps = {}, config = { playerCacheTtlMs: 900000 }, sou
     onEvent: sink.onEvent,
     cancelled: { value: false },
     deps: {
+      getMedia: async () => ({ media: mediaRecord(), cacheHit: false }),
       getDetails: async () => ({ title: 'Test Movie', release_date: '1999-01-01' }),
       resolveImdbId: async () => null,
       providerOrder: () => ['alpha'],
@@ -227,6 +248,54 @@ describe('getPlayerStreamEvents', () => {
     assert.equal(second.find((entry) => entry.event === 'done').data.meta.cacheHit, true);
   });
 
+  it('uses the resolved media for the meta event and omits seriesPoster', async () => {
+    const events = await runEvents();
+    const meta = events.find((entry) => entry.event === 'meta').data;
+
+    assert.equal(meta.title, 'Media Title');
+    assert.equal(meta.year, 1999);
+    assert.equal(meta.media.source, 'wikipedia');
+    assert.equal(meta.media.title, 'Media Title');
+    assert.equal('seriesPoster' in meta.media, false);
+    assert.notEqual(meta.title, 'Peak');
+  });
+
+  it('stores resolved media in the aggregate cache and does not re-resolve it', async () => {
+    let mediaCalls = 0;
+    const deps = {
+      getMedia: async () => {
+        mediaCalls += 1;
+        return { media: mediaRecord(), cacheHit: false };
+      },
+    };
+
+    await runEvents({ deps });
+    const second = await runEvents({ deps });
+    const meta = second.find((entry) => entry.event === 'meta').data;
+
+    assert.equal(mediaCalls, 1);
+    assert.equal(meta.title, 'Media Title');
+    assert.equal(meta.media.source, 'wikipedia');
+  });
+
+  it('still streams an Untitled generated record when media resolution fails', async () => {
+    const events = await runEvents({
+      deps: {
+        getMedia: async () => {
+          throw new Error('media offline');
+        },
+      },
+    });
+    const meta = events.find((entry) => entry.event === 'meta').data;
+
+    assert.equal(meta.title, 'Untitled');
+    assert.equal(meta.media.title, 'Untitled');
+    assert.equal(meta.media.source, 'generated');
+    assert.deepEqual(meta.media.poster.candidates, []);
+    assert.equal('seriesPoster' in meta.media, false);
+    assert.ok(events.some((entry) => entry.event === 'source'));
+  });
+
   it('falls back to a fresh scrape when every cached source is rejected', async () => {
     let prepareCalls = 0;
     const deps = {
@@ -346,6 +415,7 @@ describe('getPlayerStream', () => {
           diagnostic: { provider: name, ok: true, latencyMs: 1 },
         };
       },
+      getMedia: async () => ({ media: mediaRecord(), cacheHit: false }),
       getDetails: async () => ({ title: 'Test Movie', release_date: '1999-01-01' }),
       resolveImdbId: async () => null,
       prepareStreams: prepare,
@@ -377,6 +447,44 @@ describe('getPlayerStream', () => {
       aggregateCacheKey('movie', '550', null, null, null),
       aggregateCacheKey('movie', '550', null, null),
     );
+  });
+
+  it('returns resolved media and keeps it across aggregate cache hits', async () => {
+    let mediaCalls = 0;
+    const deps = {
+      providerOrder: () => ['alpha'],
+      fetchProvider: async () => ({
+        name: 'alpha',
+        streams: [hls()],
+        diagnostic: { provider: 'alpha', ok: true, latencyMs: 1 },
+      }),
+      resolveImdbId: async () => null,
+      prepareStreams: prepare,
+      getMedia: async () => {
+        mediaCalls += 1;
+        return { media: mediaRecord(), cacheHit: false };
+      },
+    };
+    const request = {
+      type: 'movie',
+      id: '550',
+      serverUrl: 'http://peak.test',
+      config: { playerCacheTtlMs: 900000 },
+      deps,
+    };
+
+    const first = await getPlayerStream(request);
+    assert.equal(first.title, 'Media Title');
+    assert.equal(first.year, 1999);
+    assert.equal(first.media.source, 'wikipedia');
+    assert.equal('seriesPoster' in first.media, false);
+    assert.notEqual(first.title, 'Peak');
+
+    const second = await getPlayerStream(request);
+    assert.equal(mediaCalls, 1);
+    assert.equal(second.title, 'Media Title');
+    assert.equal(second.media.source, 'wikipedia');
+    assert.equal(second.meta.cacheHit, true);
   });
 });
 

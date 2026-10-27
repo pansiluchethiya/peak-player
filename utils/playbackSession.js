@@ -33,7 +33,7 @@ async function createPlaybackSession({
     sessionId,
     type: payload?.type || type,
     id: payload?.id ?? id,
-    title: payload?.title || 'Peak',
+    title: payload?.title || 'Untitled',
     year: payload?.year,
     season: season ?? null,
     episode: episode ?? null,

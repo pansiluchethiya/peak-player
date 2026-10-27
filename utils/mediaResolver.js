@@ -9,11 +9,15 @@ const { getTmdbApiKey: readTmdbApiKey } = require('./tmdbKey');
 
 const STAGE_TIMEOUT_MS = 4000;
 const TMDB_STILL_TIMEOUT_MS = 1000;
+const MEDIA_TTL_MS = 6 * 60 * 60 * 1000;
+const NEGATIVE_TTL_MS = 15 * 60 * 1000;
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w780';
 const USER_AGENT = 'PeakMediaResolver/1.0';
 const WIKIDATA_ENDPOINT = 'https://query.wikidata.org/sparql';
 const WIKIPEDIA_SUMMARY_BASE = 'https://en.wikipedia.org/api/rest_v1/page/summary';
 const TVMAZE_BASE = 'https://api.tvmaze.com';
+
+const mediaCache = new Map();
 
 const defaultFetch = (...args) => import('node-fetch').then((module) => module.default(...args));
 
@@ -525,4 +529,49 @@ async function resolveMedia(input, dependencies) {
   return finalize(record);
 }
 
-module.exports = { resolveMedia, MediaResolverError, isRealTmdbKey };
+function cloneMedia(media) {
+  return media && typeof media === 'object' ? JSON.parse(JSON.stringify(media)) : media;
+}
+
+function mediaCacheKey(request) {
+  return `${request.type}:${request.id}:${request.season}:${request.episode}`;
+}
+
+// Resolved records are cached per type/id/season/episode. Positive records live
+// for six hours; generated fallbacks only fifteen minutes so a transient
+// provider outage does not pin an empty record for the rest of the day.
+async function getMedia(input, dependencies) {
+  const request = validateRequest(input);
+  const deps = dependencies && typeof dependencies === 'object' ? dependencies : {};
+  const now = typeof deps.now === 'function' ? deps.now : Date.now;
+  const resolve = typeof deps.resolveMedia === 'function' ? deps.resolveMedia : resolveMedia;
+  const key = mediaCacheKey(request);
+  const cached = mediaCache.get(key);
+
+  if (cached) {
+    if (cached.expiresAt > now()) {
+      return { media: cloneMedia(cached.media), cacheHit: true };
+    }
+    mediaCache.delete(key);
+  }
+
+  const media = await resolve(request, deps);
+  const ttl = media && media.source === 'generated' ? NEGATIVE_TTL_MS : MEDIA_TTL_MS;
+  const record = cloneMedia(media);
+  mediaCache.set(key, { media: record, expiresAt: now() + ttl });
+  return { media: cloneMedia(record), cacheHit: false };
+}
+
+function clearMediaCache() {
+  mediaCache.clear();
+}
+
+module.exports = {
+  MEDIA_TTL_MS,
+  NEGATIVE_TTL_MS,
+  MediaResolverError,
+  clearMediaCache,
+  getMedia,
+  isRealTmdbKey,
+  resolveMedia,
+};

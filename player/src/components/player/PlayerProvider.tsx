@@ -23,6 +23,7 @@ import {
   type Diagnostic,
   type EmbedConfig,
   type Media,
+  type MediaMetadata as ResolvedMediaMetadata,
   type Source,
   type StreamResponse,
   type Subtitle,
@@ -65,6 +66,8 @@ export interface MediaMetadata {
   overview?: string;
   group?: string;
   logo?: string;
+  /** Full resolver record from the `meta` SSE event. */
+  media?: ResolvedMediaMetadata;
 }
 
 export interface PlayerState {
@@ -224,6 +227,7 @@ export function PlayerProvider({
       year: mediaMetadata?.year,
       sources,
       subtitles,
+      media: mediaMetadata?.media,
       meta: { latencyMs: 0, providers: diagnostics.length, sources: sources.length },
       diagnostics,
       group: mediaMetadata?.group,
@@ -315,6 +319,7 @@ export function PlayerProvider({
       overview?: string;
       group?: string;
       logo?: string;
+      media?: ResolvedMediaMetadata;
     }) => {
       if (cancelled || terminalRef.current) return;
       accumulated.metadata = {
@@ -324,6 +329,7 @@ export function PlayerProvider({
         overview: data.overview,
         group: data.group,
         logo: data.logo,
+        media: data.media,
       };
       publish();
     };

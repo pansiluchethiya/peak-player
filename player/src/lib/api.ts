@@ -1,4 +1,4 @@
-import type { Branding, Fingerprint, Media, StreamResponse } from './types';
+import type { Branding, Fingerprint, Media, MediaMetadata, StreamResponse } from './types';
 import { DEFAULT_BRANDING } from './types';
 
 
@@ -50,6 +50,7 @@ export interface StreamEventHandlers {
     overview?: string;
     group?: string;
     logo?: string;
+    media?: MediaMetadata;
   }) => void;
   onSource?: (source: { url: string; quality: string; codec: string; provider: string; adaptive?: boolean; expiresIn: number }) => void;
   onSubtitle?: (subtitle: { url: string; lang: string; label: string; provider: string }) => void;

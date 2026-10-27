@@ -11,7 +11,9 @@ const { resolveImdbId } = require('./utils/tmdb');
 const { applyFilters } = require('./utils/streamFilters');
 const { createEmbedSession, getEmbed } = require('./utils/embed');
 const { createStreamRoutes } = require('./routes/streamRoutes');
+const { createMediaRoutes } = require('./routes/mediaRoutes');
 const { getPlayerStream, getPlayerStreamEvents, getBranding, getPlayerProviders, providerOrder } = require('./utils/playerService');
+const { getMedia } = require('./utils/mediaResolver');
 const { createPlaybackSession, getPlaybackSession } = require('./utils/playbackSession');
 const { getTelemetrySummary, recordPlaybackEvent } = require('./utils/telemetry');
 const { getAllProviderHealth } = require('./utils/providerHealth');
@@ -316,6 +318,7 @@ app.get('/api/status', (req,res) => {
     'GET /api/config',
     'GET /api/v1/stream/:type/:id',
     'GET /api/v1/stream/events/:type/:id',
+    'GET /api/v1/media/:type/:id',
     'GET /api/v1/live/tv/channels',
     'GET /api/v1/live/tv/groups',
     'GET /api/admin/iptv/playlists',
@@ -402,6 +405,8 @@ createStreamRoutes(app, {
     metrics.lastError = error instanceof Error ? error.message : String(error);
   },
 });
+
+createMediaRoutes(app, { getMedia });
 
 function validPlaybackTarget(type, id) {
   const validTypes = ['movie', 'tv', 'series', 'live_tv'];
@@ -739,6 +744,7 @@ const server = app.listen(PORT, HOST, () => {
    console.log('  GET  /api/embed/:type/:id');
    console.log('  GET  /api/v1/stream/:type/:id');
    console.log('  GET  /api/v1/stream/events/:type/:id');
+   console.log('  GET  /api/v1/media/:type/:id');
    console.log('  GET  /api/v1/live/tv/channels');
    console.log('  GET  /api/v1/live/tv/groups');
    console.log('  GET  /api/v1/branding');

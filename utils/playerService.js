@@ -2,7 +2,8 @@
 // The player UI lives in ./player and is served separately via Docker.
 // Peak remains the only source of streams.
 const { listProviders, getProvider } = require('../providers/registry');
-const { getDetails, resolveImdbId } = require('./tmdb');
+const { resolveImdbId } = require('./tmdb');
+const { getMedia } = require('./mediaResolver');
 const { applyFilters } = require('./streamFilters');
 const { buildPlayerSource } = require('./sourceMetadata');
 const { rankSources } = require('./sourceRanking');
@@ -63,6 +64,43 @@ function aggregateCacheKey(tmdbType, tmdbId, seasonNumber, episodeNumber, source
   const episode = episodeNumber ?? '';
   const selectedSource = source ?? '';
   return `events:${tmdbType}:${tmdbId}:${season}:${episode}:${selectedSource}`;
+}
+
+function mediaFallback(type, id) {
+  return {
+    id,
+    type,
+    title: 'Untitled',
+    year: null,
+    overview: null,
+    tagline: null,
+    runtime: null,
+    genres: [],
+    rating: null,
+    poster: { candidates: [] },
+    backdrop: null,
+    stills: [],
+    seriesPoster: null,
+    source: 'generated',
+  };
+}
+
+// The stream contract exposes the resolver record minus `seriesPoster`, which
+// is series-level artwork and belongs to the future artwork pipeline.
+function publicMedia(media) {
+  if (!media || typeof media !== 'object') return undefined;
+  const { seriesPoster, ...rest } = media;
+  return rest;
+}
+
+async function resolveStreamMedia(getMediaImpl, input) {
+  try {
+    const result = await getMediaImpl(input);
+    const media = result && result.media;
+    return media && typeof media === 'object' ? media : mediaFallback(input.type, input.id);
+  } catch {
+    return mediaFallback(input.type, input.id);
+  }
 }
 
 function normalizeType(type) {
@@ -224,7 +262,7 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
   const providerOrderImpl = deps.providerOrder || providerOrder;
   const fetchProviderImpl = deps.fetchProvider || fetchProvider;
   const prepareStreamsImpl = deps.prepareStreams || prepareStreams;
-  const getDetailsImpl = deps.getDetails || getDetails;
+  const getMediaImpl = deps.getMedia || getMedia;
   const resolveImdbIdImpl = deps.resolveImdbId || resolveImdbId;
   const order = selectedProviderOrder(providerOrderImpl(), source);
   if (type === 'live_tv') {
@@ -254,6 +292,7 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
           type: tmdbType,
           title: cached.meta.title,
           year: cached.meta.year,
+          media: cached.media,
           sources,
           subtitles: cached.subtitles,
           meta: {
@@ -269,7 +308,14 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
     }
   }
 
-  const detailsPromise = getDetailsImpl(tmdbType, tmdbId).catch(() => null);
+  // Media resolution starts alongside provider scraping: it has its own 4 s
+  // stage budgets and must not add serial latency to the first byte.
+  const mediaPromise = resolveStreamMedia(getMediaImpl, {
+    type: tmdbType,
+    id: tmdbId,
+    season: seasonNumber,
+    episode: episodeNumber,
+  });
   const imdbId = await resolveImdbIdImpl(tmdbType, tmdbId).catch(() => null);
   const context = {
     tmdbId,
@@ -321,14 +367,15 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
     ...providerResults.map((result) => result.diagnostic),
     ...sourceDiagnostics,
   ];
-  const details = await detailsPromise;
-  const title = details?.title || details?.name || 'Peak';
-  const releaseDate = details?.release_date || details?.first_air_date || '';
-  const year = releaseDate ? Number(String(releaseDate).slice(0, 4)) || undefined : undefined;
+  const media = await mediaPromise;
+  const mediaRecord = publicMedia(media);
+  const title = media.title || 'Untitled';
+  const year = media.year ?? undefined;
 
   if (ttlMs > 0) {
     setCachedAggregate(cacheKey, {
       meta: { title, year },
+      media: mediaRecord,
       streams: originalStreams,
       subtitles,
       diagnostics,
@@ -341,6 +388,7 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
     type: tmdbType,
     title,
     year,
+    media: mediaRecord,
     sources,
     subtitles,
     meta: {
@@ -416,7 +464,7 @@ async function getPlayerStreamEvents({
   const fetchProviderImpl = deps.fetchProvider || fetchProvider;
   const providerOrderImpl = deps.providerOrder || providerOrder;
   const prepareStreamsImpl = deps.prepareStreams || prepareStreams;
-  const getDetailsImpl = deps.getDetails || getDetails;
+  const getMediaImpl = deps.getMedia || getMedia;
   const resolveImdbIdImpl = deps.resolveImdbId || resolveImdbId;
   const getLiveTvStreamImpl = deps.getLiveTvStream || getLiveTvStream;
   const order = selectedProviderOrder(providerOrderImpl(), source);
@@ -487,7 +535,7 @@ async function getPlayerStreamEvents({
         allowPrivate,
       });
       if (sources.length) {
-        emit('meta', cached.meta);
+        emit('meta', { ...cached.meta, media: cached.media });
         for (const source of sources) {
           const { _order, ...publicSource } = source;
           emit('source', publicSource);
@@ -510,7 +558,14 @@ async function getPlayerStreamEvents({
     }
   }
 
-  const detailsPromise = getDetailsImpl(tmdbType, tmdbId).catch(() => null);
+  // Media resolution runs alongside provider scraping; the meta event is emitted
+  // as soon as the record is ready, without waiting for the slowest provider.
+  const mediaPromise = resolveStreamMedia(getMediaImpl, {
+    type: tmdbType,
+    id: tmdbId,
+    season: seasonNumber,
+    episode: episodeNumber,
+  });
   const imdbId = await resolveImdbIdImpl(tmdbType, tmdbId).catch(() => null);
 
   const context = {
@@ -579,12 +634,12 @@ async function getPlayerStreamEvents({
     }
   });
 
-  const details = await detailsPromise;
-  const title = details?.title || details?.name || 'Peak';
-  const releaseDate = details?.release_date || details?.first_air_date || '';
-  const year = releaseDate ? Number(String(releaseDate).slice(0, 4)) || undefined : undefined;
+  const media = await mediaPromise;
+  const mediaRecord = publicMedia(media);
+  const title = media.title || 'Untitled';
+  const year = media.year ?? undefined;
   if (!metaEmitted) {
-    emit('meta', { title, year });
+    emit('meta', { title, year, media: mediaRecord });
     metaEmitted = true;
   }
 
@@ -593,6 +648,7 @@ async function getPlayerStreamEvents({
   if (ttlMs > 0 && !(cancelled && cancelled.value)) {
     setCachedAggregate(cacheKey, {
       meta: { title, year },
+      media: mediaRecord,
       streams: allOriginalStreams,
       subtitles: collectedSubtitles,
       diagnostics,

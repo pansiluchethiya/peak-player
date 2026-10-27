@@ -10,6 +10,23 @@ export interface Media {
   poster?: string;
 }
 
+export interface MediaMetadata {
+  id: string;
+  type: MediaType;
+  title: string;
+  year: number | null;
+  overview: string | null;
+  tagline: string | null;
+  runtime: number | null;
+  genres: string[];
+  rating: number | null;
+  poster: { candidates: string[] };
+  backdrop: string | null;
+  stills: string[];
+  seriesPoster: string | null;
+  source: 'tmdb' | 'wikidata' | 'wikipedia' | 'tvmaze' | 'generated';
+}
+
 export interface EmbedConfig {
   partnerId?: string;
   origins: string[];
@@ -50,6 +67,7 @@ export interface StreamResponse {
   year?: string | number;
   sources: Source[];
   subtitles: Subtitle[];
+  media?: MediaMetadata;
   meta?: Record<string, unknown>;
   diagnostics: Diagnostic[];
   group?: string;
