@@ -26,3 +26,6 @@ Plan: docs/superpowers/plans/2026-10-26-peak-player-platform.md
 | P1 gate | pass | 3bd0524 | check green; 1440/390 dark+light sweeps of /movie/550 and /embed/demo clean; external-only source expected with placeholder TMDB key; player contrast fix + duplicate diagnostic key |
 
 | 7 | done | 891e8ec | keyless resolver TMDB→Wikidata→Wikipedia→TVMaze→generated, 4s stage budgets, injected deps, no-throw fallback; tmdb getEpisodeDetails/isRealTmdbKey; 10 resolver tests |
+
+| 7 | done | 891e8ec | keyless media resolver (TMDB real key -> Wikidata -> Wikipedia -> TVMaze -> generated), mediaResolver tests, tmdb episode cache/isRealTmdbKey |
+| 8 | done | 1543502 | GET /api/v1/media/:type/:id, 6h/15min media cache, stream JSON + SSE media payload, removed literal Peak fallback, player media client/types |
