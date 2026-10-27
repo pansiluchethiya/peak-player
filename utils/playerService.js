@@ -676,6 +676,8 @@ function getBranding() {
     logoUrl: PLAYER_LOGO,
     accentColor: PLAYER_ACCENT,
     tagline: 'Cinema, elevated.',
+    preferences: { autoplay: config.autoplay !== false, autoplayMuted: config.autoplayMuted !== false },
+    preferenceMode: config.playerPreferenceMode || process.env.PLAYER_PREFERENCE_MODE || 'browser',
   };
 }
 
