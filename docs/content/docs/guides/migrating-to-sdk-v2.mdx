@@ -1,0 +1,69 @@
+---
+title: Migrating to SDK v2
+description: Step-by-step guide for upgrading from SDK v1 to v2.
+---
+
+SDK v2 is a drop-in upgrade. The v1 API stays untouched; v2 lives at `PeakEmbed.v2.mount` and
+returns promises instead of synchronous booleans.
+
+## 1. Mount through v2
+
+Before:
+
+```js
+const player = window.PeakEmbed.mount({ target, url });
+player.play();
+```
+
+After:
+
+```js
+const player = window.PeakEmbed.v2.mount({ target, url });
+await player.play();
+```
+
+## 2. Handle rejected promises
+
+v1 swallowed errors silently. v2 surfaces them:
+
+```js
+try {
+  await player.play();
+} catch (error) {
+  if (error.code === 'NOT_READY') {
+    // wait for ready
+  }
+}
+```
+
+## 3. Use the new surface
+
+All v2 methods return promises:
+
+| v1 (sync, returns boolean) | v2 (async, returns Promise) |
+| --- | --- |
+| `player.play()` | `player.play()` |
+| `player.pause()` | `player.pause()` |
+| `player.seek(seconds)` | `player.seek(seconds)` |
+| `player.setVolume(value)` | `player.setVolume(value)` |
+| — | `player.setBoost(value)` |
+| — | `player.unlockBoost(flag)` |
+| — | `player.setColourPreset(id)` |
+| — | `player.switchServer(codename)` |
+| — | `player.getState()` |
+| — | `player.getPreferences()` |
+
+## 4. v2 events
+
+v2 events include `version: 2` and `timestamp`. The event names are identical to v1, with
+additional state-change events (see [Events](/docs/reference/events)).
+
+## Rollback
+
+To roll back to v1, remove the `.v2` qualifier:
+
+```js
+const player = window.PeakEmbed.mount({ target, url });
+```
+
+The v1 code path is never removed; both versions can coexist during a phased rollout.

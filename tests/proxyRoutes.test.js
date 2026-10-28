@@ -67,6 +67,21 @@ function createFixture() {
       res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
       return res.end('#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:4,\nseg.ts\n#EXT-X-ENDLIST\n');
     }
+    if (url.pathname === '/audio-master.m3u8') {
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
+      return res.end(
+        '#EXTM3U\n'
+        + '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Italian",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="ita",URI="audio-ita.m3u8"\n'
+        + '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="English",DEFAULT=NO,AUTOSELECT=NO,LANGUAGE="eng",URI="audio-eng.m3u8"\n'
+        + '#EXT-X-STREAM-INF:BANDWIDTH=1000000,AUDIO="audio"\n'
+        + 'video.m3u8\n'
+        + '#EXT-X-ENDLIST\n',
+      );
+    }
+    if (url.pathname === '/audio-ita.m3u8' || url.pathname === '/audio-eng.m3u8' || url.pathname === '/video.m3u8') {
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
+      return res.end('#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:4,\nseg.ts\n#EXT-X-ENDLIST\n');
+    }
     if (url.pathname === '/cache-master.m3u8') {
       res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
       return res.end('#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:4,\ncached-seg.ts\n#EXT-X-ENDLIST\n');
@@ -74,6 +89,29 @@ function createFixture() {
     if (url.pathname === '/html.m3u8') {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       return res.end('<!doctype html><html><body>Cloudflare challenge</body></html>');
+    }
+    if (url.pathname === '/disguised.m3u8') {
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
+      return res.end(
+        '#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-MAP:URI="init.mp4"\n#EXTINF:6,\ns_0.jpg\n#EXT-X-ENDLIST\n',
+      );
+    }
+    if (url.pathname === '/many.m3u8') {
+      const lines = ['#EXTM3U', '#EXT-X-VERSION:3'];
+      for (let index = 0; index < 40; index += 1) {
+        lines.push('#EXTINF:4,', `many-seg-${index}.ts`);
+      }
+      lines.push('#EXT-X-ENDLIST');
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
+      return res.end(lines.join('\n'));
+    }
+    if (url.pathname.startsWith('/many-seg-')) {
+      res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': String(SEGMENT_BYTES.length) });
+      return res.end(req.method === 'HEAD' ? undefined : SEGMENT_BYTES);
+    }
+    if (url.pathname === '/init.mp4' || url.pathname === '/s_0.jpg') {
+      res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': String(SEGMENT_BYTES.length) });
+      return res.end(req.method === 'HEAD' ? undefined : SEGMENT_BYTES);
     }
     if (url.pathname === '/seg.ts') {
       res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': String(SEGMENT_BYTES.length) });
@@ -219,6 +257,42 @@ describe('media proxy routes', () => {
     const error = await html.json();
     assert.equal(error.error, 'INVALID_PLAYLIST');
     assert.equal(error.reason, 'html_response');
+  });
+
+  it('defaults HLS audio to the English rendition', async () => {
+    const response = await fetch(signed('/m3u8-proxy', { url: `${fixtureUrl}/audio-master.m3u8` }));
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, /NAME="English",DEFAULT=YES,AUTOSELECT=YES/);
+    assert.match(body, /NAME="Italian",DEFAULT=NO,AUTOSELECT=NO/);
+    assert.match(body, /audio-eng\.m3u8/);
+  });
+
+  it('proxies disguised image segments and EXT-X-MAP init sections', async () => {
+    const response = await fetch(signed('/m3u8-proxy', { url: `${fixtureUrl}/disguised.m3u8` }));
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, /#EXT-X-MAP:URI="[^"]*\/ts-proxy\?/);
+    assert.match(body, /\/ts-proxy\?/);
+    assert.doesNotMatch(body, new RegExp(fixtureUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  });
+
+  it('caps segment prefetch for large VOD playlists', async () => {
+    const countSegments = () =>
+      Object.keys(hits)
+        .filter((path) => path.startsWith('/many-seg-'))
+        .reduce((total, path) => total + hits[path], 0);
+
+    const before = countSegments();
+    const response = await fetch(signed('/m3u8-proxy', { url: `${fixtureUrl}/many.m3u8` }));
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.equal((body.match(/\/ts-proxy\?/g) || []).length, 40);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.ok(
+      countSegments() - before <= 8,
+      `prefetched ${countSegments() - before} segments; expected at most 8`,
+    );
   });
 
   it('preserves Range requests for direct files and serves cached ranges', async () => {

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Roboto } from 'next/font/google';
 import './globals.css';
 
 const geistSans = Geist({
@@ -7,6 +7,16 @@ const geistSans = Geist({
   display: 'swap',
   variable: '--font-sans',
   weight: ['400', '500', '600', '700', '800'],
+});
+
+/* Player chrome uses Roboto, the face YouTube's own player UI is built on, so
+ * titles, menus, timecodes, and controls read as one system without borrowing
+ * the marketing face or a monospace timecode. */
+const roboto = Roboto({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-player',
+  weight: ['400', '500', '700'],
 });
 
 const geistMono = Geist_Mono({
@@ -45,7 +55,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

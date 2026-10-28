@@ -57,6 +57,17 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   requestHeaders.set('x-peak-embed-origins', origins.join(','));
   requestHeaders.set('x-peak-embed-partner', result.payload.partnerId);
 
+  // Forward preference mode + seed preferences from the embed token to the app.
+  if (typeof result.payload.preferenceMode === 'string') {
+    requestHeaders.set('x-peak-embed-prefs-mode', result.payload.preferenceMode);
+  }
+  if (result.payload.preferences || result.payload.prefsLocked) {
+    const body: { preferences?: unknown; locked?: string[] } = {};
+    if (result.payload.preferences) body.preferences = result.payload.preferences;
+    if (Array.isArray(result.payload.prefsLocked)) body.locked = result.payload.prefsLocked;
+    requestHeaders.set('x-peak-embed-prefs', Buffer.from(JSON.stringify(body), 'utf8').toString('base64'));
+  }
+
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', buildFrameAncestors(origins));
   for (const [name, value] of Object.entries(EMBED_HEADERS)) response.headers.set(name, value);

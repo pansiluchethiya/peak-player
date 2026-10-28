@@ -11,7 +11,7 @@
 
 .diagnostics summary {
   cursor: pointer;
-  color: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: color-mix(in srgb, #ffffff 62%, transparent);
 }
 
 .diagnostics ul {

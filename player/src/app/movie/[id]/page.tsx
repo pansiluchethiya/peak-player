@@ -1,5 +1,5 @@
-import { Player } from '@/components/Player';
-import { use } from 'react';
+import { PlayerRoot } from '@/components/player';
+import type { Media } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,5 +16,12 @@ export default async function MoviePage({
 }) {
   const { id } = await params;
   const { poster } = await searchParams;
-  return <Player apiBase={apiBase()} media={{ type: 'movie', id, poster }} />;
+  const media: Media = { type: 'movie', id, poster };
+  return (
+    <PlayerRoot
+      apiBase={apiBase()}
+      media={media}
+      preset={media.type === 'live_tv' ? 'live-video' : 'video'}
+    />
+  );
 }

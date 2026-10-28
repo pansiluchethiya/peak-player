@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "methods": ["play", "pause", "seek", "seekBy", "setVolume", "setMuted", "setBoost", "unlockBoost", "setSpeed", "setQuality", "setAudioTrack", "setCaptions", "setColourPreset", "setAspect", "switchServer", "nextEpisode", "previousEpisode", "goToLive", "requestFullscreen", "exitFullscreen", "requestPictureInPicture", "snapshot", "getShareLink", "copyEmbedLink", "getState", "getPreferences", "setPreferences"],
+  "events": ["ready", "play", "pause", "ended", "timeupdate", "durationchange", "volumechange", "ratechange", "qualitychange", "audiotrackchange", "captionchange", "serverchange", "episodechange", "livechange", "fullscreenchange", "pipchange", "preferencechange", "error"],
+  "errors": ["NOT_READY", "UNSUPPORTED", "INVALID_ARGUMENT", "STREAM_UNAVAILABLE", "TOKEN_EXPIRED", "ORIGIN_NOT_ALLOWED", "PERMISSION_DENIED", "UNKNOWN"]
+}

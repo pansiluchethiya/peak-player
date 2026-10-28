@@ -11,24 +11,28 @@
     "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
+    "@videojs/core": "10.2.0",
+    "@videojs/hlsjs-video": "10.2.0",
+    "@videojs/mux-data": "10.2.0",
+    "@videojs/react": "10.2.0",
     "clsx": "^2.1.1",
+    "cn": "^0.5.0",
     "hls.js": "^1.5.17",
     "lucide-react": "^1.61.0",
     "motion": "^14.6.0",
     "next": "^15.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.7.0",
-    "video.js": "^8.24.2"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.0",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.5.28",
-    "tailwindcss": "^4.1.0",
+    "tailwindcss": "4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^5.7.0"
   }

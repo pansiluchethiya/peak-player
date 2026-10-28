@@ -1,0 +1,77 @@
+---
+title: Player controls
+description: Every control button, keyboard shortcut, and gesture in the player UI.
+---
+
+## Control bar
+
+The AMOLED control bar is composed of these groups:
+
+### Transport (left)
+
+| Control | Action |
+| --- | --- |
+| Play / Pause | Toggles playback (`k` or `Space`) |
+| Seek back 10s | `j` or `←` |
+| Seek forward 10s | `l` or `→` |
+| Scrubber | Drag to seek; live mode shows DVR range |
+| Time display | `currentTime / duration` |
+
+### Center
+
+| Control | Action |
+| --- | --- |
+| Volume | Mute toggle + slider (`m`) |
+| Boost | `0..300%` normally, `500%` when unlocked |
+
+### End
+
+| Control | Action |
+| --- | --- |
+| Server | Codename list — re-resolves via `?source=` |
+| Quality | HLS rendition auto/manual |
+| Audio | Track list |
+| Settings | Captions, speed, colour, aspect |
+| Previous / Next episode | (`b` / `n`) |
+| PiP | Picture-in-picture (`p`) |
+| Cast | Disabled placeholder (future) |
+| Fullscreen | `f` |
+
+## Keyboard shortcuts
+
+| Key | Command |
+| --- | --- |
+| `Space`, `k` | Toggle play / pause |
+| `j`, `←` | Seek back |
+| `l`, `→` | Seek forward |
+| `Home` | Go live |
+| `m` | Mute |
+| `f` | Fullscreen |
+| `p` | Picture-in-picture |
+| `c` | Captions menu |
+| `s` | Speed menu |
+| `q` | Quality menu |
+| `a` | Audio track menu |
+| `r` | Colour preset menu |
+| `y` | Aspect menu |
+| `h` | Chapters menu |
+| `v` | Server menu |
+| `g` | Stats overlay |
+| `?` | Shortcuts help |
+
+Pressing any key inside an `<input>`, `<textarea>`, `<select>`, or a `[contenteditable]` element
+is ignored so form fields keep their default behaviour.
+
+## Gestures
+
+| Gesture | Action |
+| --- | --- |
+| Tap | Toggle play / pause |
+| Double tap (left/right) | Seek back / forward 10s |
+| Swipe up/down | Volume / brightness |
+| Pinch | None (aspect locked to `object-fit`) |
+
+## See also
+
+- [Preferences](/docs/guides/preferences)
+- [Events](/docs/reference/events)

@@ -1,3 +1,20 @@
+/** Data-saver presets. `auto` lets ABR pick any rendition the connection supports. */
+export type QualityCap = 'auto' | '360p' | '480p' | '720p' | '1080p';
+
+export const QUALITY_CAPS: readonly QualityCap[] = ['auto', '360p', '480p', '720p', '1080p'];
+
+export function isQualityCap(value: unknown): value is QualityCap {
+  return typeof value === 'string' && (QUALITY_CAPS as readonly string[]).includes(value);
+}
+
+/**
+ * Maps a saved cap onto the HLS `maxAutoResolution` value. `auto` returns
+ * `undefined` so the adaptive ladder stays uncapped.
+ */
+export function qualityCapResolution(cap: string): Exclude<QualityCap, 'auto'> | undefined {
+  return isQualityCap(cap) && cap !== 'auto' ? cap : undefined;
+}
+
 export interface NetworkInformationLike {
   downlink?: number;
   effectiveType?: string;

@@ -15,6 +15,7 @@ export type EmbedTokenError =
   | 'MISSING_TOKEN'
   | 'INVALID_TOKEN'
   | 'INVALID_SIGNATURE'
+  | 'INVALID_PAYLOAD'
   | 'EXPIRED'
   | 'SECRET_MISSING';
 
@@ -27,18 +28,21 @@ interface VerifyOptions {
   now?: number;
 }
 
+const TOKEN_VERSION = 'v1';
+const IV_BYTES = 12;
+const TAG_BYTES = 16;
 const keyCache = new Map<string, Promise<CryptoKey>>();
 
 function tokenSecret(options: VerifyOptions): string {
   return String(options.secret ?? process.env.EMBED_TOKEN_SECRET ?? '').trim();
 }
 
-function base64UrlToBytes(value: string): Uint8Array | null {
+function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> | null {
   try {
     const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
     const binary = atob(padded);
-    const bytes = new Uint8Array(binary.length);
+    const bytes = new Uint8Array(new ArrayBuffer(binary.length));
     for (let index = 0; index < binary.length; index += 1) {
       bytes[index] = binary.charCodeAt(index);
     }
@@ -48,37 +52,27 @@ function base64UrlToBytes(value: string): Uint8Array | null {
   }
 }
 
-function importKey(secret: string): Promise<CryptoKey> {
+async function importKey(secret: string): Promise<CryptoKey> {
   const cached = keyCache.get(secret);
   if (cached) return cached;
-  const imported = crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify'],
-  );
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  const imported = crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, [
+    'decrypt',
+  ]);
   keyCache.set(secret, imported);
   return imported;
 }
 
-function parsePayload(encoded: string): EmbedTokenPayload | null {
-  const bytes = base64UrlToBytes(encoded);
-  if (!bytes) return null;
-  try {
-    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    if (!parsed || typeof parsed !== 'object') return null;
-    const payload = parsed as Partial<EmbedTokenPayload>;
-    if (payload.v !== 1) return null;
-    if (typeof payload.partnerId !== 'string' || !payload.partnerId) return null;
-    if (typeof payload.type !== 'string' || !payload.type) return null;
-    if (typeof payload.id !== 'string' || !payload.id) return null;
-    if (!Array.isArray(payload.origins)) return null;
-    if (!Number.isFinite(payload.iat) || !Number.isFinite(payload.exp)) return null;
-    return payload as EmbedTokenPayload;
-  } catch {
-    return null;
-  }
+function isPayload(value: unknown): value is EmbedTokenPayload {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as Partial<EmbedTokenPayload>;
+  if (payload.v !== 1) return false;
+  if (typeof payload.partnerId !== 'string' || !payload.partnerId) return false;
+  if (typeof payload.type !== 'string' || !payload.type) return false;
+  if (typeof payload.id !== 'string' || !payload.id) return false;
+  if (!Array.isArray(payload.origins)) return false;
+  if (!Number.isFinite(payload.iat) || !Number.isFinite(payload.exp)) return false;
+  return true;
 }
 
 export async function verifyEmbedToken(
@@ -91,35 +85,48 @@ export async function verifyEmbedToken(
   if (!secret) return { ok: false, error: 'SECRET_MISSING' };
 
   const parts = token.split('.');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+  if (parts.length !== 4) return { ok: false, error: 'INVALID_TOKEN' };
+  const [version, ivPart, cipherPart, tagPart] = parts;
+  if (version !== TOKEN_VERSION || !ivPart || !cipherPart || !tagPart) {
     return { ok: false, error: 'INVALID_TOKEN' };
   }
 
-  const [encoded, signature] = parts;
-  const payload = parsePayload(encoded);
-  if (!payload) return { ok: false, error: 'INVALID_TOKEN' };
+  const iv = base64UrlToBytes(ivPart);
+  const ciphertext = base64UrlToBytes(cipherPart);
+  const tag = base64UrlToBytes(tagPart);
+  if (!iv || !ciphertext || !tag) return { ok: false, error: 'INVALID_TOKEN' };
+  if (iv.length !== IV_BYTES || tag.length !== TAG_BYTES) {
+    return { ok: false, error: 'INVALID_TOKEN' };
+  }
 
-  const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
-  if (payload.exp * 1000 <= now) return { ok: false, error: 'EXPIRED', payload };
+  const combined = new Uint8Array(new ArrayBuffer(ciphertext.length + tag.length));
+  combined.set(ciphertext, 0);
+  combined.set(tag, ciphertext.length);
 
-  const signatureBytes = base64UrlToBytes(signature);
-  if (!signatureBytes) return { ok: false, error: 'INVALID_SIGNATURE' };
-
+  let plaintext: ArrayBuffer;
   try {
     const key = await importKey(secret);
-    const signatureBuffer = new Uint8Array(signatureBytes).buffer;
-    const valid = await crypto.subtle.verify(
-      'HMAC',
+    plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv, tagLength: 128 },
       key,
-      signatureBuffer,
-      new TextEncoder().encode(encoded),
+      combined,
     );
-    if (!valid) return { ok: false, error: 'INVALID_SIGNATURE' };
   } catch {
     return { ok: false, error: 'INVALID_SIGNATURE' };
   }
 
-  return { ok: true, payload };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(plaintext));
+  } catch {
+    return { ok: false, error: 'INVALID_PAYLOAD' };
+  }
+  if (!isPayload(parsed)) return { ok: false, error: 'INVALID_PAYLOAD' };
+
+  const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
+  if (parsed.exp * 1000 <= now) return { ok: false, error: 'EXPIRED', payload: parsed };
+
+  return { ok: true, payload: parsed };
 }
 
 export function normalizeEmbedOrigins(value: unknown): string[] {

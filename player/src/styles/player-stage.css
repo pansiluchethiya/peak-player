@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Single Player Stage (PlayerRoot)
+   ========================================================================== */
+
+.player-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  background: #000;
+}
+
+.player-stage .media-skin {
+  height: 100%;
+}
+
+.player-stage-bg .player-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* External providers own transport; keep the skin visible but inert. */
+.player-stage[data-transport='external'] .video-controls {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ==========================================================================
+   Ambient Background Layer
+   ========================================================================== */
+
+.ambient-background {
+  position: absolute;
+  inset: -20%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ambient-glow {
+  width: 100%;
+  height: 100%;
+  filter: blur(100px);
+  opacity: 0.35;
+  transition: opacity 1s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-glow {
+    filter: blur(40px);
+    opacity: 0.15;
+  }
+}
+
+/* ==========================================================================
+   Cinematic Vignette Scrim (Top & Bottom Gradients)
+   ========================================================================== */
+
+.player-vignette-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 20%, transparent 40%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 25%, transparent 45%);
+  transition: opacity 300ms ease;
+}
+
+.player-vignette-scrim.hidden {
+  opacity: 0;
+}
+
+.player-vignette-scrim.visible {
+  opacity: 1;
+}

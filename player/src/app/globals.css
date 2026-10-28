@@ -1,15 +1,21 @@
 @import "tailwindcss";
-@import "video.js/dist/video-js.css";
+@import "../components/player/videojs/styles/tailwind.css";
 @import "../styles/tokens.css";
+@import "../styles/skin.css";
 @import "../styles/reset.css";
 @import "../styles/base.css";
 @import "../styles/chrome.css";
 @import "../styles/chrome-2.css";
 @import "../styles/chrome-3.css";
 @import "../styles/chrome-4.css";
+@import "../styles/chrome-5.css";
+@import "../styles/controls.css";
 @import "../styles/player.css";
+@import "../styles/player-stage.css";
+@import "../styles/player-feedback.css";
 @import "../styles/player-2.css";
 @import "../styles/player-3.css";
+@import "../styles/artwork.css";
 @import "../styles/marketing.css";
 @import "../styles/embed.css";
 @import "../styles/embed-2.css";
@@ -29,3 +35,5 @@
 @import "../styles/landing-14.css";
 @import "../styles/landing-15.css";
 @import "../styles/theme.css";
+
+@source "../components/player/videojs";

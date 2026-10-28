@@ -1,4 +1,6 @@
 'use client';
+import Link from 'next/link';
+import { type ReactNode } from 'react';
 import { AdminShell, useAuthCheck } from '@/components/AdminShell';
 import { Card } from 'fumadocs-ui/components/card';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
@@ -50,121 +52,130 @@ export default function ProvidersPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Render loading / error / content inside a single AdminShell wrapper.
+  let pageContent: React.ReactNode;
+
   if (auth === 'loading') {
-    return (
-      <div className="admin-app" data-has-sidebar="true">
-        <AdminShell title="Providers">
-          <p className="admin-page-subtitle">Checking session…</p>
-        </AdminShell>
+    pageContent = <p className="admin-page-subtitle">Checking session…</p>;
+  } else if (auth === 'unauthenticated') {
+    pageContent = (
+      <div className="alert danger" role="alert">
+        <AlertCircle /> Session expired. Please <Link href="/login">sign in</Link> again.
       </div>
+    );
+  } else {
+    pageContent = (
+      <>
+        <div className="banner-stack" />
+        <section className="page-status" aria-labelledby="title-providers">
+          <div className="page-head">
+            <div>
+              <p className="admin-eyebrow">Configure</p>
+              <h1 id="title-providers">Providers &amp; defaults</h1>
+              <p className="admin-page-subtitle">
+                Enable or disable stream providers. Disabled sources won't be queried during playback.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={clsx(buttonVariants({ variant: 'secondary' }), 'btn-sm')}
+              onClick={load}
+              disabled={status === 'loading'}
+            >
+              <RefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
+
+          {error && (
+            <div className="alert danger" role="alert" style={{ marginTop: 16 }}>
+              <AlertCircle /> <span>{error}</span>
+            </div>
+          )}
+
+          <Card title="Provider matrix" description="Enabled sources and credential readiness">
+            <div className="provider-table">
+              {status === 'loading' ? (
+                <p style={{ padding: '12px 0', color: 'var(--color-fd-muted-foreground)' }}>Loading providers…</p>
+              ) : (
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Provider</th>
+                      <th>Status</th>
+                      <th>Cookie required</th>
+                      <th>Last used</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data?.providers.map((p) => (
+                      <tr key={p.name}>
+                        <td>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Server size={14} />
+                            <strong>{p.name}</strong>
+                          </span>
+                        </td>
+                        <td>
+                          {p.enabled ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-success)' }}>
+                              <CheckCircle size={14} /> Enabled
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-error)' }}>
+                              <XCircle size={14} /> Disabled
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {p.cookieRequired ? (
+                            p.cookieOk ? 'Available' : 'Missing'
+                          ) : '—'}
+                        </td>
+                        <td style={{ color: 'var(--color-fd-muted-foreground)', fontSize: '0.8rem' }}>
+                          —
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </Card>
+
+          <div className="admin-kpi-grid" style={{ marginTop: 24 }}>
+            <div className="admin-kpi-card">
+              <div className="admin-kpi-label">
+                <span className="admin-kpi-icon"><Server size={20} /></span>
+                <span>Total requests</span>
+              </div>
+              <p className="admin-kpi-value">{data?.metrics.requestsTotal ?? '—'}</p>
+              <p className="admin-kpi-note">All-time since restart</p>
+            </div>
+            <div className="admin-kpi-card">
+              <div className="admin-kpi-label">
+                <span className="admin-kpi-icon"><Server size={20} /></span>
+                <span>Stream requests</span>
+              </div>
+              <p className="admin-kpi-value">{data?.metrics.streamRequests ?? '—'}</p>
+              <p className="admin-kpi-note">Resolved streams</p>
+            </div>
+            <div className="admin-kpi-card">
+              <div className="admin-kpi-label">
+                <span className="admin-kpi-icon"><Server size={20} /></span>
+                <span>Sources returned</span>
+              </div>
+              <p className="admin-kpi-value">{data?.metrics.streamsReturned ?? '—'}</p>
+              <p className="admin-kpi-note">Aggregated across providers</p>
+            </div>
+          </div>
+        </section>
+      </>
     );
   }
 
   return (
     <AdminShell title="Providers">
-      <div className="banner-stack" />
-      <section className="page-status" aria-labelledby="title-providers">
-        <div className="page-head">
-          <div>
-            <p className="admin-eyebrow">Configure</p>
-            <h1 id="title-providers">Providers &amp; defaults</h1>
-            <p className="admin-page-subtitle">
-              Enable or disable stream providers. Disabled sources won't be queried during playback.
-            </p>
-          </div>
-          <button
-            type="button"
-            className={clsx(buttonVariants({ variant: 'secondary' }), 'btn-sm')}
-            onClick={load}
-            disabled={status === 'loading'}
-          >
-            <RefreshCw className={status === 'loading' ? 'animate-spin' : ''} /> Refresh
-          </button>
-        </div>
-
-        {error && (
-          <div className="alert danger" role="alert" style={{ marginTop: 16 }}>
-            <AlertCircle /> <span>{error}</span>
-          </div>
-        )}
-
-        <Card title="Provider matrix" description="Enabled sources and credential readiness">
-          <div className="provider-table">
-            {status === 'loading' ? (
-              <p style={{ padding: '12px 0', color: 'var(--color-fd-muted-foreground)' }}>Loading providers…</p>
-            ) : (
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Provider</th>
-                    <th>Status</th>
-                    <th>Cookie required</th>
-                    <th>Last used</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.providers.map((p) => (
-                    <tr key={p.name}>
-                      <td>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Server size={14} />
-                          <strong>{p.name}</strong>
-                        </span>
-                      </td>
-                      <td>
-                        {p.enabled ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-success)' }}>
-                            <CheckCircle size={14} /> Enabled
-                          </span>
-                        ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--color-error)' }}>
-                            <XCircle size={14} /> Disabled
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {p.cookieRequired ? (
-                          p.cookieOk ? 'Available' : 'Missing'
-                        ) : '—'}
-                      </td>
-                      <td style={{ color: 'var(--color-fd-muted-foreground)', fontSize: '0.8rem' }}>
-                        —
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </Card>
-
-        <div className="admin-kpi-grid" style={{ marginTop: 24 }}>
-          <div className="admin-kpi-card">
-            <div className="admin-kpi-label">
-              <span className="admin-kpi-icon"><Server size={20} /></span>
-              <span>Total requests</span>
-            </div>
-            <p className="admin-kpi-value">{data?.metrics.requestsTotal ?? '—'}</p>
-            <p className="admin-kpi-note">All-time since restart</p>
-          </div>
-          <div className="admin-kpi-card">
-            <div className="admin-kpi-label">
-              <span className="admin-kpi-icon"><Server size={20} /></span>
-              <span>Stream requests</span>
-            </div>
-            <p className="admin-kpi-value">{data?.metrics.streamRequests ?? '—'}</p>
-            <p className="admin-kpi-note">Resolved streams</p>
-          </div>
-          <div className="admin-kpi-card">
-            <div className="admin-kpi-label">
-              <span className="admin-kpi-icon"><Server size={20} /></span>
-              <span>Sources returned</span>
-            </div>
-            <p className="admin-kpi-value">{data?.metrics.streamsReturned ?? '—'}</p>
-            <p className="admin-kpi-note">Aggregated across providers</p>
-          </div>
-        </div>
-      </section>
+      {pageContent}
     </AdminShell>
   );
 }

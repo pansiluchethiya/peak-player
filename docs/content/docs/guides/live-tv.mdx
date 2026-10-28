@@ -92,6 +92,29 @@ The catalog is populated by the IPTV sync process. If a channel is missing or it
 playlist sync from the admin API and reload the catalog. Channel ids can change when the upstream
 playlist changes; do not persist them as permanent identifiers without a fallback lookup by name.
 
+## Live guide (EPG)
+
+For a given channel id, the player calls `/api/v1/live/tv/epg/{id}` to fetch the
+now/next and nearby programme entries. The schedule may be `null` if the channel
+has no EPG data, so the UI should degrade gracefully.
+
+```bash
+curl 'http://localhost:3000/api/v1/live/tv/epg/channel_bbc_one_abc123'
+```
+
+```json
+{
+  "channel": "channel_bbc_one_abc123",
+  "schedule": [
+    { "title": "BBC News at Ten", "start": "2026-10-27T22:00:00Z", "stop": "2026-10-27T22:30:00Z" },
+    { "title": "BBC News at Six", "start": "2026-10-27T22:30:00Z", "stop": "2026-10-27T23:00:00Z" }
+  ]
+}
+```
+
+When `schedule` is `null`, the live panel shows only the channel name and a "no
+guide data" message — playback is unaffected.
+
 ## Live playback behaviour
 
 - There is no duration or seek bar in the usual sense.

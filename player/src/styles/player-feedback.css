@@ -1,0 +1,102 @@
+/* ==========================================================================
+   Gesture Layer (Single Tap & Double Tap Left/Right)
+   ========================================================================== */
+
+.mobile-gesture-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Center Feedback Animation (Play/Pause Bubble)
+   ========================================================================== */
+
+.center-feedback-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 45;
+  pointer-events: none;
+}
+
+.center-feedback-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  animation: feedbackPop 550ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.center-feedback-icon {
+  width: 36px;
+  height: 36px;
+  fill: currentColor;
+}
+
+@keyframes feedbackPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+/* ==========================================================================
+   Skip Feedback Ripple (Stacked 10s / 20s / 30s)
+   ========================================================================== */
+
+.skip-feedback-container {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 38%;
+  z-index: 45;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skip-feedback-container.backward {
+  left: 0;
+  border-radius: 0 100% 100% 0 / 0 50% 50% 0;
+  background: radial-gradient(circle at 0% 50%, rgba(255, 255, 255, 0.16) 0%, transparent 70%);
+  animation: rippleFade 800ms ease forwards;
+}
+
+.skip-feedback-container.forward {
+  right: 0;
+  border-radius: 100% 0 0 100% / 50% 0 0 50%;
+  background: radial-gradient(circle at 100% 50%, rgba(255, 255, 255, 0.16) 0%, transparent 70%);
+  animation: rippleFade 800ms ease forwards;
+}
+
+.skip-feedback-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.skip-feedback-icon {
+  width: 38px;
+  height: 38px;
+}

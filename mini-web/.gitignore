@@ -1,0 +1,14 @@
+# Build output
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env.local
+.env
+!.env.example
+
+# Logs
+*.log

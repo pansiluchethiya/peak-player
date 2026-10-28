@@ -3,8 +3,11 @@
 const assert = require('node:assert/strict');
 const { beforeEach, describe, it } = require('node:test');
 const {
+  aggregateCacheKey,
   cacheTtlMs,
   clearEventCache,
+  getBranding,
+  getPlayerStream,
   getPlayerStreamEvents,
   prepareStreams,
 } = require('../utils/playerService');
@@ -25,6 +28,26 @@ function mp4(overrides = {}) {
     quality: '1080p',
     provider: 'alpha',
     codec: 'mp4',
+    ...overrides,
+  };
+}
+
+function mediaRecord(overrides = {}) {
+  return {
+    id: '550',
+    type: 'movie',
+    title: 'Media Title',
+    year: 1999,
+    overview: 'A media overview.',
+    tagline: null,
+    runtime: 139,
+    genres: ['Drama'],
+    rating: 8.4,
+    poster: { candidates: ['https://image.example/poster.jpg'] },
+    backdrop: null,
+    stills: [],
+    seriesPoster: 'https://image.example/series.jpg',
+    source: 'wikipedia',
     ...overrides,
   };
 }
@@ -52,16 +75,18 @@ function collector() {
   };
 }
 
-async function runEvents({ deps = {}, config = { playerCacheTtlMs: 900000 } } = {}) {
+async function runEvents({ deps = {}, config = { playerCacheTtlMs: 900000 }, source } = {}) {
   const sink = collector();
   await getPlayerStreamEvents({
     type: 'movie',
     id: '550',
+    source,
     serverUrl: 'http://peak.test',
     config,
     onEvent: sink.onEvent,
     cancelled: { value: false },
     deps: {
+      getMedia: async () => ({ media: mediaRecord(), cacheHit: false }),
       getDetails: async () => ({ title: 'Test Movie', release_date: '1999-01-01' }),
       resolveImdbId: async () => null,
       providerOrder: () => ['alpha'],
@@ -152,6 +177,52 @@ describe('getPlayerStreamEvents', () => {
     );
   });
 
+  it('queries only the selected provider and rejects an unknown source', async () => {
+    const queried = [];
+    const deps = {
+      providerOrder: () => ['alpha', 'beta'],
+      fetchProvider: async (name) => {
+        queried.push(name);
+        return {
+          name,
+          streams: [hls({ provider: name })],
+          diagnostic: { provider: name, ok: true, latencyMs: 1 },
+        };
+      },
+    };
+
+    await runEvents({ deps, source: 'beta' });
+    assert.deepEqual(queried, ['beta']);
+
+    await assert.rejects(
+      runEvents({ deps, source: 'missing' }),
+      (error) => error.code === 'INVALID_SOURCE',
+    );
+    assert.deepEqual(queried, ['beta']);
+  });
+
+  it('rejects an empty selected source instead of fanning out', async () => {
+    const queried = [];
+    await assert.rejects(
+      runEvents({
+        source: '',
+        deps: {
+          providerOrder: () => ['alpha', 'beta'],
+          fetchProvider: async (name) => {
+            queried.push(name);
+            return {
+              name,
+              streams: [hls({ provider: name })],
+              diagnostic: { provider: name, ok: true, latencyMs: 1 },
+            };
+          },
+        },
+      }),
+      (error) => error.code === 'INVALID_SOURCE',
+    );
+    assert.deepEqual(queried, []);
+  });
+
   it('replays cached sources through the same ranking path and marks cacheHit', async () => {
     let fetches = 0;
     const deps = {
@@ -176,6 +247,54 @@ describe('getPlayerStreamEvents', () => {
       ['hls', 'mp4'],
     );
     assert.equal(second.find((entry) => entry.event === 'done').data.meta.cacheHit, true);
+  });
+
+  it('uses the resolved media for the meta event and omits seriesPoster', async () => {
+    const events = await runEvents();
+    const meta = events.find((entry) => entry.event === 'meta').data;
+
+    assert.equal(meta.title, 'Media Title');
+    assert.equal(meta.year, 1999);
+    assert.equal(meta.media.source, 'wikipedia');
+    assert.equal(meta.media.title, 'Media Title');
+    assert.equal('seriesPoster' in meta.media, false);
+    assert.notEqual(meta.title, 'Peak');
+  });
+
+  it('stores resolved media in the aggregate cache and does not re-resolve it', async () => {
+    let mediaCalls = 0;
+    const deps = {
+      getMedia: async () => {
+        mediaCalls += 1;
+        return { media: mediaRecord(), cacheHit: false };
+      },
+    };
+
+    await runEvents({ deps });
+    const second = await runEvents({ deps });
+    const meta = second.find((entry) => entry.event === 'meta').data;
+
+    assert.equal(mediaCalls, 1);
+    assert.equal(meta.title, 'Media Title');
+    assert.equal(meta.media.source, 'wikipedia');
+  });
+
+  it('still streams an Untitled generated record when media resolution fails', async () => {
+    const events = await runEvents({
+      deps: {
+        getMedia: async () => {
+          throw new Error('media offline');
+        },
+      },
+    });
+    const meta = events.find((entry) => entry.event === 'meta').data;
+
+    assert.equal(meta.title, 'Untitled');
+    assert.equal(meta.media.title, 'Untitled');
+    assert.equal(meta.media.source, 'generated');
+    assert.deepEqual(meta.media.poster.candidates, []);
+    assert.equal('seriesPoster' in meta.media, false);
+    assert.ok(events.some((entry) => entry.event === 'source'));
   });
 
   it('falls back to a fresh scrape when every cached source is rejected', async () => {
@@ -284,10 +403,123 @@ describe('getPlayerStreamEvents', () => {
   });
 });
 
+describe('getPlayerStream', () => {
+  it('queries only the selected provider and isolates the cache key', async () => {
+    const queried = [];
+    const deps = {
+      providerOrder: () => ['alpha', 'beta'],
+      fetchProvider: async (name) => {
+        queried.push(name);
+        return {
+          name,
+          streams: [hls({ provider: name })],
+          diagnostic: { provider: name, ok: true, latencyMs: 1 },
+        };
+      },
+      getMedia: async () => ({ media: mediaRecord(), cacheHit: false }),
+      getDetails: async () => ({ title: 'Test Movie', release_date: '1999-01-01' }),
+      resolveImdbId: async () => null,
+      prepareStreams: prepare,
+    };
+    const request = {
+      type: 'movie',
+      id: '550',
+      serverUrl: 'http://peak.test',
+      config: { playerCacheTtlMs: 900000 },
+      deps,
+    };
+
+    const selected = await getPlayerStream({ ...request, source: 'beta' });
+    assert.deepEqual(queried, ['beta']);
+    assert.deepEqual(selected.sources.map((source) => source.provider), ['beta']);
+
+    const unfiltered = await getPlayerStream(request);
+    assert.deepEqual(queried, ['beta', 'alpha', 'beta']);
+    assert.deepEqual(
+      unfiltered.sources.map((source) => source.provider).sort(),
+      ['alpha', 'beta'],
+    );
+
+    assert.notEqual(
+      aggregateCacheKey('movie', '550', null, null, 'beta'),
+      aggregateCacheKey('movie', '550', null, null),
+    );
+    assert.equal(
+      aggregateCacheKey('movie', '550', null, null, null),
+      aggregateCacheKey('movie', '550', null, null),
+    );
+  });
+
+  it('returns resolved media and keeps it across aggregate cache hits', async () => {
+    let mediaCalls = 0;
+    const deps = {
+      providerOrder: () => ['alpha'],
+      fetchProvider: async () => ({
+        name: 'alpha',
+        streams: [hls()],
+        diagnostic: { provider: 'alpha', ok: true, latencyMs: 1 },
+      }),
+      resolveImdbId: async () => null,
+      prepareStreams: prepare,
+      getMedia: async () => {
+        mediaCalls += 1;
+        return { media: mediaRecord(), cacheHit: false };
+      },
+    };
+    const request = {
+      type: 'movie',
+      id: '550',
+      serverUrl: 'http://peak.test',
+      config: { playerCacheTtlMs: 900000 },
+      deps,
+    };
+
+    const first = await getPlayerStream(request);
+    assert.equal(first.title, 'Media Title');
+    assert.equal(first.year, 1999);
+    assert.equal(first.media.source, 'wikipedia');
+    assert.equal('seriesPoster' in first.media, false);
+    assert.notEqual(first.title, 'Peak');
+
+    const second = await getPlayerStream(request);
+    assert.equal(mediaCalls, 1);
+    assert.equal(second.title, 'Media Title');
+    assert.equal(second.media.source, 'wikipedia');
+    assert.equal(second.meta.cacheHit, true);
+  });
+});
+
 describe('cacheTtlMs', () => {
   it('defaults to 15 minutes, caps at 30 minutes, and can be disabled', () => {
     assert.equal(cacheTtlMs({}), 900000);
     assert.equal(cacheTtlMs({ playerCacheTtlMs: 999999999 }), 1800000);
     assert.equal(cacheTtlMs({ disableCache: true }), 0);
+  });
+});
+
+describe('getBranding', () => {
+  it('returns the player branding contract without throwing', () => {
+    const branding = getBranding();
+    assert.equal(branding.name, 'Peak');
+    assert.equal(branding.logoUrl, '/logo.svg');
+    assert.equal(branding.accentColor, '#e5e5e5');
+    assert.equal(typeof branding.preferences.autoplay, 'boolean');
+    assert.equal(typeof branding.preferences.autoplayMuted, 'boolean');
+    assert.ok(['browser', 'server', 'user'].includes(branding.preferenceMode));
+  });
+
+  it('normalises string booleans from env config', () => {
+    const { config } = require('../utils/config');
+    const previous = { autoplay: config.autoplay, autoplayMuted: config.autoplayMuted };
+    try {
+      config.autoplay = 'false';
+      config.autoplayMuted = '0';
+      const branding = getBranding();
+      assert.equal(branding.preferences.autoplay, false);
+      assert.equal(branding.preferences.autoplayMuted, false);
+    } finally {
+      config.autoplay = previous.autoplay;
+      config.autoplayMuted = previous.autoplayMuted;
+    }
   });
 });

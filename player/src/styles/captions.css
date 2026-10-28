@@ -1,0 +1,63 @@
+@layer captions {
+  /* Captions share the controls' mica material: smoked black pane, white
+     hairline border, and blur. Width follows the cue text, capped responsively. */
+  .captions-mica {
+    position: absolute;
+    z-index: 45;
+    inset-block-end: 22%;
+    left: 50%;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    width: max-content;
+    max-width: min(82%, 760px);
+    padding: 10px 16px;
+    border-radius: 14px;
+    font-size: 1rem;
+    line-height: 1.45;
+    color: #fff;
+    text-align: center;
+    transform: translateX(-50%);
+    pointer-events: none;
+    transition: opacity 160ms ease;
+  }
+  .captions-mica[data-mica="true"] {
+    border: 1px solid var(--peak-mica-border, rgb(255 255 255 / 16%));
+    background: var(--peak-mica-bg, rgb(0 0 0 / 72%));
+    box-shadow: var(--peak-mica-shadow, 0 18px 44px rgb(0 0 0 / 45%));
+    backdrop-filter: var(--peak-mica-blur, blur(24px) saturate(125%));
+    -webkit-backdrop-filter: var(--peak-mica-blur, blur(24px) saturate(125%));
+  }
+  .captions-mica[data-mica="false"] {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .captions-mica[data-size="sm"] { padding: 7px 12px; font-size: 0.8rem; }
+  .captions-mica[data-size="md"] { padding: 10px 16px; font-size: 1rem; }
+  .captions-mica[data-size="lg"] { padding: 12px 18px; font-size: 1.2rem; }
+  .captions-mica[data-size="xl"] { padding: 14px 22px; font-size: 1.5rem; }
+  .captions-mica[data-edge="none"] { text-shadow: none; }
+  .captions-mica[data-edge="shadow"] { text-shadow: 0 2px 6px rgb(0 0 0 / 90%); }
+  .captions-mica[data-edge="outline"] { text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+  .captions-mica[data-edge="background"] { background: rgb(0 0 0 / 82%); }
+  .captions-disabled { display: none; }
+  .peak-volume-boost-amber { color: #cf9726; }
+  .peak-caption-settings { display: flex; flex-direction: column; gap: 7px; margin-block-start: 6px; padding-block-start: 8px; border-block-start: 1px solid rgb(255 255 255 / 12%); }
+  .peak-caption-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: rgb(255 255 255 / 58%); font-family: var(--font-player), sans-serif; font-size: 10.5px; }
+  .peak-caption-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; }
+  .peak-caption-chips button, .peak-caption-stepper button { padding: 3px 6px; border: 1px solid rgb(255 255 255 / 14%); border-radius: 6px; background: transparent; color: rgb(255 255 255 / 72%); font: inherit; font-size: 10px; cursor: pointer; }
+  .peak-caption-chips button:hover, .peak-caption-chips button:focus-visible, .peak-caption-stepper button:hover, .peak-caption-stepper button:focus-visible { background: rgb(255 255 255 / 12%); color: #fff; outline: none; }
+  .peak-caption-chips button[aria-pressed="true"] { border-color: rgb(255 255 255 / 42%); background: rgb(255 255 255 / 18%); color: #fff; }
+  .peak-caption-stepper { display: flex; align-items: center; gap: 5px; color: #fff; font-variant-numeric: tabular-nums; }
+  .peak-caption-stepper button { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; }
+  .peak-caption-stepper > span { min-width: 36px; text-align: center; }
+  @media (max-width: 720px) {
+    .captions-mica { inset-block-end: 34%; max-width: 88%; }
+  }
+  @media (max-width: 480px) {
+    .captions-mica { max-width: 92%; padding: 8px 12px; font-size: 0.92rem; }
+    .captions-mica[data-size="lg"] { font-size: 1.05rem; }
+    .captions-mica[data-size="xl"] { font-size: 1.2rem; }
+  }
+}

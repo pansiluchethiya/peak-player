@@ -1,0 +1,56 @@
+---
+title: Embedding the player
+description: How to mount Peak in a host page using the JavaScript SDK (v1 or v2).
+---
+
+## Quick embed
+
+```html
+<div id="peak-player"></div>
+<script src="https://player.example.com/peak-embed.js" defer></script>
+<script>
+  window.PeakEmbed.v2.mount({
+    target: '#peak-player',
+    url: 'https://player.example.com/embed/movie/550?token=…',
+    title: 'Fight Club',
+    width: '100%',
+    height: '100%',
+  });
+</script>
+```
+
+## Options
+
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `target` | Yes | — | Element or CSS selector for the iframe container. |
+| `url` | Yes | — | Signed embed URL from the session endpoint. |
+| `title` | No | `Peak player` | Accessible iframe title. |
+| `width` | No | `100%` | CSS width of the iframe. |
+| `height` | No | `100%` | CSS height of the iframe. |
+| `loading` | No | `lazy` | `loading` attribute on the iframe. |
+| `allow` | No | `autoplay; fullscreen; picture-in-picture; encrypted-media` | `allow` attribute. |
+
+## v1 vs v2
+
+| | v1 (`PeakEmbed.mount`) | v2 (`PeakEmbed.v2.mount`) |
+| --- | --- | --- |
+| Return type | Synchronous `boolean` for commands | `Promise<void>` / `Promise<T>` |
+| Error handling | Silent (no feedback) | Rejects with typed `{ code, message }` |
+| Events | `on`/`off` with payload | Same, but v2 events include `version: 2` and `timestamp` |
+| Server switch | N/A | `switchServer(codename)` |
+| Colour | N/A | `setColourPreset(id)` |
+| Boost | N/A | `setBoost(value)`, `unlockBoost(flag)` |
+
+v1 is preserved for existing integrations. Use `PeakEmbed.version` to detect the SDK version at runtime.
+
+## Origin allowlisting
+
+The player validates every `message` event against the signed origin list. If a command comes from
+an origin not in the allowlist, it is ignored and no response is sent.
+
+## See also
+
+- [SDK reference](/docs/reference/sdk)
+- [postMessage protocol](/docs/reference/postmessage)
+- [Migrating to SDK v2](/docs/guides/migrating-to-sdk-v2)

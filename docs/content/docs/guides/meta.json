@@ -1,4 +1,4 @@
 {
   "title": "Guides",
-  "pages": ["movies", "tv", "live-tv", "auth", "theming", "playback", "errors"]
+  "pages": ["movies", "tv", "live-tv", "auth", "theming", "playback", "errors", "embedding", "migrating-to-sdk-v2", "player-controls", "preferences"]
 }

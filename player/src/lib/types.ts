@@ -10,9 +10,29 @@ export interface Media {
   poster?: string;
 }
 
+export interface MediaMetadata {
+  id: string;
+  type: MediaType;
+  title: string;
+  year: number | null;
+  overview: string | null;
+  tagline: string | null;
+  runtime: number | null;
+  genres: string[];
+  rating: number | null;
+  poster: { candidates: string[] };
+  backdrop: string | null;
+  stills: string[];
+  seriesPoster: string | null;
+  source: 'tmdb' | 'wikidata' | 'wikipedia' | 'tvmaze' | 'generated';
+}
+
 export interface EmbedConfig {
   partnerId?: string;
   origins: string[];
+  preferenceMode?: string;
+  preferences?: Record<string, unknown>;
+  prefsLocked?: string[];
 }
 
 export interface Source {
@@ -50,6 +70,7 @@ export interface StreamResponse {
   year?: string | number;
   sources: Source[];
   subtitles: Subtitle[];
+  media?: MediaMetadata;
   meta?: Record<string, unknown>;
   diagnostics: Diagnostic[];
   group?: string;
@@ -61,6 +82,10 @@ export interface Branding {
   logoUrl: string;
   accentColor: string;
   tagline: string;
+  /** Provider autoplay defaults surfaced to the player. */
+  preferences?: { autoplay: boolean; autoplayMuted: boolean };
+  /** Storage mode the provider wants the player to use. */
+  preferenceMode?: string;
 }
 
 export const DEFAULT_BRANDING: Branding = {
@@ -69,6 +94,15 @@ export const DEFAULT_BRANDING: Branding = {
   accentColor: 'var(--color-accent)',
   tagline: 'Cinema, elevated.',
 };
+
+export interface EpgProgramme {
+  channelId: string;
+  start: string;
+  stop: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+}
 
 export interface Fingerprint {
   hash: string;

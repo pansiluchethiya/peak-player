@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Eye, EyeOff, Lock, Clock, Activity, Sliders, ShieldCheck, AlertCircle } from 'lucide-react';
@@ -15,7 +16,22 @@ const features = [
   { icon: ShieldCheck, title: 'Local by design', body: 'Your keys and sessions stay inside your deployment.' },
 ];
 
+/**
+ * Returns the callback URL only if it is a safe same-origin path.
+ * Prevents open-redirect via relative or absolute URLs on other origins.
+ */
+function sameOriginPath(callbackUrl: string | null): string | null {
+  if (!callbackUrl) return null;
+  const trimmed = callbackUrl.trim();
+  if (!trimmed.startsWith('/')) return null;
+  // Reject protocol-relative, scheme, or `//example.com` style values
+  if (trimmed.startsWith('//') || trimmed.match(/^[a-z]+:/i)) return null;
+  return trimmed;
+}
+
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,16 +41,19 @@ export default function LoginPage() {
   const [pwPanelOpen, setPwPanelOpen] = useState(false);
 
   useEffect(() => {
-    // Mirror login.js #checkSession: if already authenticated, go to dashboard.
+    // Mirror login.js #checkSession: if already authenticated, go to dashboard or callbackUrl.
     fetch('/auth/session', { headers: { Accept: 'application/json' } })
       .then((r) => r.json())
       .then((data) => {
-        if (data && data.authenticated) window.location.href = '/';
+        if (data && data.authenticated) {
+          const callbackUrl = searchParams.get('callbackUrl');
+          window.location.href = sameOriginPath(callbackUrl) ?? '/';
+        }
       })
       .catch(() => {
         /* A failed check should never block the sign-in form. */
       });
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!lockout) return;
@@ -78,7 +97,9 @@ export default function LoginPage() {
 
       setStatusMsg('Signed in. Redirecting…', 'success');
       window.setTimeout(() => {
-        window.location.href = '/';
+        const callbackUrl = searchParams.get('callbackUrl');
+        const target = sameOriginPath(callbackUrl) ?? '/';
+        window.location.href = target;
       }, 350);
     } catch {
       setStatusMsg('Could not reach the Peak API. Check the server and try again.', 'error');
@@ -272,8 +293,9 @@ export default function LoginPage() {
                   autoComplete="on"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const oldPw = (e.target.elements.oldPw as HTMLInputElement).value;
-                    const newPw = (e.target.elements.newPw as HTMLInputElement).value;
+                    const form = e.currentTarget as HTMLFormElement;
+                    const oldPw = (form.elements.namedItem('oldPw') as HTMLInputElement).value;
+                    const newPw = (form.elements.namedItem('newPw') as HTMLInputElement).value;
                     if (!oldPw) return;
                     if (newPw.length < 8) return;
                     if (newPw === oldPw) return;

@@ -11,11 +11,13 @@
     "lint": "eslint . --ext .js",
     "check:player": "npm --prefix player run lint && npm --prefix player run typecheck && npm --prefix player test && npm --prefix player run build",
     "check:docs": "npm --prefix docs test && npm --prefix docs run check:links",
+    "check:admin": "npm --prefix admin run typecheck",
     "docs:dev": "npm --prefix docs run dev",
     "docs:build": "npm --prefix docs run build",
     "docs:check": "npm run check:docs",
     "check:css": "node scripts/check-css-size.mjs",
-    "check": "npm run lint && npm run check:player && npm run check:docs && npm run check:css"
+    "test:api": "node --test tests/*.test.js",
+    "check": "npm run lint && npm run check:player && npm run check:docs && npm run check:admin && npm run test:api && npm run check:css"
   },
   "dependencies": {
     "aromanize": "^0.1.5",

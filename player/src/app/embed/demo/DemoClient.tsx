@@ -2,6 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+interface PlayerState {
+  playing: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  muted: boolean;
+  boost: number;
+  speed: number;
+}
+
 interface DemoSession {
   embedUrl: string;
   expiresAt?: string;
@@ -9,9 +19,9 @@ interface DemoSession {
   token?: string;
 }
 
-interface PeakEmbedInstance {
-  on(event: string, handler: (payload?: unknown) => void): PeakEmbedInstance;
-  off(event: string, handler: (payload?: unknown) => void): PeakEmbedInstance;
+interface PeakEmbedV1Instance {
+  on(event: string, handler: (payload?: unknown) => void): PeakEmbedV1Instance;
+  off(event: string, handler: (payload?: unknown) => void): PeakEmbedV1Instance;
   play(): boolean;
   pause(): boolean;
   seek(seconds: number): boolean;
@@ -21,14 +31,46 @@ interface PeakEmbedInstance {
   destroy(): void;
 }
 
+interface PeakEmbedV2Instance {
+  on(event: string, handler: (payload?: unknown) => void): PeakEmbedV2Instance;
+  off(event: string, handler: (payload?: unknown) => void): PeakEmbedV2Instance;
+  play(): Promise<void>;
+  pause(): Promise<void>;
+  seek(seconds: number): Promise<void>;
+  setVolume(value: number): Promise<void>;
+  setMuted(value: boolean): Promise<void>;
+  setCaptions(options: Record<string, unknown>): Promise<void>;
+  setSpeed(value: number): Promise<void>;
+  setBoost(value: number): Promise<void>;
+  setQuality(value: string): Promise<void>;
+  switchServer(codename: string): Promise<void>;
+  nextEpisode(): Promise<void>;
+  previousEpisode(): Promise<void>;
+  requestFullscreen(): Promise<void>;
+  requestPictureInPicture(): Promise<void>;
+  getState(): Promise<PlayerState>;
+  getShareLink(): Promise<string>;
+  destroy(): void;
+}
+
 interface PeakEmbedSdk {
+  version: number;
   mount(options: {
     target: HTMLElement;
     url: string;
     title?: string;
     width?: string;
     height?: string;
-  }): PeakEmbedInstance;
+  }): PeakEmbedV1Instance;
+  v2: {
+    mount(options: {
+      target: HTMLElement;
+      url: string;
+      title?: string;
+      width?: string;
+      height?: string;
+    }): PeakEmbedV2Instance;
+  };
 }
 
 function getSdk(): PeakEmbedSdk | undefined {
@@ -43,7 +85,7 @@ export function DemoClient() {
   const [tokenInput, setTokenInput] = useState('');
   const [events, setEvents] = useState<string[]>([]);
   const mountRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<PeakEmbedInstance | null>(null);
+  const playerRef = useRef<PeakEmbedV2Instance | null>(null);
   const lastTimeEventRef = useRef(0);
 
   useEffect(() => {
@@ -99,14 +141,14 @@ export function DemoClient() {
     const sdk = getSdk();
     if (!sdk) return;
 
-    const instance = sdk.mount({
+    const instance = sdk.v2.mount({
       target: mountRef.current,
       url: session.embedUrl,
       title: 'Peak embed demo',
     });
     playerRef.current = instance;
 
-    const names = ['ready', 'play', 'pause', 'ended', 'timeupdate', 'sourcechange', 'error'] as const;
+    const names = ['ready', 'play', 'pause', 'ended', 'timeupdate', 'sourcechange', 'volumechange', 'qualitychange', 'serverchange', 'error'] as const;
     const handlers = names.map((name) => {
       const handler = (payload?: unknown) => {
         if (name === 'timeupdate') {
@@ -139,9 +181,14 @@ export function DemoClient() {
     setStatus('ready');
   };
 
-  const command = (action: (player: PeakEmbedInstance) => void) => {
+  const command = (action: (player: PeakEmbedV2Instance) => Promise<unknown> | void) => {
     const player = playerRef.current;
-    if (player) action(player);
+    if (player) {
+      const result = action(player);
+      if (result && typeof (result as Promise<unknown>).catch === 'function') {
+        (result as Promise<unknown>).catch(() => undefined);
+      }
+    }
   };
 
   return (
@@ -204,7 +251,7 @@ export function DemoClient() {
               <button type="button" onClick={() => command((player) => player.setVolume(0.5))}>
                 Volume 50%
               </button>
-              <button type="button" onClick={() => command((player) => player.setSubtitle(-1))}>
+              <button type="button" onClick={() => command((player) => player.setCaptions({ enabled: false }))}>
                 Subtitles off
               </button>
               <button type="button" onClick={() => command((player) => player.setQuality('auto'))}>
@@ -233,12 +280,13 @@ export function DemoClient() {
         <pre className="embed-demo-code">{`<div id="peak-player"></div>
 <script src="https://your-player.example/peak-embed.js"></script>
 <script>
-  const player = PeakEmbed.mount({
+  const player = PeakEmbed.v2.mount({
     target: '#peak-player',
     url: 'https://your-player.example/embed/movie/550?token=…',
   });
   player.on('ready', () => console.log('ready'));
-  player.play();
+  player.play().catch(() => {});
+  // v1 fallback: PeakEmbed.mount({ target, url }).play()
 </script>`}</pre>
       </section>
     </div>

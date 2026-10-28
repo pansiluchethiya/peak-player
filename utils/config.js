@@ -97,7 +97,7 @@ function normalizeConfig(base) {
   // Dynamic provider enable flags
   const providerNames = getProviderNames();
   const boolKeys = providerNames.map(name => `enable${name.charAt(0).toUpperCase() + name.slice(1)}Provider`);
-  boolKeys.push('disableCache', 'enablePStreamApi', 'disableUrlValidation', 'disable4khdhubUrlValidation', 'enableProxy');
+  boolKeys.push('disableCache', 'enablePStreamApi', 'disableUrlValidation', 'disable4khdhubUrlValidation', 'enableProxy', 'iptvSeedEnabled', 'autoplay', 'autoplayMuted');
   
   boolKeys.forEach(k=>{ if (cfg[k] === 'true') cfg[k] = true; else if (cfg[k] === 'false') cfg[k] = false; });
   
@@ -114,6 +114,24 @@ function normalizeConfig(base) {
   // Proxy features removed; always use direct connections
   if (cfg.disableUrlValidation === undefined) cfg.disableUrlValidation = false;
   if (cfg.disable4khdhubUrlValidation === undefined) cfg.disable4khdhubUrlValidation = false;
+  // IPTV seed defaults: seed everything from iptv-org unless narrowed by the operator.
+  if (cfg.iptvSeedEnabled === undefined) cfg.iptvSeedEnabled = true;
+  if (!cfg.iptvSeedCategories) cfg.iptvSeedCategories = '*';
+  if (!cfg.iptvSeedCountries) cfg.iptvSeedCountries = '*';
+  // IPTV validation defaults: bounded probe pool with a short per-stream timeout.
+  const validateConcurrency = Number.parseInt(cfg.iptvValidateConcurrency, 10);
+  cfg.iptvValidateConcurrency = Number.isFinite(validateConcurrency) && validateConcurrency > 0
+    ? validateConcurrency
+    : 8;
+  const validateTimeout = Number.parseInt(cfg.iptvValidateTimeoutMs, 10);
+  cfg.iptvValidateTimeoutMs = Number.isFinite(validateTimeout) && validateTimeout > 0
+    ? validateTimeout
+    : 6000;
+  // Outer seed/sync/validate/guide cadence: three hours.
+  const syncInterval = Number.parseInt(cfg.iptvSyncIntervalMs, 10);
+  cfg.iptvSyncIntervalMs = Number.isFinite(syncInterval) && syncInterval > 0
+    ? syncInterval
+    : 10800000;
   // TMDB ID used by the dashboard's "Run Provider Functional Checks" feature
   if (!cfg.providerCheckTmdbId) cfg.providerCheckTmdbId = '278';
   return cfg;
@@ -148,6 +166,16 @@ function applyConfigToEnv(cfg){
   process.env.ENABLE_PROXY = cfg.enableProxy ? 'true':'false';
   if (cfg.providerCheckTmdbId) process.env.PROVIDER_CHECK_TMDB_ID = String(cfg.providerCheckTmdbId);
   else delete process.env.PROVIDER_CHECK_TMDB_ID;
+  process.env.IPTV_SEED_ENABLED = cfg.iptvSeedEnabled ? 'true' : 'false';
+  process.env.IPTV_SEED_CATEGORIES = cfg.iptvSeedCategories || '*';
+  process.env.IPTV_SEED_COUNTRIES = cfg.iptvSeedCountries || '*';
+  process.env.IPTV_VALIDATE_CONCURRENCY = String(cfg.iptvValidateConcurrency);
+  process.env.IPTV_VALIDATE_TIMEOUT_MS = String(cfg.iptvValidateTimeoutMs);
+  process.env.IPTV_SYNC_INTERVAL_MS = String(cfg.iptvSyncIntervalMs);
+  if (cfg.autoplay !== undefined) process.env.AUTO_PLAY = cfg.autoplay ? 'true' : 'false';
+  else delete process.env.AUTO_PLAY;
+  if (cfg.autoplayMuted !== undefined) process.env.AUTO_PLAY_MUTED = cfg.autoplayMuted ? 'true' : 'false';
+  else delete process.env.AUTO_PLAY_MUTED;
   // Showbox specific
   if (cfg.showboxCacheDir) process.env.SHOWBOX_CACHE_DIR = cfg.showboxCacheDir; else delete process.env.SHOWBOX_CACHE_DIR;
   // Proxy settings removed; ensure legacy envs are cleared
@@ -179,7 +207,16 @@ function loadConfig() {
     disableUrlValidation: process.env.DISABLE_URL_VALIDATION,
     disable4khdhubUrlValidation: process.env.DISABLE_4KHDHUB_URL_VALIDATION,
     enableProxy: process.env.ENABLE_PROXY,
-    providerCheckTmdbId: process.env.PROVIDER_CHECK_TMDB_ID || null
+    providerCheckTmdbId: process.env.PROVIDER_CHECK_TMDB_ID || null,
+    iptvSeedEnabled: process.env.IPTV_SEED_ENABLED,
+    iptvSeedCategories: process.env.IPTV_SEED_CATEGORIES,
+    iptvSeedCountries: process.env.IPTV_SEED_COUNTRIES,
+    iptvValidateConcurrency: process.env.IPTV_VALIDATE_CONCURRENCY,
+    iptvValidateTimeoutMs: process.env.IPTV_VALIDATE_TIMEOUT_MS,
+    iptvSyncIntervalMs: process.env.IPTV_SYNC_INTERVAL_MS,
+    autoplay: process.env.AUTO_PLAY !== undefined ? process.env.AUTO_PLAY : true,
+    autoplayMuted: process.env.AUTO_PLAY_MUTED !== undefined ? process.env.AUTO_PLAY_MUTED : true,
+    playerPreferenceMode: process.env.PLAYER_PREFERENCE_MODE || 'browser',
   };
   
   // Dynamic provider enable flags from env
