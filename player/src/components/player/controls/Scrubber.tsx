@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { usePlayerContext } from '../PlayerProvider';
 import { useScrubberThumbnails } from '../media/useScrubberThumbnails';
+import { useThumbnailVtt } from '../media/useThumbnailVtt';
+import { thumbnailCueAt } from '../../../lib/thumbnails';
 import { formatTimecode } from './TimeDisplay';
 
 interface HoverState {
@@ -23,7 +25,9 @@ export function Scrubber() {
   const railRef = useRef<HTMLDivElement>(null);
 
   const source = payload?.sources[currentSourceIndex] ?? null;
-  const { frames, requestFrame } = useScrubberThumbnails(source);
+  const spriteUrl = source?.thumbnailVtt ?? null;
+  const spriteVtt = useThumbnailVtt(spriteUrl);
+  const { frames, requestFrame } = useScrubberThumbnails(source, !spriteUrl);
 
   useEffect(() => {
     let frame = 0;
@@ -82,7 +86,11 @@ export function Scrubber() {
   };
 
   let preview: string | undefined;
-  if (hover && frames.size > 0) {
+  let spriteCue: { url: string; x: number; y: number; width: number; height: number; start: number; end: number } | null = null;
+  if (hover && spriteVtt) {
+    spriteCue = thumbnailCueAt(spriteVtt, hover.time);
+  }
+  if (hover && !spriteCue && frames.size > 0) {
     let best = Number.POSITIVE_INFINITY;
     for (const [second, frame] of frames) {
       const distance = Math.abs(second - hover.time);
@@ -141,7 +149,22 @@ export function Scrubber() {
             className="peak-scrubber-preview"
             style={{ left: `${Math.min(Math.max(hover.x, 82), Math.max(hover.width - 82, 82))}px` }}
           >
-            {preview ? <img src={preview} alt="" width={160} height={90} /> : <div className="peak-scrubber-preview-empty" />}
+            {spriteCue ? (
+              <div
+                className="peak-scrubber-sprite-frame"
+                style={{
+                  backgroundImage: `url(${spriteCue.url})`,
+                  width: `${spriteCue.width}px`,
+                  height: `${spriteCue.height}px`,
+                  backgroundSize: `${spriteVtt?.spriteWidth ?? 0}px ${spriteVtt?.spriteHeight ?? 0}px`,
+                  backgroundPosition: `-${spriteCue.x}px -${spriteCue.y}px`,
+                }}
+              />
+            ) : preview ? (
+              <img src={preview} alt="" width={160} height={90} />
+            ) : (
+              <div className="peak-scrubber-preview-empty" />
+            )}
             <span>{formatTimecode(hover.time)}</span>
           </div>
         ) : null}

@@ -133,6 +133,8 @@ export const messages = {
   'caption-background-on': 'Mica',
   'caption-background-off': 'Plain',
   'audio-default': 'Default',
+  dubs: 'Dubs',
+  'dub-english': 'English',
   'captions-off': 'Off',
   'aspect-fit': 'Fit',
   'aspect-fill': 'Fill',

@@ -100,6 +100,8 @@ export interface PlayerState {
   liveEdgeStart: number;
   targetLiveWindow: number;
   server: string | null;
+  /** Index into the current source list. */
+  sourceIndex: number;
   season: number | null;
   episode: number | null;
 }
@@ -120,6 +122,7 @@ export interface PlayerApi {
   setColourPreset(preset: string): Promise<void>;
   setAspect(mode: AspectMode): Promise<void>;
   switchServer(codename: string): Promise<void>;
+  switchSource(index: number): Promise<void>;
   nextEpisode(): Promise<void>;
   previousEpisode(): Promise<void>;
   goToLive(): Promise<void>;
@@ -767,6 +770,17 @@ export function PlayerProvider({
         mergePreferences({ server: latestRef.current.sources[index]?.provider ?? codename });
         setSourceNonce((value) => value + 1);
       },
+      switchSource: async (index: number) => {
+        const source = latestRef.current.sources[index];
+        if (!source) throw new PeakPlayerError('INVALID_ARGUMENT', t('unknown-server'));
+        terminalRef.current = false;
+        setError(null);
+        setErrorCode(null);
+        setStatus('ready');
+        setCurrentSourceIndex(index);
+        mergePreferences({ server: source.provider });
+        setSourceNonce((value) => value + 1);
+      },
       nextEpisode: async () => {
         if (media.type !== 'tv') throw new PeakPlayerError('UNSUPPORTED', t('no-episodes'));
         const season = media.season ?? 1;
@@ -851,6 +865,7 @@ export function PlayerProvider({
           liveEdgeStart: engine?.liveEdgeStart ?? Number.NaN,
           targetLiveWindow: engine?.targetLiveWindow ?? Number.NaN,
           server: current.sources[current.currentSourceIndex]?.provider ?? null,
+          sourceIndex: current.currentSourceIndex,
           season: media.type === 'tv' ? media.season ?? 1 : null,
           episode: media.type === 'tv' ? media.episode ?? 1 : null,
         };

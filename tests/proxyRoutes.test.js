@@ -105,6 +105,20 @@ function createFixture() {
       res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
       return res.end(lines.join('\n'));
     }
+    if (url.pathname === '/tile-master.m3u8') {
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' });
+      return res.end(
+        '#EXTM3U\n'
+        + '#EXT-X-VERSION:7\n'
+        + '#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080\n'
+        + 'https://cdn.example/tiles.m3u8\n'
+        + '#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1280x720\n'
+        + 'https://cdn.example/video_720p.m3u8\n'
+        + '#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=854x480\n'
+        + 'https://cdn.example/video_480p.m3u8\n'
+        + '#EXT-X-ENDLIST\n',
+      );
+    }
     if (url.pathname.startsWith('/many-seg-')) {
       res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': String(SEGMENT_BYTES.length) });
       return res.end(req.method === 'HEAD' ? undefined : SEGMENT_BYTES);
@@ -386,5 +400,15 @@ describe('media proxy routes', () => {
     assert.equal(headers.referer, 'https://partner.example/');
     assert.equal(headers.cookie, undefined);
     assert.ok(headers['user-agent']);
+  });
+
+  it('filters thumbnail tile variants from master playlists', async () => {
+    const response = await fetch(signed('/m3u8-proxy', { url: `${fixtureUrl}/tile-master.m3u8` }));
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.match(body, /^#EXTM3U/);
+    assert.doesNotMatch(body, /tiles\.m3u8/);
+    assert.match(body, /video_720p\.m3u8/);
+    assert.match(body, /video_480p\.m3u8/);
   });
 });

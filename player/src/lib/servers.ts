@@ -19,6 +19,10 @@ export const SERVER_CODENAMES = new Map<string, string>([
   ['hdghartv', 'HELIOS'],
   ['onetouchtv', 'ONYX'],
   ['streamflix', 'NOCTIS'],
+  ['rive apogee', 'RIVE'],
+  ['rive vanguard', 'RIVE V'],
+  ['rive pulse', 'RIVE P'],
+  ['rive citadel', 'RIVE DUB'],
 ]);
 
 /** Sorted codename -> provider (reverse lookup), built once. */

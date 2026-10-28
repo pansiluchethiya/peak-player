@@ -47,6 +47,12 @@ export interface Source {
   audioCodec?: string;
   hdr?: boolean;
   browserPlayable?: boolean;
+  /** Remote WebVTT sprite sheet for scrubber previews. */
+  thumbnailVtt?: string | null;
+  /** Dub language label when the source is a language-specific rendition. */
+  dub?: string | null;
+  /** ISO language code for the dub, when known. */
+  audioLang?: string | null;
 }
 
 export interface Subtitle {

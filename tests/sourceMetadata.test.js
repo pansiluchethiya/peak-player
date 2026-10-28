@@ -74,3 +74,32 @@ describe('source metadata', () => {
     assert.equal(detectHdr({ quality: '1080p', codecs: ['H.264'] }), false);
   });
 });
+
+describe('originalUrl unwrap behaviour', () => {
+  const { originalUrl } = require('../utils/sourceMetadata');
+
+  it('unwraps a nested url query param by default', () => {
+    const stream = { url: 'https://peak.example/m3u8-proxy?url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8' };
+    assert.equal(originalUrl(stream), 'https://cdn.example/master.m3u8');
+  });
+
+  it('does not unwrap valhallastream wrapper URLs', () => {
+    const stream = {
+      url: 'https://proxy.valhallastream.com/m3u8?url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8&headers=%7B%7D',
+    };
+    assert.equal(originalUrl(stream), stream.url);
+  });
+
+  it('honours stream.unwrap === false without unwrapping', () => {
+    const stream = {
+      url: 'https://proxy.valhallastream.com/m3u8?url=https%3A%2F%2Fcdn.example%2Fmaster.m3u8',
+      unwrap: false,
+    };
+    assert.equal(originalUrl(stream), stream.url);
+  });
+
+  it('passes through plain HLS URLs', () => {
+    const stream = { url: 'https://cdn.example/master.m3u8' };
+    assert.equal(originalUrl(stream), 'https://cdn.example/master.m3u8');
+  });
+});

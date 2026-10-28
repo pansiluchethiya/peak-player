@@ -19,8 +19,13 @@ function asArray(value) {
 function originalUrl(stream) {
   const raw = String(stream?.url || '');
   if (!raw) return '';
+  // Some providers (Rive/Vallhallastream) wrap a URL inside their own proxy.
+  // The wrapper is the playable resource; unwrapping it would send the
+  // wrapper's headers to the upstream CDN and produce a 403.
+  if (stream?.unwrap === false) return raw;
   try {
     const parsed = new URL(raw, 'http://peak.local');
+    if (parsed.hostname.toLowerCase().endsWith('valhallastream.com')) return raw;
     const nested = parsed.searchParams.get('url');
     return nested ? decodeURIComponent(nested) : raw;
   } catch {
@@ -147,6 +152,9 @@ function buildPlayerSource(stream, options = {}) {
     adaptive,
     browserPlayable: isBrowserPlayable(container, videoCodec),
     expiresIn,
+    ...(stream.thumbnailVtt ? { thumbnailVtt: stream.thumbnailVtt } : {}),
+    ...(stream.dub ? { dub: stream.dub } : {}),
+    ...(stream.audioLang ? { audioLang: stream.audioLang } : {}),
   };
 }
 

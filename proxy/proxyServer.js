@@ -321,9 +321,20 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
     // A URI line immediately following #EXT-X-STREAM-INF is a variant playlist,
     // even when the provider omits a .m3u8 extension (e.g. /playlist/123?type=video).
     let expectVariantPlaylist = false;
+    let pendingVariantLine = null;
     for (const line of lines) {
         if (line.startsWith('#')) {
-            expectVariantPlaylist = line.startsWith('#EXT-X-STREAM-INF');
+            if (line.startsWith('#EXT-X-STREAM-INF')) {
+                if (pendingVariantLine) out.push(pendingVariantLine);
+                pendingVariantLine = line;
+                expectVariantPlaylist = true;
+                continue;
+            }
+            if (pendingVariantLine) {
+                out.push(pendingVariantLine);
+                pendingVariantLine = null;
+            }
+            expectVariantPlaylist = false;
             if (line.startsWith('#EXT-X-KEY:') || line.startsWith('#EXT-X-MAP:')) {
                 // Key and init-section URIs may be absolute or relative to the playlist URL.
                 const uriMatch = line.match(/URI="([^"]+)"/);
@@ -349,6 +360,17 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
         } else if (line.trim()) {
             try {
                 const abs = new URL(line, targetUrl).href;
+                if (pendingVariantLine) {
+                    // Apogee advertises a thumbnail sprite sheet as a 1080p variant.
+                    // Drop that variant so ABR never treats sprites as video.
+                    if (!/tiles/i.test(abs)) {
+                        out.push(pendingVariantLine);
+                        out.push(proxyUrlFor('/m3u8-proxy', baseProxyUrl, abs, headers));
+                    }
+                    pendingVariantLine = null;
+                    expectVariantPlaylist = false;
+                    continue;
+                }
                 if (expectVariantPlaylist || /\.m3u8(\?|$)/i.test(abs)) {
                     out.push(proxyUrlFor('/m3u8-proxy', baseProxyUrl, abs, headers));
                 } else if (/\.ts(\?|$)/i.test(abs)) {
@@ -379,6 +401,7 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
             expectVariantPlaylist = false;
         } else out.push(line);
     }
+    if (pendingVariantLine) out.push(pendingVariantLine);
     if (segmentUrls.length && !isCacheDisabled()) {
         // Warm only the first few segments. VOD playlists can list thousands of
         // segments; prefetching them all saturates the upstream and starves the
@@ -734,4 +757,17 @@ function processStreamsForProxy(streams, serverUrl) {
     });
 }
 
-module.exports = { createProxyRoutes, processStreamsForProxy, resetProxyRateLimits };
+function processSubtitlesForProxy(subtitles, serverUrl) {
+    if (!Array.isArray(subtitles)) return subtitles;
+    const base = String(serverUrl || '').trim().replace(/\/$/, '');
+    if (!base) return subtitles;
+    return subtitles.map(sub => {
+        if (!sub || !sub.url || typeof sub.url !== 'string') return sub;
+        const original = extractOriginalUrl(sub.url);
+        const headers = sanitizeHeaders(sub.headers || {});
+        const query = { url: original, headers: JSON.stringify(headers) };
+        return { ...sub, url: `${base}${signProxyUrl('/sub-proxy', query)}` };
+    });
+}
+
+module.exports = { createProxyRoutes, processStreamsForProxy, processSubtitlesForProxy, resetProxyRateLimits };

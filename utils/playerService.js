@@ -10,11 +10,11 @@ const { buildPlayerSource } = require('./sourceMetadata');
 const { rankSources } = require('./sourceRanking');
 const { validateSource } = require('./sourceValidator');
 const { recordProviderResult } = require('./providerHealth');
-const { processStreamsForProxy } = require('../proxy/proxyServer');
+const { processStreamsForProxy, processSubtitlesForProxy } = require('../proxy/proxyServer');
 const { config } = require('./config');
 
 const DEFAULT_SOURCE = 'netmirror';
-const PREFERRED_ORDER = ['netmirror','zxcstreams','vaplayer','vixsrc','dahmermovies','vidlink','hdghartv','streamflix'];
+const PREFERRED_ORDER = ['rive apogee','rive vanguard','rive pulse','rive citadel','netmirror','zxcstreams','vaplayer','vixsrc','dahmermovies','vidlink','hdghartv','streamflix'];
 const PLAYER_LOGO = '/logo.svg';
 // The player is always rendered on a black stage, so the monochrome AMOLED
 // accent is the dark-theme token value rather than the light-theme #333333.
@@ -386,6 +386,9 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
     collectSubtitles(originalStreams),
     await externalSubtitlesPromise,
   );
+  const proxiedSubtitles = serverUrl
+    ? processSubtitlesForProxy(subtitles, serverUrl)
+    : subtitles;
   const diagnostics = [
     ...providerResults.map((result) => result.diagnostic),
     ...sourceDiagnostics,
@@ -413,7 +416,7 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
     year,
     media: mediaRecord,
     sources,
-    subtitles,
+    subtitles: proxiedSubtitles,
     meta: {
       latencyMs: Date.now() - started,
       providers: providerResults.length,
@@ -626,8 +629,9 @@ async function getPlayerStreamEvents({
     streams = applyFilters(streams, name, config?.minQualities, config?.excludeCodecs);
 
     const subs = collectSubtitles(streams);
-    for (const sub of subs) {
-      if (!seenSubtitles.has(sub.url)) {
+    const proxiedSubs = serverUrl ? processSubtitlesForProxy(subs, serverUrl) : subs;
+    for (const sub of proxiedSubs) {
+                                       if (!seenSubtitles.has(sub.url)) {
         seenSubtitles.add(sub.url);
         collectedSubtitles.push(sub);
         emit('subtitle', sub);

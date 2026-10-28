@@ -6,6 +6,7 @@ import { ControlButton } from './ControlButton';
 import { ServerMenu } from '../menus/ServerMenu';
 import { QualityMenu } from '../menus/QualityMenu';
 import { AudioMenu } from '../menus/AudioMenu';
+import { DubsMenu } from '../menus/DubsMenu';
 import { CaptionsMenu } from '../menus/CaptionsMenu';
 import { ColourMenu } from '../menus/ColourMenu';
 import { AspectMenu } from '../menus/AspectMenu';
@@ -49,6 +50,7 @@ export function SettingsMenu() {
             <ServerMenu />
             <QualityMenu />
             <AudioMenu />
+            <DubsMenu />
             <CaptionsMenu />
             <SpeedMenu />
             <ColourMenu />

@@ -22,7 +22,7 @@ function isHlsSource(source: Source): boolean {
  * player is never seeked, so previews cannot interrupt playback. Frames are
  * cached per second and reused as the pointer moves along the timeline.
  */
-export function useScrubberThumbnails(source: Source | null) {
+export function useScrubberThumbnails(source: Source | null, enabled = true) {
   const [frames, setFrames] = useState<Map<number, string>>(() => new Map());
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -38,7 +38,10 @@ export function useScrubberThumbnails(source: Source | null) {
   const hlsSource = source ? isHlsSource(source) : false;
 
   useEffect(() => {
-    if (!sourceUrl || typeof document === 'undefined') return;
+    if (!enabled || !sourceUrl || typeof document === 'undefined') return;
+    // A new source invalidates every cached frame.
+    cacheRef.current = new Map();
+    setFrames(new Map());
     disposedRef.current = false;
     const video = document.createElement('video');
     video.muted = true;
@@ -139,7 +142,7 @@ export function useScrubberThumbnails(source: Source | null) {
       pendingRef.current = null;
       lastRequestRef.current = -1;
     };
-  }, [hlsSource, sourceUrl]);
+  }, [enabled, hlsSource, sourceUrl]);
 
   const capture = useCallback((time: number) => {
     const video = videoRef.current;

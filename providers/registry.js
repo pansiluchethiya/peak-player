@@ -20,6 +20,7 @@ const providerFunctionMap = {
   'netmirror.js': 'getNetmirrorStreams',
   'onetouchtv.js': 'getOnetouchtvStreams',
   'zxcstreams.js': 'getZxcstreamsStreams',
+  'rive.js': 'getRiveStreams',
 };
 
 // Stats for debug endpoint
