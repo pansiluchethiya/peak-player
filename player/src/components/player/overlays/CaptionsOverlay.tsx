@@ -12,10 +12,11 @@ interface CaptionsOverlayProps {
 }
 
 function loadCues(src: string): Promise<VttCue[]> {
-  return import('../../../lib/webvtt').then(({ parseWebVtt }) =>
+  if (!src) return Promise.resolve([]);
+  return import('../../../lib/webvtt').then(({ parseSubtitles }) =>
     fetch(src)
       .then((r) => (r.ok ? r.text() : ''))
-      .then((text) => parseWebVtt(text))
+      .then((text) => parseSubtitles(text))
       .catch(() => []),
   );
 }
@@ -49,7 +50,8 @@ export function CaptionsOverlay({ src, kind = 'subtitles', label, language }: Ca
   }, []);
 
   const settings: CaptionPreferences = preferences.captions;
-  const active = cues.filter((c) => c.start <= time && time < c.end);
+  const adjustedTime = time + settings.offset;
+  const active = cues.filter((c) => c.start <= adjustedTime && adjustedTime < c.end);
   if (!settings.enabled || !active.length) return null;
 
   return (

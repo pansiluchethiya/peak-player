@@ -11,6 +11,18 @@ describe('preference schema', () => {
     assert.equal(prefs.captions.size, 'md');
     assert.equal('unknown' in prefs, false);
   });
+  it('defaults to the 360p data cap and keeps legacy caps valid', () => {
+    assert.equal(DEFAULT_PREFERENCES.quality, '360p');
+    assert.equal(migratePreferences({ v: 1 }).quality, '360p');
+    assert.equal(migratePreferences({ v: 1, quality: '720p' }).quality, '720p');
+    assert.equal(migratePreferences({ v: 1, quality: '4k' }).quality, '360p');
+  });
+  it('clamps the caption sync offset to ±10s', () => {
+    assert.equal(DEFAULT_PREFERENCES.captions.offset, 0);
+    assert.equal(migratePreferences({ v: 1, captions: { offset: 3.5 } }).captions.offset, 3.5);
+    assert.equal(migratePreferences({ v: 1, captions: { offset: 99 } }).captions.offset, 10);
+    assert.equal(migratePreferences({ v: 1, captions: { offset: -99 } }).captions.offset, -10);
+  });
   it('applies provider < partner < user, except locked keys', () => {
     const prefs = resolvePreferences({
       defaults: { ...DEFAULT_PREFERENCES, volume: 0.4, muted: false },

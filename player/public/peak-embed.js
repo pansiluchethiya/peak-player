@@ -65,7 +65,7 @@
     var iframe = document.createElement('iframe');
     iframe.src = options.url;
     iframe.title = options.title || 'Peak player';
-    iframe.allow = options.allow || 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+    iframe.allow = options.allow || 'autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write';
     iframe.allowFullscreen = true;
     iframe.loading = options.loading || 'lazy';
     iframe.style.width = options.width || '100%';
@@ -143,7 +143,7 @@
     var iframe = document.createElement('iframe');
     iframe.src = options.url;
     iframe.title = options.title || 'Peak player';
-    iframe.allow = options.allow || 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+    iframe.allow = options.allow || 'autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write';
     iframe.allowFullscreen = true;
     iframe.loading = options.loading || 'lazy';
     iframe.style.width = options.width || '100%';

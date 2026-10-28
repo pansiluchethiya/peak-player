@@ -1,4 +1,5 @@
 'use client';
+import { Timer } from 'lucide-react';
 import { MenuRoot, type MenuOption } from './MenuRoot';
 import { usePlayerContext } from '../PlayerProvider';
 import { t } from '../i18n';
@@ -17,7 +18,12 @@ export function SpeedMenu() {
   ];
   return (
     <MenuRoot
-      trigger={<span>{t('speed')}</span>}
+      trigger={
+        <>
+          <span className="peak-menu-label"><Timer size={14} /><span>{t('speed')}</span></span>
+          <span className="peak-menu-value">{preferences.speed}x</span>
+        </>
+      }
       options={options}
       selected={String(preferences.speed)}
       label={t('speed')}

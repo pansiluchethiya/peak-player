@@ -60,7 +60,7 @@
 .peak-artwork-card-meta {
   margin: 0;
   color: rgb(255 255 255 / 62%);
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-player), sans-serif;
   font-size: clamp(6px, 7cqw, 11px);
   letter-spacing: 0.14em;
   line-height: 1.3;

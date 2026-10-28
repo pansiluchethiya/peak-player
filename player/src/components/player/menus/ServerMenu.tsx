@@ -1,4 +1,5 @@
 'use client';
+import { Server } from 'lucide-react';
 import { MenuRoot, type MenuOption } from './MenuRoot';
 import { usePlayerContext } from '../PlayerProvider';
 import { codenameForProvider, providerForCodename } from '../../../lib/servers';
@@ -13,6 +14,9 @@ export function ServerMenu() {
   const { api, payload, preferences } = usePlayerContext();
   const sources = payload?.sources ?? [];
   const currentProvider = preferences.server ?? sources[0]?.provider ?? null;
+  const currentCodename = currentProvider
+    ? codenameForProvider(currentProvider) ?? currentProvider
+    : null;
 
   const options: MenuOption[] = sources.map((source) => {
     const codename = codenameForProvider(source.provider) ?? source.provider;
@@ -21,9 +25,14 @@ export function ServerMenu() {
 
   return (
     <MenuRoot
-      trigger={<span>{currentProvider ? codenameForProvider(currentProvider) ?? currentProvider : t('server')}</span>}
+      trigger={
+        <>
+          <span className="peak-menu-label"><Server size={14} /><span>{t('server')}</span></span>
+          <span className="peak-menu-value">{currentCodename ?? '—'}</span>
+        </>
+      }
       options={options}
-      selected={currentProvider ? codenameForProvider(currentProvider) ?? currentProvider : null}
+      selected={currentCodename}
       label={t('server')}
       onSelect={(codename) => {
         api.switchServer(codename).catch(() => undefined);

@@ -4,13 +4,33 @@ import {
   autoQualityCap,
   capLevelIndex,
   initialBandwidthEstimate,
+  isQualityCap,
   levelLabel,
   parseQualityHeight,
   preferredSourceIndex,
+  qualityCapResolution,
   sortLevelsDescending,
   type HlsLevelLike,
   type NetworkInformationLike,
 } from '../src/lib/quality.js';
+
+describe('quality caps', () => {
+  it('accepts only the fixed data-saver ladder', () => {
+    for (const cap of ['auto', '360p', '480p', '720p', '1080p']) {
+      assert.equal(isQualityCap(cap), true);
+    }
+    assert.equal(isQualityCap('1440p'), false);
+    assert.equal(isQualityCap('1080'), false);
+    assert.equal(isQualityCap(undefined), false);
+  });
+
+  it('maps saved caps onto the HLS ceiling', () => {
+    assert.equal(qualityCapResolution('auto'), undefined);
+    assert.equal(qualityCapResolution('360p'), '360p');
+    assert.equal(qualityCapResolution('1080p'), '1080p');
+    assert.equal(qualityCapResolution('garbage'), undefined);
+  });
+});
 
 describe('initialBandwidthEstimate', () => {
   it('returns undefined without a connection hint', () => {

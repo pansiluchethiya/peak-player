@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useMemo, useRef, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { AmbientBackground } from '../AmbientBackground';
 import { ErrorState } from '../ErrorState';
-import { LoadingSkeleton } from '../LoadingSkeleton';
 import { nextSourceIndex, sourceKey } from '../../lib/playback';
+import { qualityCapResolution } from '../../lib/quality';
 import { autoplayPolicy } from '../../lib/presentation';
 import type { EmbedConfig, Media } from '../../lib/types';
 import { Breadcrumb } from './controls/Breadcrumb';
@@ -14,8 +14,13 @@ import { ArtworkChain } from './artwork/ArtworkChain';
 import { MuxAnalytics, muxEnabled } from './media/MuxAnalytics';
 import { MediaSurface } from './media/MediaSurface';
 import { engineSource } from './media/source';
+import { absoluteArtwork } from '../../lib/artworkUrl';
+import { buildFilterString } from './colour/CssFilterPipeline';
+import { getColourPreset } from './colour/presets';
 import { useMediaEngine } from './media/useMediaEngine';
 import { PosterOverlay } from './overlays/PosterOverlay';
+import { LoadingSpinner } from './overlays/LoadingSpinner';
+import { ContextMenu } from './overlays/ContextMenu';
 import {
   EnginePlayer,
   PlayerProvider,
@@ -82,11 +87,19 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
   );
   const isExternal = engine?.kind === 'external';
   const policy = preset === 'bg' ? { shouldPlay: true, muted: true } : autoplayPolicy(preferences);
+  const [loop, setLoop] = useState(preset === 'bg');
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Colour presets are pure CSS filters on the media surface (spec §6.4). The
+  // filter lives in a custom property so the chrome, captions, and poster keep
+  // their own colour instead of inheriting the video grade.
+  const videoFilter = buildFilterString(getColourPreset(preferences.colourPreset).filters);
+  const maxResolution = qualityCapResolution(preferences.quality);
 
   const title = mediaMetadata?.title?.trim() || undefined;
-  const posterCandidates = [poster, media.poster, mediaMetadata?.logo, payload?.logo].filter(
-    (candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0,
-  );
+  const posterCandidates = [poster, media.poster, mediaMetadata?.logo, payload?.logo]
+    .map(absoluteArtwork)
+    .filter((candidate): candidate is string => Boolean(candidate));
   const posterUrl = posterCandidates[0];
   const description = mediaMetadata?.overview ?? t('no-description');
 
@@ -100,8 +113,8 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
     mediaId: media.id,
     title,
     year: mediaMetadata?.year ?? mediaMetadata?.media?.year ?? null,
-    partnerPoster: poster ?? media.poster ?? null,
-    providerArtwork: payload?.logo ?? mediaMetadata?.logo ?? null,
+    partnerPoster: absoluteArtwork(poster ?? media.poster) ?? null,
+    providerArtwork: absoluteArtwork(payload?.logo ?? mediaMetadata?.logo) ?? null,
     fallbackArt: true,
   };
 
@@ -110,7 +123,7 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
     : media.type === 'live_tv'
       ? t('loading-channel')
       : t('fetching-sources');
-  const errorMessage = embed ? t('embed-unavailable') : error ?? t('error-fallback');
+  const errorMessage = error ?? (embed ? t('embed-unavailable') : t('error-fallback'));
 
   // One failover attempt per source generation; `tryNextSource` only sets the
   // terminal error once every source has been exhausted.
@@ -147,7 +160,19 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
   return (
     <div
       className={`player-root player-preset-${preset}`}
-      style={{ '--accent': branding.accentColor } as CSSProperties}
+      data-aspect={preferences.aspect}
+      onContextMenu={(event) => {
+        // Peak owns the context menu; the browser menu never opens on the stage.
+        event.preventDefault();
+        if (preset === 'bg' || isExternal) return;
+        setMenu({ x: event.clientX, y: event.clientY });
+      }}
+      style={
+        {
+          '--accent': branding.accentColor,
+          '--peak-video-filter': videoFilter || 'none',
+        } as CSSProperties
+      }
     >
       <AmbientBackground accentColor={branding.accentColor} />
 
@@ -165,6 +190,7 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
               loop
               controls={false}
               playsInline
+              maxResolution={maxResolution}
               onMediaError={handleMediaError}
             />
           </EnginePlayer>
@@ -172,6 +198,7 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
       ) : (
         <div
           className="player-stage player-stage-video"
+          data-aspect={preferences.aspect}
           data-transport={isExternal ? 'external' : undefined}
         >
           <EnginePlayer title={title} poster={posterUrl}>
@@ -185,9 +212,11 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
                 title={title}
                 autoPlay={policy.shouldPlay}
                 muted={policy.muted}
+                loop={loop}
                 controls={false}
                 playsInline
                 subtitles={subtitles}
+                maxResolution={maxResolution}
                 onMediaError={handleMediaError}
                 onEnded={handleEnded}
               />
@@ -222,22 +251,13 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
           ) : null}
 
           {status === 'loading' && (
-            <LoadingSkeleton
-              branding={branding}
-              artwork={
-                title || artwork.media ? (
-                  <ArtworkChain {...artwork} className="loading-poster" />
-                ) : undefined
-              }
-              label={loadingLabel}
-            />
+            <LoadingSpinner label={loadingLabel} backdrop={artwork.media?.backdrop ?? null} />
           )}
 
           {status === 'error' && (
             <ErrorState
               title={t('error-title')}
               message={errorMessage}
-              diagnostics={embed ? undefined : payload?.diagnostics}
               artwork={
                 title || artwork.media ? (
                   <ArtworkChain {...artwork} className="error-poster" />
@@ -249,6 +269,16 @@ function PlayerSurface({ media, embed, preset, poster }: PlayerSurfaceProps) {
           )}
         </div>
       )}
+
+      {menu ? (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          loop={loop}
+          onToggleLoop={() => setLoop((value) => !value)}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
     </div>
   );
 }

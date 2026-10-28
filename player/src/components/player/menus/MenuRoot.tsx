@@ -1,4 +1,5 @@
 'use client';
+import { Check } from 'lucide-react';
 import {
   type ReactNode,
   useCallback,
@@ -6,7 +7,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { usePlayerContext } from '../PlayerProvider';
 
 export interface MenuOption {
   value: string;
@@ -21,6 +21,10 @@ export interface MenuRootProps {
   onSelect: (value: string) => void;
   selected?: string | null;
   label?: string;
+  /** Extra controls rendered under the option list (e.g. caption settings). */
+  footer?: ReactNode;
+  /** Wider popup for rows with labels and values. */
+  width?: number;
 }
 
 const FALLBACK_RECT = { top: 0, left: 0, bottom: 0, right: 0 };
@@ -45,7 +49,7 @@ function useOutsideClick(
 }
 
 /** Dropdown menu primitive: a trigger slot and a floating option list. */
-export function MenuRoot({ trigger, options, onSelect, selected, label }: MenuRootProps) {
+export function MenuRoot({ trigger, options, onSelect, selected, label, footer, width = 208 }: MenuRootProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -53,10 +57,27 @@ export function MenuRoot({ trigger, options, onSelect, selected, label }: MenuRo
   useOutsideClick(containerRef, () => setOpen(false));
 
   useEffect(() => {
-    if (open && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect() || FALLBACK_RECT;
-      setPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
-    }
+    if (!open || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect() || FALLBACK_RECT;
+    // The list is `position: fixed`, so coordinates are viewport-relative.
+    // Flip above the trigger when the list would overflow the bottom edge and
+    // clamp horizontally so long option lists stay reachable on phones.
+    const height = Math.min(options.length * 34 + 12 + (footer ? 210 : 0), window.innerHeight - 16);
+    const top =
+      rect.bottom + height + 8 > window.innerHeight
+        ? Math.max(8, rect.top - height - 8)
+        : rect.bottom + 6;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    setPosition({ top, left });
+  }, [footer, open, options.length, width]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   const handleSelect = useCallback(
@@ -83,7 +104,7 @@ export function MenuRoot({ trigger, options, onSelect, selected, label }: MenuRo
         <div
           className="peak-menu-list"
           role="menu"
-          style={{ position: 'fixed', top: position.top, left: position.left, zIndex: 100 }}
+          style={{ position: 'fixed', top: position.top, left: position.left, zIndex: 100, width }}
         >
           {options.map((option) => (
             <button
@@ -96,10 +117,12 @@ export function MenuRoot({ trigger, options, onSelect, selected, label }: MenuRo
               data-selected={selected === option.value}
               onClick={() => handleSelect(option.value)}
             >
-              {option.icon}
-              {option.label}
+              {option.icon ? <span className="peak-menu-option-icon">{option.icon}</span> : null}
+              <span className="peak-menu-option-label">{option.label}</span>
+              {selected === option.value ? <Check className="peak-menu-check" size={14} /> : null}
             </button>
           ))}
+          {footer}
         </div>
       )}
     </div>

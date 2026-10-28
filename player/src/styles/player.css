@@ -8,11 +8,29 @@
   overflow: hidden;
   background: #000;
   --accent: var(--color-accent);
+  /* Mica: a smoked black pane with a white hairline border, matching the
+     paused poster card. The fill is the player background, not a gradient. */
+  --peak-mica-bg: rgb(0 0 0 / 72%);
+  --peak-mica-border: rgb(255 255 255 / 16%);
+  --peak-mica-shadow: 0 18px 44px rgb(0 0 0 / 45%);
+  --peak-mica-blur: blur(24px) saturate(125%);
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+  font-family: var(--font-player), sans-serif;
+  -webkit-touch-callout: none;
   transition: cursor 200ms ease;
+}
+
+/* The whole shell goes fullscreen so the custom transport and settings stay
+   reachable; fullscreening only the <video> would hide the Peak chrome. */
+.player-root:fullscreen,
+.player-root:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  background: #000;
 }
 
 .player-root.controls-inactive {
@@ -44,6 +62,27 @@
   object-fit: contain;
   background: #000;
   outline: none;
+}
+
+/* Colour presets (spec §6.4): the preset writes `--peak-video-filter` on the
+   root, so only the media surface is graded. Captions and chrome stay neutral. */
+.player-video,
+.player-video video {
+  filter: var(--peak-video-filter, none);
+}
+
+/* Aspect modes (spec §6.1): fit letterboxes, fill crops to the frame, zoom
+   crops further. Scoped to the video stage so the ambient/background preset
+   keeps its full-bleed cover. */
+.player-stage-video[data-aspect='fill'] .player-video,
+.player-stage-video[data-aspect='fill'] .player-video video {
+  object-fit: cover;
+}
+
+.player-stage-video[data-aspect='zoom'] .player-video,
+.player-stage-video[data-aspect='zoom'] .player-video video {
+  object-fit: cover;
+  transform: scale(1.18);
 }
 
 .player-video::cue {

@@ -5,20 +5,17 @@ import type { ComponentProps, ReactNode } from 'react';
 
 import { BufferingIndicator } from '@/components/player/videojs/ui/buffering-indicator';
 import { Container } from '@/components/player/videojs/ui/container';
-import { ErrorDialog } from '@/components/player/videojs/ui/error-dialog';
 import { Poster } from '@/components/player/videojs/ui/poster';
 import { cn } from '@/components/player/videojs/lib/resolve-class-name';
 
 import { VideoGestures } from './behaviors/gestures';
 import { VideoHotkeys } from './behaviors/hotkeys';
 import { VideoStatusIndicators } from './display/status-indicators';
-import { DefaultVideoControls } from './layout/controls';
 
 export interface VideoSkinProps extends Omit<NonNullable<ComponentProps<typeof Container>>, 'children'> {
   children?: ReactNode;
   chromeInert?: boolean;
   renderPoster?: NonNullable<ComponentProps<typeof Poster>>['renderImage'];
-  renderThumbnail?: NonNullable<ComponentProps<typeof DefaultVideoControls>>['renderThumbnail'];
 }
 
 export function VideoSkin({
@@ -26,7 +23,6 @@ export function VideoSkin({
   className,
   chromeInert = false,
   renderPoster,
-  renderThumbnail,
   ...props
 }: VideoSkinProps = {}) {
   return (
@@ -44,9 +40,6 @@ export function VideoSkin({
       >
         <Poster renderImage={renderPoster} />
         <BufferingIndicator />
-        <ErrorDialog />
-
-        <DefaultVideoControls renderThumbnail={renderThumbnail} />
 
         <VideoHotkeys />
         <VideoGestures />

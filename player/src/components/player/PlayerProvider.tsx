@@ -13,10 +13,11 @@ import {
   type ReactNode,
 } from 'react';
 import { fetchBranding, fetchStreamEvents } from '../../lib/api';
+import { fetchMedia } from '../../lib/media';
 import { getFingerprint } from '../../lib/fingerprint';
 import { isPlayableSource, nextSourceIndex, sourceKey } from '../../lib/playback';
 import { autoplayPolicy } from '../../lib/presentation';
-import { connectionHint, preferredSourceIndex } from '../../lib/quality';
+import { connectionHint, isQualityCap, preferredSourceIndex } from '../../lib/quality';
 import {
   DEFAULT_BRANDING,
   type Branding,
@@ -255,8 +256,13 @@ export function PlayerProvider({
   const engineHandleRef = useRef<EngineHandle | null>(null);
   const engineStateReaderRef = useRef<(() => EngineSnapshot) | null>(null);
   const autoplayTokenRef = useRef<string | null>(null);
+  const timestampSeekRef = useRef<string | null>(null);
   const terminalRef = useRef(false);
   const closeDiscoveryRef = useRef<(() => void) | null>(null);
+  /** Discovery finished, so "no source left" is a real terminal state. */
+  const discoveryDoneRef = useRef(false);
+  /** A source failed while providers were still streaming; wait for more. */
+  const pendingFailoverRef = useRef(false);
   const [engineGeneration, setEngineGeneration] = useState(0);
 
   const embedRef = useRef(embed);
@@ -311,6 +317,8 @@ export function PlayerProvider({
    */
   const failTerminal = useCallback((message: string, code: PlayerErrorCode = 'STREAM_UNAVAILABLE') => {
     terminalRef.current = true;
+    discoveryDoneRef.current = true;
+    pendingFailoverRef.current = false;
     closeDiscoveryRef.current?.();
     closeDiscoveryRef.current = null;
     setStatus('error');
@@ -331,6 +339,8 @@ export function PlayerProvider({
     let cancelled = false;
 
     terminalRef.current = false;
+    discoveryDoneRef.current = false;
+    pendingFailoverRef.current = false;
     closeDiscoveryRef.current = null;
     autoplayTokenRef.current = null;
 
@@ -340,6 +350,27 @@ export function PlayerProvider({
       subtitles: Subtitle[];
       diagnostics: Diagnostic[];
     } = { metadata: null, sources: [], subtitles: [], diagnostics: [] };
+    let resolvedMetadata: ResolvedMediaMetadata | null = null;
+
+    /**
+     * The SSE `meta` event is deliberately lean and omits the synopsis, so the
+     * resolver record is fetched in parallel and merged underneath it. Stream
+     * fields always win; the resolver only fills the gaps it knows about.
+     */
+    const mergedMetadata = (): MediaMetadata | null => {
+      const streamed = accumulated.metadata;
+      const resolved = resolvedMetadata;
+      if (!streamed && !resolved) return null;
+      return {
+        title: streamed?.title?.trim() ? streamed.title : resolved?.title ?? '',
+        year: streamed?.year ?? resolved?.year ?? undefined,
+        runtime: streamed?.runtime ?? resolved?.runtime ?? undefined,
+        overview: streamed?.overview?.trim() ? streamed.overview : resolved?.overview ?? undefined,
+        group: streamed?.group ?? undefined,
+        logo: streamed?.logo ?? undefined,
+        media: streamed?.media ?? resolved ?? undefined,
+      };
+    };
 
     setStatus('loading');
     setError(null);
@@ -355,11 +386,20 @@ export function PlayerProvider({
 
     const publish = () => {
       if (cancelled || terminalRef.current) return;
-      if (accumulated.metadata) setMediaMetadata(accumulated.metadata);
+      const metadata = mergedMetadata();
+      if (metadata) setMediaMetadata(metadata);
       setSources([...accumulated.sources]);
       setSubtitles([...accumulated.subtitles]);
       setDiagnostics([...accumulated.diagnostics]);
     };
+
+    fetchMedia(apiBase, media)
+      .then((data) => {
+        if (cancelled) return;
+        resolvedMetadata = data;
+        publish();
+      })
+      .catch(() => undefined);
 
     const handleMeta = (data: {
       title: string;
@@ -383,6 +423,13 @@ export function PlayerProvider({
       publish();
     };
 
+    const lastPlayableIndex = () => {
+      for (let index = accumulated.sources.length - 1; index >= 0; index -= 1) {
+        if (isPlayableSource(accumulated.sources[index])) return index;
+      }
+      return -1;
+    };
+
     const handleSource = (source: Source) => {
       if (cancelled || terminalRef.current) return;
       const first = accumulated.sources.length === 0;
@@ -393,6 +440,20 @@ export function PlayerProvider({
         setError(null);
         setErrorCode(null);
         setStatus('ready');
+        return;
+      }
+      // Every earlier source failed while providers were still streaming; the
+      // next playable one that arrives takes over without surfacing an error.
+      if (pendingFailoverRef.current) {
+        const index = lastPlayableIndex();
+        if (index < 0) return;
+        pendingFailoverRef.current = false;
+        terminalRef.current = false;
+        setError(null);
+        setErrorCode(null);
+        setStatus('ready');
+        setCurrentSourceIndex(index);
+        setSourceNonce((value) => value + 1);
       }
     };
 
@@ -410,9 +471,25 @@ export function PlayerProvider({
 
     const handleDone = () => {
       if (cancelled || terminalRef.current) return;
+      discoveryDoneRef.current = true;
       publish();
       if (accumulated.sources.length === 0) {
-        failTerminal(t('no-playable-sources'));
+        failTerminal(t('title-not-found'));
+        return;
+      }
+      if (pendingFailoverRef.current) {
+        pendingFailoverRef.current = false;
+        const index = lastPlayableIndex();
+        if (index < 0) {
+          failTerminal(t('title-not-found'));
+          return;
+        }
+        terminalRef.current = false;
+        setError(null);
+        setErrorCode(null);
+        setStatus('ready');
+        setCurrentSourceIndex(index);
+        setSourceNonce((value) => value + 1);
         return;
       }
       setCurrentSourceIndex((current) =>
@@ -420,11 +497,15 @@ export function PlayerProvider({
       );
     };
 
-    const handleError = (event: { error: string; message: string }) => {
+    const handleError = () => {
       if (cancelled || terminalRef.current) return;
-      failTerminal(
-        event.error === 'TRANSPORT_ERROR' ? t('stream-failed') : event.message || t('stream-failed'),
-      );
+      // A transport error can arrive after usable sources have already been
+      // published (providers time out progressively). Marking the player
+      // terminal at that point replaces a playing stream with an error overlay,
+      // so keep whatever is already playable.
+      if (accumulated.sources.length > 0) return;
+      discoveryDoneRef.current = true;
+      failTerminal(t('title-not-found'));
     };
 
     (async () => {
@@ -512,6 +593,8 @@ export function PlayerProvider({
 
   const reload = useCallback((invalidate = false) => {
     terminalRef.current = false;
+    discoveryDoneRef.current = false;
+    pendingFailoverRef.current = false;
     autoplayTokenRef.current = null;
     setStatus('loading');
     setError(null);
@@ -535,9 +618,19 @@ export function PlayerProvider({
     }
     const next = nextSourceIndex(current.sources, current.currentSourceIndex, attempted);
     if (next < 0) {
-      failTerminal(t('all-sources-failed'));
+      // Providers may still be streaming. Wait for the next source instead of
+      // reporting a failure; only a finished discovery is a real dead end.
+      if (!discoveryDoneRef.current) {
+        pendingFailoverRef.current = true;
+        setStatus('loading');
+        setError(null);
+        setErrorCode(null);
+        return;
+      }
+      failTerminal(t('title-not-found'));
       return;
     }
+    pendingFailoverRef.current = false;
     // A new source restarts playback, so late SSE events may publish again.
     terminalRef.current = false;
     setError(null);
@@ -562,7 +655,6 @@ export function PlayerProvider({
         if (patch.muted !== undefined) handle.setMuted(next.muted);
         if (patch.speed !== undefined) handle.setSpeed(next.speed);
         if (patch.captions !== undefined) handle.setCaptions(next.captions);
-        if (patch.quality !== undefined) handle.setQuality(next.quality);
         if (patch.audioTrack) handle.setAudioTrack(patch.audioTrack);
       }
       return next;
@@ -632,9 +724,9 @@ export function PlayerProvider({
         mergePreferences({ speed: value });
       },
       setQuality: async (level: 'auto' | string) => {
-        if (!level) throw new PeakPlayerError('INVALID_ARGUMENT', t('quality-unavailable'));
-        const handle = await requireEngine();
-        handle.setQuality(level);
+        if (!isQualityCap(level)) throw new PeakPlayerError('INVALID_ARGUMENT', t('quality-unavailable'));
+        // The cap is a preference, not a fixed rendition: ABR stays adaptive
+        // underneath it, and MediaSurface forwards the ceiling to hls.js.
         mergePreferences({ quality: level });
       },
       setAudioTrack: async (id: string) => {
@@ -694,12 +786,17 @@ export function PlayerProvider({
         await handle.seekToLive(0);
       },
       requestFullscreen: async () => {
-        const handle = await requireEngine();
-        await handle.requestFullscreen();
+        await requireEngine();
+        if (typeof document === 'undefined') return;
+        // Fullscreen the Peak shell, not the media element, so the custom
+        // transport and settings chrome stay visible in fullscreen.
+        const target = document.querySelector<HTMLElement>('.player-root') ?? document.documentElement;
+        await target.requestFullscreen();
       },
       exitFullscreen: async () => {
-        const handle = await requireEngine();
-        await handle.exitFullscreen();
+        if (typeof document !== 'undefined' && document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
       },
       requestPictureInPicture: async () => {
         const handle = await requireEngine();
@@ -718,13 +815,16 @@ export function PlayerProvider({
           throw new PeakPlayerError('UNSUPPORTED', t('clipboard-unavailable'));
         }
         const origin = typeof window === 'undefined' ? '' : window.location.origin;
+        const token = typeof window === 'undefined' ? null : new URL(window.location.href).searchParams.get('token');
         const path =
           media.type === 'tv'
             ? `/embed/tv/${encodeURIComponent(media.id)}/${media.season ?? 1}/${media.episode ?? 1}`
             : media.type === 'live_tv'
               ? `/embed/live/${encodeURIComponent(media.id)}`
               : `/embed/movie/${encodeURIComponent(media.id)}`;
-        await navigator.clipboard.writeText(`${origin}${path}`);
+        await navigator.clipboard.writeText(
+          token ? `${origin}${path}?token=${encodeURIComponent(token)}` : `${origin}${path}`,
+        );
       },
       getState: () => {
         const engine = engineStateReaderRef.current?.();
@@ -742,7 +842,10 @@ export function PlayerProvider({
           quality: engine?.quality ?? prefs.quality,
           audioTrack: engine?.audioTrack ?? prefs.audioTrack,
           captionsEnabled: engine?.captionsEnabled ?? prefs.captions.enabled,
-          fullscreen: engine?.fullscreen ?? false,
+          fullscreen:
+            typeof document !== 'undefined'
+              ? Boolean(document.fullscreenElement)
+              : engine?.fullscreen ?? false,
           pip: engine?.pip ?? false,
           live: engine?.live ?? media.type === 'live_tv',
           liveEdgeStart: engine?.liveEdgeStart ?? Number.NaN,
@@ -798,6 +901,43 @@ export function PlayerProvider({
       cancelled = true;
     };
   }, [api, currentSourceIndex, engineGeneration, media, preset, sourceNonce, status]);
+
+  // --- Timestamp deep links (`?t=123` or `?t=1m30s` style) ---
+  useEffect(() => {
+    if (status !== 'ready' || typeof window === 'undefined') return;
+    const key = `${media.type}:${media.id}:${media.season ?? ''}:${media.episode ?? ''}`;
+    if (timestampSeekRef.current === key) return;
+
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const raw = search.get('t') ?? hash.get('t');
+    if (!raw) return;
+
+    // Accept plain seconds plus `90s`, `1m30s`, and `1h2m3s` forms.
+    let seconds = 0;
+    if (/^\d+(\.\d+)?$/.test(raw)) {
+      seconds = Number.parseFloat(raw);
+    } else {
+      const match = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?$/i);
+      if (!match) return;
+      seconds = Number(match[1] ?? 0) * 3600 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0);
+    }
+    if (!Number.isFinite(seconds) || seconds <= 0) return;
+
+    timestampSeekRef.current = key;
+    // `status === 'ready'` can precede the engine handle attach, so a seek may
+    // reject with NOT_READY. Retry briefly instead of dropping the deep link.
+    let attempts = 0;
+    const attempt = () => {
+      if (timestampSeekRef.current !== key) return;
+      api.seek(seconds).catch(() => {
+        if (timestampSeekRef.current !== key || attempts >= 24) return;
+        attempts += 1;
+        window.setTimeout(attempt, 250);
+      });
+    };
+    attempt();
+  }, [api, media.episode, media.id, media.season, media.type, status]);
 
   // --- First pointer/key gesture unmutes a successful muted autoplay once ---
   useEffect(() => {

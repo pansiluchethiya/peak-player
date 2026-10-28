@@ -1,11 +1,12 @@
 export interface VttCue { id: string; start: number; end: number; text: string }
 
 function parseTimestamp(token: string): number | null {
-  const m = /^(-?\d+):(\d{2}):(\d{2})(?:\.\d+)?$/.exec(token);
+  const m = /^(-?\d+):(\d{2}):(\d{2})(?:\.(\d+))?$/.exec(token);
   if (!m) return null;
   const sign = token.startsWith('-') ? -1 : 1;
   const h = Number(m[1]); const mi = Number(m[2]); const s = Number(m[3]);
-  return sign * (h * 3600 + mi * 60 + s);
+  const fraction = m[4] ? Number(`0.${m[4]}`) : 0;
+  return sign * (h * 3600 + mi * 60 + s + fraction);
 }
 
 function stripTags(text: string): string {
@@ -40,4 +41,38 @@ export function parseWebVtt(input: string): VttCue[] {
 
 export function activeCues(cues: VttCue[], time: number): VttCue[] {
   return cues.filter((c) => c.start <= time && time < c.end);
+}
+
+function normalizeSrtTimestamp(token: string): string {
+  const clean = token.replace(',', '.').trim();
+  const parts = clean.split(':');
+  if (parts.length === 2) return `00:${parts[0].padStart(2, '0')}:${parts[1]}`;
+  return parts.map((part, index) => (index === 0 ? part.padStart(2, '0') : part)).join(':');
+}
+
+/**
+ * Subtitle files arrive as either WebVTT or SubRip. OpenSubtitles and most
+ * provider catalogues serve SRT, which uses comma milliseconds and optional
+ * cue numbers, so normalise to VTT before parsing.
+ */
+export function parseSubtitles(input: string): VttCue[] {
+  const text = input.replace(/\r\n?/g, '\n');
+  if (/^WEBVTT/m.test(text)) return parseWebVtt(text);
+
+  const lines = text.split('\n');
+  const normalized: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const arrow = line.indexOf('-->');
+    if (arrow === -1) {
+      // Drop the numeric cue index that precedes an SRT timing line.
+      if (/^\d+$/.test(line.trim()) && (lines[i + 1] ?? '').includes('-->')) continue;
+      normalized.push(line);
+      continue;
+    }
+    const start = normalizeSrtTimestamp(line.slice(0, arrow));
+    const rest = line.slice(arrow + 3).trim().split(/\s+/)[0] ?? '';
+    normalized.push(`${start} --> ${normalizeSrtTimestamp(rest)}`);
+  }
+  return parseWebVtt(normalized.join('\n'));
 }

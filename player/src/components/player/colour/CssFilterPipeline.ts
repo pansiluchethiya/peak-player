@@ -9,11 +9,18 @@
 import { getColourPreset, type ColourPreset, type PresetId } from './presets';
 
 export function buildFilterString(filters: Record<string, number | string>): string {
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(filters)) {
-    parts.push(`${key}(${value}${typeof value === 'number' ? '' : ''})`);
-  }
-  return parts.join(' ');
+  return Object.entries(filters)
+    .map(([key, value]) => {
+      // Presets use camelCase keys (`hueRotate`) while CSS filter functions are
+      // kebab-case (`hue-rotate`). An unknown function invalidates the whole
+      // declaration, which silently drops every filter in the preset.
+      const fn = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+      // Angles need a unit; `hue-rotate(15)` is invalid CSS and would drop the
+      // whole declaration. Presets store the numeric degree value.
+      const unit = fn === 'hue-rotate' && typeof value === 'number' ? 'deg' : '';
+      return `${fn}(${value}${unit})`;
+    })
+    .join(' ');
 }
 
 export class CssFilterPipeline {

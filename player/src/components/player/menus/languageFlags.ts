@@ -1,0 +1,172 @@
+/**
+ * Flag lookup for subtitle languages. Explicit region codes win (`en-US`,
+ * `pt-BR`), then the base language, then a human-readable label such as
+ * "Spanish (Latin America)".
+ */
+
+const LANGUAGE_FLAGS: Record<string, string> = {
+  en: '🇬🇧',
+  es: '🇪🇸',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+  it: '🇮🇹',
+  pt: '🇵🇹',
+  ja: '🇯🇵',
+  ko: '🇰🇷',
+  zh: '🇨🇳',
+  ar: '🇸🇦',
+  hi: '🇮🇳',
+  ru: '🇷🇺',
+  tr: '🇹🇷',
+  nl: '🇳🇱',
+  pl: '🇵🇱',
+  sv: '🇸🇪',
+  no: '🇳🇴',
+  nb: '🇳🇴',
+  da: '🇩🇰',
+  fi: '🇫🇮',
+  el: '🇬🇷',
+  he: '🇮🇱',
+  th: '🇹🇭',
+  vi: '🇻🇳',
+  id: '🇮🇩',
+  ms: '🇲🇾',
+  cs: '🇨🇿',
+  hu: '🇭🇺',
+  ro: '🇷🇴',
+  uk: '🇺🇦',
+  tl: '🇵🇭',
+  fil: '🇵🇭',
+  fa: '🇮🇷',
+  bn: '🇧🇩',
+  ta: '🇮🇳',
+  te: '🇮🇳',
+  ur: '🇵🇰',
+  km: '🇰🇭',
+  my: '🇲🇲',
+  sw: '🇰🇪',
+  af: '🇿🇦',
+  bs: '🇧🇦',
+  sr: '🇷🇸',
+  hr: '🇭🇷',
+  sk: '🇸🇰',
+  sl: '🇸🇮',
+  bg: '🇧🇬',
+  lt: '🇱🇹',
+  lv: '🇱🇻',
+  et: '🇪🇪',
+  is: '🇮🇸',
+  ca: '🇪🇸',
+  eu: '🇪🇸',
+  gl: '🇪🇸',
+};
+
+const NAME_TO_CODE: Array<[string, string]> = [
+  ['english', 'en'],
+  ['spanish', 'es'],
+  ['french', 'fr'],
+  ['german', 'de'],
+  ['italian', 'it'],
+  ['portuguese', 'pt'],
+  ['japanese', 'ja'],
+  ['korean', 'ko'],
+  ['chinese', 'zh'],
+  ['mandarin', 'zh'],
+  ['arabic', 'ar'],
+  ['hindi', 'hi'],
+  ['russian', 'ru'],
+  ['turkish', 'tr'],
+  ['dutch', 'nl'],
+  ['polish', 'pl'],
+  ['swedish', 'sv'],
+  ['norwegian', 'no'],
+  ['danish', 'da'],
+  ['finnish', 'fi'],
+  ['greek', 'el'],
+  ['hebrew', 'he'],
+  ['thai', 'th'],
+  ['vietnamese', 'vi'],
+  ['indonesian', 'id'],
+  ['malay', 'ms'],
+  ['czech', 'cs'],
+  ['hungarian', 'hu'],
+  ['romanian', 'ro'],
+  ['ukrainian', 'uk'],
+  ['filipino', 'tl'],
+  ['persian', 'fa'],
+  ['français', 'fr'],
+  ['español', 'es'],
+  ['española', 'es'],
+  ['português', 'pt'],
+  ['deutsch', 'de'],
+  ['italiano', 'it'],
+  ['indonesia', 'id'],
+  ['melayu', 'ms'],
+  ['русский', 'ru'],
+  ['türk', 'tr'],
+  ['türkçe', 'tr'],
+  ['中文', 'zh'],
+  ['日本語', 'ja'],
+  ['한국어', 'ko'],
+  ['tiếng việt', 'vi'],
+  ['ภาษาไทย', 'th'],
+  ['ខ្មែរ', 'km'],
+  ['বাংলা', 'bn'],
+  ['ਪੰਜਾਬੀ', 'pa'],
+  ['اُردُو', 'ur'],
+  ['اردو', 'ur'],
+  ['မြန်မာ', 'my'],
+  ['العربية', 'ar'],
+  ['हिन्दी', 'hi'],
+  ['हिंदी', 'hi'],
+  ['nederlands', 'nl'],
+  ['polski', 'pl'],
+  ['svenska', 'sv'],
+  ['norsk', 'no'],
+  ['dansk', 'da'],
+  ['suomi', 'fi'],
+  ['ελληνικά', 'el'],
+  ['עברית', 'he'],
+  ['čeština', 'cs'],
+  ['magyar', 'hu'],
+  ['română', 'ro'],
+  ['українська', 'uk'],
+  ['فارسی', 'fa'],
+  ['kiswahili', 'sw'],
+  ['afrikaans', 'af'],
+  ['bosanski', 'bs'],
+  ['slovenčina', 'sk'],
+  ['slovenščina', 'sl'],
+  ['български', 'bg'],
+  ['lietuvių', 'lt'],
+  ['latviešu', 'lv'],
+  ['eesti', 'et'],
+  ['íslenska', 'is'],
+  ['català', 'ca'],
+  ['euskara', 'eu'],
+  ['galego', 'gl'],
+];
+
+function regionFlag(region: string): string {
+  return String.fromCodePoint(
+    ...[...region.toUpperCase()].map((letter) => 127397 + letter.charCodeAt(0)),
+  );
+}
+
+export function flagForLanguage(lang?: string | null, label?: string | null): string {
+  const raw = `${lang ?? ''} ${label ?? ''}`.toLowerCase();
+  if (!raw.trim()) return '🌐';
+  if (raw.includes('brazil') || raw.includes('brasil')) return '🇧🇷';
+  if (raw.includes('latin america')) return '🇲🇽';
+
+  const region = raw.match(/\b([a-z]{2})[-_]([a-z]{2})\b/);
+  if (region) return regionFlag(region[2]);
+
+  const code = (lang ?? '').toLowerCase().split(/[-_]/)[0];
+  if (LANGUAGE_FLAGS[code]) return LANGUAGE_FLAGS[code];
+
+  for (const [name, nameCode] of NAME_TO_CODE) {
+    if (raw.includes(name)) return LANGUAGE_FLAGS[nameCode] ?? '🌐';
+  }
+  return '🌐';
+}

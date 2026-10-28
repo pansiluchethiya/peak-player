@@ -1,5 +1,6 @@
 'use client';
 
+import type { MediaResolution } from '@videojs/react';
 import { HlsJsVideo } from '@videojs/react/media/hlsjs-video';
 import { Video } from '@videojs/react/video';
 import { ExternalEmbed } from '../../ExternalEmbed';
@@ -18,6 +19,8 @@ export interface MediaSurfaceProps {
   playsInline?: boolean;
   className?: string;
   subtitles?: Subtitle[];
+  /** Ceiling for HLS ABR; `undefined` leaves the ladder uncapped. */
+  maxResolution?: MediaResolution;
   onMediaError?: () => void;
   onEnded?: () => void;
 }
@@ -41,6 +44,7 @@ export function MediaSurface({
   playsInline = true,
   className = MEDIA_CLASS,
   subtitles,
+  maxResolution,
   onMediaError,
   onEnded,
 }: MediaSurfaceProps) {
@@ -72,7 +76,11 @@ export function MediaSurface({
     return (
       <HlsJsVideo
         className={className}
-        source={{ src: engine.src, type: 'application/vnd.apple.mpegurl' }}
+        source={{
+          src: engine.src,
+          type: 'application/vnd.apple.mpegurl',
+          maxAutoResolution: maxResolution,
+        }}
         streamType={engine.streamType}
         autoPlay={autoPlay}
         muted={muted}

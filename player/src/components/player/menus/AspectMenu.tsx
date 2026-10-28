@@ -1,4 +1,5 @@
 'use client';
+import { RectangleHorizontal } from 'lucide-react';
 import { MenuRoot, type MenuOption } from './MenuRoot';
 import { usePlayerContext } from '../PlayerProvider';
 import { t } from '../i18n';
@@ -11,9 +12,20 @@ export function AspectMenu() {
     { value: 'fill', label: t('aspect-fill') },
     { value: 'zoom', label: t('aspect-zoom') },
   ];
+  const selectedLabel =
+    preferences.aspect === 'fill'
+      ? t('aspect-fill')
+      : preferences.aspect === 'zoom'
+        ? t('aspect-zoom')
+        : t('aspect-fit');
   return (
     <MenuRoot
-      trigger={<span>{t('aspect')}</span>}
+      trigger={
+        <>
+          <span className="peak-menu-label"><RectangleHorizontal size={14} /><span>{t('aspect')}</span></span>
+          <span className="peak-menu-value">{selectedLabel}</span>
+        </>
+      }
       options={options}
       selected={preferences.aspect}
       label={t('aspect')}

@@ -7,6 +7,8 @@
  * reads today.
  */
 
+import { isQualityCap } from '../../../lib/quality';
+
 export type CaptionSize = 'sm' | 'md' | 'lg' | 'xl';
 export type CaptionEdge = 'none' | 'shadow' | 'outline' | 'background';
 
@@ -18,6 +20,8 @@ export interface CaptionPreferences {
   opacity: number;
   edge: CaptionEdge;
   mica: boolean;
+  /** Cue timing adjustment in seconds (positive delays captions). */
+  offset: number;
 }
 
 export type AspectMode = 'fit' | 'fill' | 'zoom';
@@ -31,7 +35,7 @@ export interface PlayerPreferences {
   boostUnlocked: boolean;
   /** 0.25..2 */
   speed: number;
-  /** `'auto'` or a rendition id */
+  /** Adaptive cap: `'auto'` or one of the data-saver presets. */
   quality: 'auto' | string;
   audioTrack: string | null;
   captions: CaptionPreferences;
@@ -50,7 +54,7 @@ export const DEFAULT_PREFERENCES: PlayerPreferences = {
   boost: 1,
   boostUnlocked: false,
   speed: 1,
-  quality: 'auto',
+  quality: '360p',
   audioTrack: null,
   captions: {
     enabled: false,
@@ -59,6 +63,7 @@ export const DEFAULT_PREFERENCES: PlayerPreferences = {
     opacity: 1,
     edge: 'none',
     mica: true,
+    offset: 0,
   },
   colourPreset: 'cinema',
   aspect: 'fit',
@@ -103,6 +108,7 @@ export function migratePreferences(raw: unknown): PlayerPreferences {
     opacity: clamp(captionsInput.opacity, 0, 1, 1),
     edge: pickEnum(captionsInput.edge, CAPTION_EDGES, 'none'),
     mica: captionsInput.mica === false ? false : true,
+    offset: clamp(captionsInput.offset, -10, 10, 0),
   };
   return {
     volume: clamp(input.volume, 0, 1, 1),
@@ -110,7 +116,7 @@ export function migratePreferences(raw: unknown): PlayerPreferences {
     boost: clamp(input.boost, 0, MAX_BOOST, 1),
     boostUnlocked: input.boostUnlocked === true,
     speed: pickEnum(input.speed, [0.25, 0.5, 0.75, 1, 1.25, 1.5, 175, 2], clamp(input.speed, MIN_SPEED, MAX_SPEED, 1)) as number,
-    quality: typeof input.quality === 'string' && input.quality ? input.quality : 'auto',
+    quality: isQualityCap(input.quality) ? input.quality : '360p',
     audioTrack: typeof input.audioTrack === 'string' ? (input.audioTrack as string) : null,
     captions,
     colourPreset: typeof input.colourPreset === 'string' && input.colourPreset ? (input.colourPreset as string) : 'cinema',

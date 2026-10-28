@@ -1,4 +1,5 @@
 'use client';
+import { AudioLines } from 'lucide-react';
 import { MenuRoot, type MenuOption } from './MenuRoot';
 import { usePlayerContext } from '../PlayerProvider';
 import { t } from '../i18n';
@@ -14,7 +15,12 @@ export function AudioMenu() {
   ];
   return (
     <MenuRoot
-      trigger={<span>{t('audio')}</span>}
+      trigger={
+        <>
+          <span className="peak-menu-label"><AudioLines size={14} /><span>{t('audio')}</span></span>
+          <span className="peak-menu-value">{preferences.audioTrack ?? t('audio-default')}</span>
+        </>
+      }
       options={options}
       selected={preferences.audioTrack ?? 'default'}
       label={t('audio')}
