@@ -1,0 +1,39 @@
+---
+title: AI Preferences guide
+description: Preference modes and persistence.
+---
+
+## Preference modes
+
+The player supports server-side preference modes, controlled by the
+`x-peak-embed-prefs-mode` header.
+
+| Mode | Description |
+|---|---|
+| `browser` | Preferences stored in localStorage (default) |
+| `server` | Preferences served by the API |
+| `user` | Preferences per-partner from embed token |
+
+File: `player/src/components/player/prefs/schema.ts`.
+
+## Preference store
+
+```js
+// Read
+const prefs = await fetch('/api/v1/preferences', {
+  headers: { 'x-peak-embed-prefs-mode': 'server' },
+});
+
+// Write
+await fetch('/api/v1/preferences', {
+  method: 'POST',
+  headers: { 'x-peak-embed-prefs-mode': 'user', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ volume: 0.8, captions: 'en', speed: 1.25 }),
+});
+```
+
+Files:
+- `utils/preferenceStore.js` — storage
+- `routes/preferenceRoutes.js` — routes
+- `player/src/components/player/prefs/modes.ts` — mode definitions
+- `player/src/components/player/prefs/PreferenceStore.ts` — client store

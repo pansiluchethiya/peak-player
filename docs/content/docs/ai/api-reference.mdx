@@ -1,0 +1,138 @@
+---
+title: AI API reference
+description: Full HTTP API reference.
+---
+
+## Sessions
+
+### POST /api/v1/embed/sessions
+
+Mint a signed embed session.
+
+```bash
+curl -X POST https://api.peak-player.com/api/v1/embed/sessions \
+  -H "x-api-key: $PEAK_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"type":"movie","id":"550","ttlSeconds":900}'
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "token": "eyJ2Ijox...",
+  "expiresAt": "2026-10-25T16:30:00.000Z",
+  "embedUrl": "https://app.peak-player.com/embed/movie/550?token=...",
+  "sessionId": "sess_abc123"
+}
+```
+
+Errors:
+- `401` — Invalid or missing API key
+- `400` — Missing `type` or `id`
+- `403` — Origin not allowed
+
+## Streams
+
+### GET /api/v1/stream/:type/:id
+
+Returns validated, ranked sources as JSON.
+
+Parameters: `type=movie|tv|live_tv`, `id=tmdbId|channelId`, `season`, `episode`, `source`.
+
+### GET /api/v1/stream/events/:type/:id
+
+SSE stream: `meta`, `source`, `subtitle`, `diagnostic`, `done`, `error`.
+
+## Media metadata
+
+### GET /api/v1/media/:type/:id
+
+Returns title, year, overview, poster, backdrop, genres, rating.
+
+## Thumbnails
+
+### POST /api/v1/thumbnails/:type/:id
+
+Generate a thumbnail sprite (VTT) for scrubbing.
+
+### GET /api/v1/thumbnails/:file
+
+Serve a generated thumbnail sprite file.
+
+## Live TV
+
+### GET /api/v1/live/tv/channels
+
+List channels, optionally `group`, `q`, `limit`, `cursor`.
+
+### GET /api/v1/live/tv/groups
+
+List all channel groups.
+
+## Branding
+
+### GET /api/v1/branding
+
+Returns `{ name, logo, favicon, accentColor, ... }`.
+
+File: `utils/playerService.js` — `getBranding()`.
+
+## Health & metrics
+
+### GET /api/v1/playback/health
+
+```json
+{
+  "success": true,
+  "providers": [{ "name": "netmirror", "ok": true, "avgLatencyMs": 48, "errorCount": 0 }],
+  "telemetry": { "ttffMs": 142, "failoverRate": 0.02 }
+}
+```
+
+### GET /api/status
+
+Full status: uptime, requests, provider calls, metrics.
+
+### GET /api/health
+
+Lightweight health check: `{ ok: true, service: "peak", time: "..." }`.
+
+## Config
+
+### GET /api/config
+
+Returns merged runtime config (providers, quality, IPTV settings).
+
+### POST /api/config
+
+Update runtime config overrides. Written to `utils/user-config.json`.
+
+## Admin (auth required)
+
+### GET /api/admin/config
+
+List all `peak_config` rows (feature toggles, tokens, proxies, IPTV categories).
+
+### POST /api/admin/tokens
+
+```json
+{ "name": "Partner A", "partner": "demo", "expiresAt": "2026-10-26T00:00:00Z", "allowedOrigins": ["https://app.example.com"], "readOnly": false }
+```
+
+### DELETE /api/admin/tokens/:id
+
+### GET /api/admin/proxies
+
+### POST /api/admin/proxies
+
+```json
+{ "name": "Custom proxy", "upstreamUrl": "https://proxy.example.com", "headers": {}, "corsOrigins": ["https://app.example.com"] }
+```
+
+### PATCH /api/admin/iptv/categories
+
+```json
+{ "sports": true, "news": false }
+```

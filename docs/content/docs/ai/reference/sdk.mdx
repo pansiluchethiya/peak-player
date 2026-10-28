@@ -1,0 +1,72 @@
+---
+title: AI SDK reference
+description: PeakEmbed JavaScript API and lifecycle events.
+---
+
+## PeakEmbed.mount(options)
+
+```ts
+interface MountOptions {
+  target: string | HTMLElement;   // CSS selector or element
+  url: string;                     // embed URL with token
+  title: string;                   // accessibility title
+  debug?: boolean;                 // verbose console logging
+}
+```
+
+Returns a `Player` instance.
+
+## Player methods
+
+```ts
+class Player {
+  play(): void;
+  pause(): void;
+  seek(seconds: number): void;
+  setVolume(0–1: number): void;
+  setMuted(muted: boolean): void;
+  setRate(0.25–2.0: number): void;
+  setQuality('auto' | '1080p' | '720p' | '480p' | '360p'): void;
+  setAudioTrack(lang: string): void;
+  setCaptions(lang: string | false): void;
+  setDub(lang: string): void;
+  setAudioBoost(0–2.0: number): void;
+  setColorFilter(preset: string | false): void;
+  setServer(codename: string): void;
+  setPiP(enabled: boolean): void;
+  setFullscreen(enabled: boolean): void;
+  setTheme('dark' | 'light'): void;
+  showStats(): void;
+  dispose(): void;
+}
+```
+
+## Events
+
+```ts
+player.on('ready', () => void);
+player.on('play', () => void);
+player.on('playing', () => void);
+player.on('pause', () => void);
+player.on('ended', () => void);
+player.on('timeupdate', ({ currentTime, duration }) => void);
+player.on('sourcechange', ({ quality, provider, codec }) => void);
+player.on('subtitlechange', ({ lang, label }) => void);
+player.on('error', ({ code, message }) => void);
+player.on('diagnostic', ({ provider, ok, latencyMs, error }) => void);
+```
+
+## Error codes
+
+| Code | Meaning |
+|---|---|
+| `NO_SOURCES` | No playable sources found |
+| `STREAM_UNAVAILABLE` | All sources failed |
+| `EMBED_NOT_AUTHORIZED` | Token verification failed |
+| `EMBED_EXPIRED` | Token expired |
+| `ORIGIN_NOT_ALLOWED` | Origin not in token |
+| `PLAYER_ERROR` | Runtime player error |
+
+File: `player/src/components/player/errors.ts`.
+
+Full contract: `player/sdk-contract.json`.

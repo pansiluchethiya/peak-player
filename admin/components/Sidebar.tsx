@@ -14,6 +14,9 @@ import {
   Globe,
   RotateCw,
   LogOut,
+  KeySquare,
+  Network,
+  ToggleLeft,
 } from 'lucide-react';
 
 interface NavItem {
@@ -29,6 +32,9 @@ const configure: NavItem[] = [
   { label: 'Quality & filters', href: '/quality', icon: Sliders },
   { label: 'API keys', href: '/keys', icon: Key },
   { label: 'FebBox', href: '/febbox', icon: Cloud },
+  { label: 'Tokens', href: '/tokens', icon: KeySquare },
+  { label: 'Proxies', href: '/proxies', icon: Network },
+  { label: 'Feature toggles', href: '/features', icon: ToggleLeft },
 ];
 
 const system: NavItem[] = [

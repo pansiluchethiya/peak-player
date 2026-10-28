@@ -1,0 +1,68 @@
+---
+title: AI Architecture
+description: Services, data flow, and failure domains.
+---
+
+## Services
+
+| Service | Port | Tech | Purpose |
+|---|---|---|---|
+| API | 8787 | Express | Source resolution, validation, proxy, embeds |
+| Player | 3001 | Next.js | Custom player, landing, embed routes |
+| Admin | 3003 | Next.js | Config UI, tokens, proxies, feature toggles |
+| Docs | 3002 | Next.js | fumadocs documentation |
+| MCP | stdio | TypeScript | AI agent read-only access |
+
+## Data flow
+
+```
+1. Partner server: POST /api/v1/embed/sessions (with API key)
+2. API: validates media, signs token, returns embed URL
+3. Browser: loads embed route (middleware verifies token, sets CSP)
+4. Player: SSE to /api/v1/stream/events/{type}/{id}
+5. API: fan-out to providers, validate, rank, SSE sources
+6. Browser: Hls.js plays first source via signed /api/proxy URLs
+7. Player: postMessage events to parent page
+```
+
+## Key files
+
+- `apiServer.js` — Express entry, route registration
+- `utils/config.js` — config loading + env mirroring
+- `utils/db.js` — SQLite connection
+- `utils/adminConfig.js` — config CRUD (peak_config table)
+- `utils/playerService.js` — stream resolution + ranking
+- `utils/sourceRanking.js` — ranking algorithm
+- `utils/sourceValidator.js` — source validation
+- `utils/embedToken.js` — AES-256-GCM token signing
+- `proxy/proxyServer.js` — signed proxy with SSRF guard
+- `providers/rive.js` — Peak Stream provider (PRIME/STELLAR/NEXUS/ORBIT)
+
+## Provider architecture
+
+4 sub-providers:
+
+| Technical key | Display codename | Label |
+|---|---|---|
+| `rive apogee` | PRIME | Apogee |
+| `rive vanguard` | STELLAR | Vanguard |
+| `rive pulse` | NEXUS | Pulse |
+| `rive citadel` | ORBIT | Citadel (dubs) |
+
+File: `player/src/lib/servers.ts` — codename map.
+
+## Storage
+
+| Store | Contents |
+|---|---|
+| SQLite `utils/peak.db` | IPTV channels, runtime config |
+| `utils/user-config.json` | Admin overrides |
+| Memory | Cache, playback sessions, provider health |
+
+## Failure domains
+
+- Provider failure: per-provider timeout, validation isolates failures
+- Player failure: failover to next source, no reload
+- API failure: player cannot resolve new sources
+- Proxy failure: playback stops, failover to next source URL
+- Edge failure: embed routes fail closed

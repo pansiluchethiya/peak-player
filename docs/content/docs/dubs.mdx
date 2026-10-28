@@ -1,0 +1,74 @@
+---
+title: Dubs
+description: The DubsMenu and language-specific renditions.
+---
+
+Peak supports language-specific dub tracks, primarily from the ORBIT sub-provider.
+
+## How dubs work
+
+The provider exposes four sub-providers:
+
+- **PRIME** (Apogee) — Main English
+- **STELLAR** (Vanguard) — 4K English
+- **NEXUS** (Pulse) — Fallback English
+- **ORBIT** (Citadel) — Per-language dubs (Hindi, Tamil, Telugu, etc.)
+
+When a source has a quality string like `720p | Hindi`, Peak parses the language
+and surfaces it as a dub track.
+
+## Player integration
+
+```js
+player.setDub('hi');   // Hindi
+player.setDub('ta');   // Tamil
+player.setDub('en');   // English
+```
+
+### DubsMenu
+
+The DubsMenu appears in the player settings when multiple language renditions are available:
+
+```js
+player.on('sourcechange', ({ dub, audioLang }) => {
+  console.log('dub:', dub, 'lang:', audioLang);
+});
+```
+
+## Language codes
+
+Standard ISO 639-1 codes:
+
+| Language | Code |
+|---|---|
+| English | en |
+| Hindi | hi |
+| Tamil | ta |
+| Telugu | te |
+| Kannada | kn |
+| Malayalam | ml |
+| Bengali | bn |
+| Marathi | mr |
+| Punjabi | pa |
+| Gujarati | gu |
+| Urdu | ur |
+| Arabic | ar |
+| French | fr |
+| Spanish | es |
+| German | de |
+| Italian | it |
+| Portuguese | pt |
+| Japanese | ja |
+| Korean | ko |
+| Chinese | zh |
+| Russian | ru |
+
+## Feature toggle
+
+Dubs are enabled by default. Disable via `/admin/features/dubs`.
+
+## Files
+
+- `providers/rive.js` — `parseDubLanguage()`, `LANGUAGE_CODES`
+- `player/src/components/player/menus/DubsMenu.tsx` — menu UI
+- `player/src/components/player/menus/languageFlags.ts` — flag emoji mappings

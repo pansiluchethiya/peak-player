@@ -1,3 +1,7 @@
 node_modules/
 public/
 *.log
+mini-web/
+player/
+admin/
+docs/

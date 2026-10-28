@@ -57,7 +57,12 @@ describe('edge embed token verification', () => {
   it('rejects a tampered token', async () => {
     const signed = token(payload());
     const [version, iv, ciphertext, tag] = signed.split('.');
-    const tampered = `${version}.${iv}.${ciphertext.slice(0, -1)}x.${tag}`;
+    // Flip the first ciphertext character to guarantee a byte-level change.
+    // (Replacing only the last base64 char can leave the decoded bytes intact
+    // when the character's data bits overlap the replacement's.)
+    const first = ciphertext[0] || 'A';
+    const flipped = first === 'A' ? 'B' : 'A';
+    const tampered = `${version}.${iv}.${flipped}${ciphertext.slice(1)}.${tag}`;
 
     const result = await verifyEmbedToken(tampered, {
       secret: SECRET,

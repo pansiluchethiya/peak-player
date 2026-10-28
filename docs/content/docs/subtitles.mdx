@@ -1,0 +1,57 @@
+---
+title: Subtitles
+description: Subtitle track loading and rendering.
+---
+
+Peak can load subtitles from multiple sources and render them through the player's
+caption engine.
+
+## Sources
+
+### Provider captions
+
+Some providers (e.g., PRIME/STELLAR/NEXUS) return caption tracks in their API responses.
+These are mapped to `{ url, lang, label, provider }` objects and attached to the stream.
+
+### OpenSubtitles integration
+
+The API can fetch subtitles from OpenSubtitles:
+
+```
+GET /api/v1/media/{type}/{id}
+```
+
+Returns `subtitles` array with download URLs when available. A TMDB API key is required.
+
+## Player integration
+
+```js
+player.setCaptions('en');      // English
+player.setCaptions('es');      // Spanish
+player.setCaptions(false);     // Disable
+```
+
+Subtitles are rendered on a `TextTrack` element. The player supports WebVTT format.
+
+### Captions menu
+
+The CaptionsMenu in the player UI lists available tracks:
+
+```js
+// Listen for available tracks
+player.on('meta', (meta) => {
+  console.log('subtitle tracks:', meta.subtitles);
+});
+```
+
+## Feature toggle
+
+Captions are enabled by default. Disable via the admin UI feature toggle at
+`/admin/features/captions` or the SDK config.
+
+## Files
+
+- `utils/mediaResolver.js` — subtitle fetching
+- `player/src/components/player/menus/CaptionsMenu.tsx` — menu UI
+- `player/src/components/player/overlays/CaptionsOverlay.tsx` — rendering
+- `player/src/components/player/videojs/ui/captions-button.tsx` — video.js integration

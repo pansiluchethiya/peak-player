@@ -1,0 +1,102 @@
+---
+title: AI Player controls guide
+description: Commands and events for the player SDK.
+---
+
+## Mount
+
+```js
+const player = PeakEmbed.mount({
+  target: '#peak-player',
+  url: embedUrl,
+  title: 'Title',
+});
+```
+
+## Transport
+
+```js
+player.play();         // ▶
+player.pause();        // ⏸
+player.seek(60);       // seconds
+player.seek(-10);      // relative
+player.setRate(1.25);  // 0.25–2.0
+player.setVolume(0.5); // 0–1
+player.setMuted(true);
+player.setFullscreen(true);
+player.setPiP(true);
+```
+
+## Source controls
+
+```js
+// Manual server switch (uses codename, not technical key)
+player.setServer('STELLAR');
+player.setServer('PRIME');
+player.setServer('NEXUS');
+
+// Quality override
+player.setQuality('1080p');  // manual ABR cap
+player.setQuality('auto');   // back to auto
+```
+
+## Captions / Dubs
+
+```js
+player.setCaptions('en');      // language code
+player.setCaptions(false);     // disable
+
+player.setDub('hi');          // switch to Hindi dub
+player.setDub('en');          // English track
+```
+
+## Audio
+
+```js
+player.setAudioBoost(1.5);   // up to 2.0x
+player.setAudioTrack('en');  // audio language
+```
+
+## Colour filters
+
+```js
+player.setColorFilter('amaze');
+player.setColorFilter('night');
+player.setColorFilter(false);  // reset
+```
+
+Presets: `amaze`, `night`, `positive`, `negative`, `mono`, `sepia`.
+
+File: `player/src/components/player/menus/ColourMenu.tsx`.
+
+## Settings menu
+
+The settings cog opens: ServerMenu, QualityMenu, AudioMenu, DubsMenu,
+CaptionsMenu, ColourMenu, SpeedMenu, ShortcutsMenu, StatsOverlay.
+
+File: `player/src/components/player/controls/SettingsMenu.tsx`.
+
+## Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| <kbd>Space</kbd> | Play / pause |
+| <kbd>K</kbd> | Play / pause |
+| <kbd>J</kbd> | Seek -10s |
+| <kbd>L</kbd> | Seek +10s |
+| <kbd>←</kbd> | Seek -5s |
+| <kbd>→</kbd> | Seek +5s |
+| <kbd>M</kbd> | Mute toggle |
+| <kbd>F</kbd> | Fullscreen |
+| <kbd>Shift</kbd> + <kbd>P</kbd> | PiP |
+| <kbd>Shift</kbd> + <kbd>?</kbd> | Show shortcuts |
+
+File: `player/src/components/player/videojs/video/behaviors/hotkeys.tsx`.
+
+## Stats overlay
+
+```js
+player.showStats();  // toggle bitrate/latency overlay
+```
+
+File: `player/src/components/player/overlays/StatsOverlay.tsx`.

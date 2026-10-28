@@ -4,7 +4,7 @@ import { MenuRoot, type MenuOption } from './MenuRoot';
 import { usePlayerContext } from '../PlayerProvider';
 import { t } from '../i18n';
 
-/** Language-specific renditions exposed by providers such as Rive Citadel. */
+/** Language-specific renditions exposed by providers such as Peak Orbit. */
 export function DubsMenu() {
   const { api, payload } = usePlayerContext();
   const sources = payload?.sources ?? [];

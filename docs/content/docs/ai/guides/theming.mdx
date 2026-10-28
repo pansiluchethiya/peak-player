@@ -1,0 +1,57 @@
+---
+title: AI Theming guide
+description: Design tokens, accent colors, and dark/light mode.
+---
+
+## Theme
+
+The player uses an AMOLED monochrome theme:
+
+- Dark: `#000000` canvas
+- Light: `#ffffff` canvas
+- Accent: grey `#e5e5e5`
+
+Toggle via the settings cog or programmatically:
+
+```js
+player.setTheme('dark');  // AMOLED black
+player.setTheme('light'); // white canvas
+```
+
+## Fonts
+
+- **Sans:** Geist (marketing, landing)
+- **Mono:** Geist Mono
+- **Player:** Roboto (controls, timecodes)
+
+Files:
+- `player/src/styles/globals.css` — base styles
+- `player/src/styles/landing.css` — landing page styles
+- `player/src/components/player/videojs/styles/themes/theme.css` — player theme
+
+## Color presets
+
+Colour filter pipeline presets:
+
+| Preset | Effect |
+|---|---|
+| `amaze` | Amazed (cool tint) |
+| `night` | Night mode |
+| `positive` | Photographic positive |
+| `negative` | Photographic negative |
+| `mono` | Monochrome |
+| `sepia` | Sepia |
+
+File: `player/src/components/player/colour/presets.ts`.
+
+## Dynamic accent
+
+The player API serves branding:
+
+```
+GET /api/v1/branding
+```
+
+Response includes accent color, logo URL, favicon.
+
+File: `utils/playerService.js` — `getBranding()`.

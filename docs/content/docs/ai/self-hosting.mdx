@@ -1,0 +1,70 @@
+---
+title: AI Self-hosting
+description: Run Peak with Docker, npm, or pnpm.
+---
+
+## GitHub
+
+```
+https://github.com/pansiluchethiya/peak-player
+```
+
+## Docker
+
+```bash
+cp .env.example .env.local
+# Edit .env.local with your TMDB key and secrets
+
+docker compose up --build
+```
+
+Services:
+
+| Service | Port | Env file |
+|---|---|---|
+| `peak` | 8787 | `.env.peak.local` |
+| `player` | 3001 | `.env.player.local` |
+| `admin` | 3003 | `.env.admin.local` |
+| `docs` | 3002 | `.env.docs.local` |
+
+## npm
+
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+## pnpm
+
+```bash
+cp .env.example .env.local
+pnpm install
+pnpm --filter peak dev
+```
+
+## Required env vars
+
+```bash
+TMDB_API_KEY=your_tmdb_api_key
+PLAYER_PUBLIC_URL=https://app.peak-player.com
+PUBLIC_API_URL=https://api.peak-player.com
+EMBED_TOKEN_SECRET=<64-char hex>
+PROXY_SIGNING_SECRET=<64-char hex>
+EMBED_PARTNERS=[{"id":"demo","name":"Demo","apiKey":"...","origins":["https://app.example.com"]}]
+```
+
+## Database
+
+SQLite at `utils/peak.db`. Tables: `iptv_playlists`, `iptv_channels`, `peak_config`.
+
+Backups: copy `utils/peak.db` and `utils/user-config.json`.
+
+## Health checks
+
+```bash
+curl http://localhost:8787/api/health
+curl http://localhost:8787/api/v1/playback/health
+```
+
+File: `docker-compose.yml`, `Dockerfile`.

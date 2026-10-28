@@ -1,0 +1,71 @@
+# Peak Player Platform — AI Agent Index
+
+> Version 2026-10-28 · GitHub: https://github.com/pansiluchethiya/peak-player
+
+## Quick Start
+- Docs: https://docs.peak-player.com
+- API: https://api.peak-player.com
+- GitHub: https://github.com/pansiluchethiya/peak-player
+- MCP server: `mcp/` (stdio transport, read-only repository access)
+
+## Full Documentation (AI-Optimized)
+The complete AI docs are available at `docs/llms-full.txt` (concatenated content of all `docs/content/docs/ai/*.mdx` files).
+AI docs index:
+- `ai/quickstart.mdx` — Mint a session, mount the player, listen for events
+- `ai/concepts.mdx` — Sources, validation, ranking, failover, embed boundary
+- `ai/guides/embedding.mdx` — Partner integration (SDK + postMessage)
+- `ai/guides/auth.mdx` — API keys, signed tokens, origin allowlists, expiry
+- `ai/guides/live-tv.mdx` — HLS channels, health checks, failover
+- `ai/guides/player-controls.mdx` — Commands (play, pause, seek, etc.)
+- `ai/guides/preferences.mdx` — Preference modes and persistence
+- `ai/guides/theming.mdx` — Design tokens, accent, dark/light
+- `ai/guides/playback.mdx` — Source resolution, failover, ABR
+- `ai/reference/sdk.mdx` — PeakEmbed JS API and lifecycle events
+- `ai/reference/urls.mdx` — API endpoint reference
+- `ai/reference/postmessage.mdx` — postMessage protocol
+- `ai/api-reference.mdx` — Full HTTP API reference
+- `ai/self-hosting.mdx` — Docker + npm + pnpm install
+- `ai/architecture.mdx` — Architecture diagram and component map
+- `ai/security.mdx` — Token signing, SSRF guards, CSP
+
+## Key Files
+- `providers/rive.js` — Provider integration (PRIME/STELLAR/NEXUS/ORBIT)
+- `utils/embedToken.js` — Token signing/verification (AES-256-GCM)
+- `utils/playerService.js` — Stream resolution and source ranking
+- `utils/adminConfig.js` — Admin config DB CRUD (feature toggles, tokens, proxies)
+- `routes/adminConfigRoutes.js` — Admin API routes for config/tokens/proxies
+- `apiServer.js` — Express API server entry point
+- `proxy/proxyServer.js` — Media proxy with signed URLs
+- `player/src/lib/servers.ts` — Provider codename map
+- `player/src/app/page.tsx` — Landing page (MagicUI)
+- `player/src/lib/api.ts` — Player API client
+
+## Provider Codenames
+| Technical key | Display codename |
+|---|---|
+| `rive apogee` | PRIME |
+| `rive vanguard` | STELLAR |
+| `rive pulse` | NEXUS |
+| `rive citadel` | ORBIT |
+| `netmirror` | NOVA |
+| `vixsrc` | VESPER |
+| `vidlink` | ORION |
+| `videasy` | LYRA |
+| `zxcstreams` | KESTREL |
+| `vaplayer` | HALCYON |
+| `showbox` | MERIDIAN |
+| `4khdhub` | ATLAS |
+| `castletv` | CITADEL |
+| `dahmermovies` | DUNE |
+| `hdghartv` | HELIOS |
+| `onetouchtv` | ONYX |
+| `streamflix` | NOCTIS |
+
+## Services
+| Service | Port | App type |
+|---|---|---|
+| API server | 8787 | Node.js + Express |
+| Player | 3001 | Next.js |
+| Docs | 3002 | Next.js + fumadocs |
+| Admin | 3003 | Next.js + fumadocs-ui |
+| MCP server | n/a | stdio |

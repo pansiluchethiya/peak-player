@@ -1,0 +1,65 @@
+---
+title: "Admin: Token management"
+description: Create, list, revoke, and monitor embed tokens via the admin UI.
+---
+
+The Peak admin panel provides a token management interface at `/admin/tokens`.
+
+## Token definitions
+
+Tokens are stored in the `peak_config` SQLite table under the `tokens` key.
+Each token definition includes:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `name` | string | Human-readable name |
+| `partner` | string | Partner ID |
+| `expiresAt` | ISO date | Expiration timestamp |
+| `allowedOrigins` | string[] | Exact allowed origins |
+| `readOnly` | boolean | Read-only flag |
+| `createdAt` | ISO date | Creation timestamp |
+| `lastUsedAt` | ISO date? | Last usage |
+
+## API
+
+```
+GET    /api/admin/tokens         — list all tokens
+POST   /api/admin/tokens         — create a token
+DELETE /api/admin/tokens/:id     — revoke a token
+```
+
+### Create a token
+
+```bash
+curl -X POST https://api.peak-player.com/api/admin/tokens \
+  -b "session=$ADMIN_SESSION" \
+  -H "content-type: application/json" \
+  -d '{
+    "name": "My Partner Token",
+    "partner": "demo",
+    "expiresAt": "2026-10-26T00:00:00Z",
+    "allowedOrigins": ["https://app.example.com"],
+    "readOnly": false
+  }'
+```
+
+## Admin UI
+
+1. Navigate to `/admin/tokens`.
+2. Click **New token**.
+3. Fill in: Name, Partner ID, Expiry, Allowed origins, Read-only.
+4. Click **Create**.
+5. The token appears in the table. Click **Revoke** to delete it.
+
+## Analytics
+
+Each token tracks `lastUsedAt` (updated on each embed session creation).
+Future versions will include usage bar charts.
+
+## Files
+
+- `utils/adminConfig.js` — token CRUD helpers
+- `routes/adminConfigRoutes.js` — `/api/admin/tokens` endpoints
+- `admin/components/TokenManager.tsx` — React component
+- `admin/app/tokens/page.tsx` — admin page

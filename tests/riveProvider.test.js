@@ -5,8 +5,8 @@ const { describe, it } = require('node:test');
 
 const { mapRiveSource, parseDubLanguage, PROVIDERS } = require('../providers/rive');
 
-const APOGEE = { id: 'apogee', label: 'Apogee', provider: 'Rive Apogee' };
-const CITADEL = { id: 'citadel', label: 'Citadel', provider: 'Rive Citadel' };
+const APOGEE = { id: 'apogee', label: 'Apogee', provider: 'Peak Prime' };
+const CITADEL = { id: 'citadel', label: 'Citadel', provider: 'Peak Orbit' };
 
 describe('Rive provider mapping', () => {
   it('maps Apogee and Vanguard as primary streams with wrapper headers', () => {
@@ -18,7 +18,7 @@ describe('Rive provider mapping', () => {
     };
     const stream = mapRiveSource(entry, APOGEE, [], null);
     assert.ok(stream);
-    assert.equal(stream.provider, 'Rive Apogee');
+    assert.equal(stream.provider, 'Peak Prime');
     assert.equal(stream.codec, 'hls');
     assert.equal(stream.adaptive, true);
     assert.equal(stream.unwrap, false);
@@ -37,7 +37,7 @@ describe('Rive provider mapping', () => {
       format: 'hls',
     };
     const stream = mapRiveSource(entry, CITADEL, [], null);
-    assert.equal(stream.provider, 'Rive Citadel');
+    assert.equal(stream.provider, 'Peak Orbit');
     assert.equal(stream.dub, 'Hindi');
     assert.equal(stream.audioLang, 'hi');
     assert.equal(stream.unwrap, undefined);

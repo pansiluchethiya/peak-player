@@ -1,0 +1,67 @@
+---
+title: AI Quickstart
+description: Mint a signed embed session, mount the player, listen for events.
+---
+
+## 1. Create a session on your server
+
+```bash
+curl -X POST https://api.peak-player.com/api/v1/embed/sessions \
+  -H "x-api-key: YOUR_PARTNER_KEY" \
+  -d '{"type":"movie","id":"550","ttlSeconds":900}'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "token": "eyJ2IjoxLCJwYXJ0bmVySWQiOiJkZW1vIiwidHlwZSI6Im1vdmllIiwiaWQiOiI1NTAiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIl0sImlhdCI6MTc2MTQwMDAwLCJleHAiOjE3NjE0MDA5MDB9.signature",
+  "expiresAt": "2026-10-25T16:30:00.000Z",
+  "embedUrl": "https://app.peak-player.com/embed/movie/550?token=eyJ2Ijox..."
+}
+```
+
+## 2. Mount the player in the browser
+
+```html
+<div id="peak-player"></div>
+<script src="https://app.peak-player.com/peak-embed.js"></script>
+<script>
+  const player = PeakEmbed.mount({
+    target: '#peak-player',
+    url: 'https://app.peak-player.com/embed/movie/550?token=eyJ2Ijox...',
+    title: 'Fight Club',
+  });
+  player.play();
+</script>
+```
+
+## 3. Listen for events
+
+```js
+player.on('ready', () => console.log('ready'));
+player.on('play', () => console.log('play'));
+player.on('pause', () => console.log('pause'));
+player.on('timeupdate', ({ currentTime }) => console.log('time', currentTime));
+player.on('sourcechange', ({ quality, provider }) =>
+  console.log('playing', quality, 'from', provider));
+player.on('ended', () => console.log('ended'));
+player.on('error', ({ code }) => console.log('error', code));
+```
+
+## Token payload
+
+Tokens are AES-256-GCM encrypted (not JWT). Payload:
+
+```
+{ v: 1, partnerId: string, type: string, id: string, season?: number, episode?: number, origins: string[], iat: number, exp: number }
+```
+
+File: `utils/embedToken.js` — `signEmbedToken()`, `verifyEmbedToken()`.
+
+## Key files
+
+- `apiServer.js:496` — `POST /api/v1/embed/sessions`
+- `utils/embedToken.js` — signing/verification
+- `player/src/app/embed/demo/DemoClient.tsx` — demo integration example

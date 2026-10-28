@@ -1,0 +1,35 @@
+---
+title: Audio boost
+description: Amplify audio up to 200% using a Web Audio gain node.
+---
+
+Peak includes an audio boost feature that amplifies the video's audio output
+using a Web Audio gain node. The gain can be set to any value up to 200%.
+
+## Player integration
+
+```js
+player.setAudioBoost(1.5);   // 150% volume
+player.setAudioBoost(2.0);   // 200% volume (max)
+player.setAudioBoost(1.0);   // normal volume
+```
+
+### Audio menu
+
+The audio boost slider is available in the player's audio menu (AudioMenu).
+
+## Implementation
+
+The audio boost uses a Web Audio API `GainNode` connected in the audio pipeline.
+
+File: `player/src/components/player/audio/VolumeBoost.ts`.
+
+## Safety
+
+- The gain is clamped to 0–2.0 (max 200%).
+- Values above 2.0 are rejected.
+- Gain is applied per-source and persists across source changes.
+
+## Feature toggle
+
+Audio boost is enabled by default. Disable via `/admin/features/audio-boost`.

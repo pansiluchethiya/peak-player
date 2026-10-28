@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Eye, EyeOff, Lock, Clock, Activity, Sliders, ShieldCheck, AlertCircle } from 'lucide-react';
@@ -15,6 +15,11 @@ const features = [
   { icon: Sliders, title: 'Precision controls', body: 'Quality floors, codec rules, and per-provider defaults.' },
   { icon: ShieldCheck, title: 'Local by design', body: 'Your keys and sessions stay inside your deployment.' },
 ];
+
+function getCallbackUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('callbackUrl');
+}
 
 /**
  * Returns the callback URL only if it is a safe same-origin path.
@@ -31,7 +36,6 @@ function sameOriginPath(callbackUrl: string | null): string | null {
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,14 +50,14 @@ export default function LoginPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data && data.authenticated) {
-          const callbackUrl = searchParams.get('callbackUrl');
+          const callbackUrl = getCallbackUrl();
           window.location.href = sameOriginPath(callbackUrl) ?? '/';
         }
       })
       .catch(() => {
         /* A failed check should never block the sign-in form. */
       });
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (!lockout) return;
@@ -97,7 +101,7 @@ export default function LoginPage() {
 
       setStatusMsg('Signed in. Redirecting…', 'success');
       window.setTimeout(() => {
-        const callbackUrl = searchParams.get('callbackUrl');
+        const callbackUrl = getCallbackUrl();
         const target = sameOriginPath(callbackUrl) ?? '/';
         window.location.href = target;
       }, 350);

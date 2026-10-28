@@ -1,0 +1,65 @@
+---
+title: AI postMessage reference
+description: Parent ↔ player messaging protocol.
+---
+
+## Origin
+
+Messages are only accepted from `https://app.peak-player.com`.
+Exact-origin match. No wildcard.
+
+## Commands (parent → player)
+
+```js
+iframe.contentWindow.postMessage({
+  type: 'PEAK_COMMAND',
+  cmd: 'play',
+  // ...args
+}, 'https://app.peak-player.com');
+```
+
+| cmd | args | Description |
+|---|---|---|
+| `play` |  | Start playback |
+| `pause` |  | Pause playback |
+| `seek` | time: number | Seek to time (seconds) |
+| `setVolume` | volume: 0–1 | Set volume |
+| `setMuted` | muted: boolean | Mute/unmute |
+| `setRate` | rate: number | Playback speed |
+| `setQuality` | quality: string | Quality override |
+| `setCaptions` | lang: string\|false | Set caption track |
+| `setDub` | lang: string | Switch dub |
+| `setAudioBoost` | gain: number | Amplify audio |
+| `setColorFilter` | preset: string\|false | Color filter |
+| `setServer` | codename: string | Switch provider |
+| `setPiP` | enabled: boolean | Picture-in-picture |
+| `setFullscreen` | enabled: boolean | Fullscreen |
+| `setTheme` | theme: string | dark\|light |
+| `showStats` |  | Toggle stats overlay |
+| `reload` |  | Reload sources |
+
+## Events (player → parent)
+
+```js
+window.addEventListener('message', (e) => {
+  if (e.origin !== 'https://app.peak-player.com') return;
+  if (e.data.type === 'PEAK_EVENT') {
+    console.log(e.data.event, e.data.payload);
+  }
+});
+```
+
+| event | payload | Description |
+|---|---|---|
+| `ready` | `{ version, embedUrl }` | Player is ready |
+| `play` | `{}` | Playback started |
+| `playing` | `{}` | First frame rendered |
+| `pause` | `{}` | Playback paused |
+| `ended` | `{}` | Media ended |
+| `timeupdate` | `{ currentTime, duration }` | Playback position |
+| `sourcechange` | `{ quality, provider, codec }` | Active source changed |
+| `subtitlechange` | `{ lang, label }` | Track changed |
+| `error` | `{ code, message }` | Error occurred |
+| `diagnostic` | `{ provider, ok, latencyMs }` | Health probe |
+
+File: `player/src/components/player/media/useMediaEngine.ts`.

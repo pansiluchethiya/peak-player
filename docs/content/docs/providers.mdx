@@ -1,0 +1,93 @@
+---
+title: Providers
+description: Provider system, source codenames, and the four Peak stream sub-providers.
+---
+
+Peak resolves sources through a network of providers. The Peak Stream provider
+is split into four sub-providers, each surfacing a distinct presentation:
+
+| Technical key | Display codename | Label | Use |
+|---|---|---|---|
+| `rive apogee` | **PRIME** | Apogee | Main English presentation |
+| `rive vanguard` | **STELLAR** | Vanguard | 4K / high-bitrate English |
+| `rive pulse` | **NEXUS** | Pulse | Fallback English |
+| `rive citadel` | **ORBIT** | Citadel | Per-language dub track (e.g., Hindi) |
+
+The codenames are what partners and viewers see. The technical keys are used
+in API query parameters and `PREFERRED_ORDER`. Display codenames are resolved
+client-side from `player/src/lib/servers.ts`.
+
+## Other providers
+
+| Codename | Provider |
+|---|---|
+| NOVA | NetMirror |
+| VESPER | VixSrc |
+| ORION | VidLink |
+| LYRA | Videasy |
+| KESTREL | ZXCStreams |
+| HALCYON | VaPlayer |
+| MERIDIAN | ShowBox |
+| ATLAS | 4KHDHub |
+| CITADEL | CastleTV |
+| DUNE | DahmerMovies |
+| HELIOS | HDGharTV |
+| ONYX | OneTouchTV |
+| NOCTIS | StreamFlix |
+
+## Provider health
+
+Provider health is tracked in-memory with rolling samples:
+
+```
+GET /api/v1/playback/health
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "providers": [
+    {"name": "netmirror", "ok": true, "avgLatencyMs": 48, "errorCount": 0},
+    {"name": "rive apogee", "ok": false, "avgLatencyMs": null, "errorCount": 3}
+  ]
+}
+```
+
+A provider is disabled after 3 consecutive failures within a 5-minute window.
+
+File: `utils/providerHealth.js`.
+
+## Enabling / disabling
+
+Providers are enabled per-environment via `ENABLE_<NAME>_PROVIDER` in `.env`:
+
+```bash
+ENABLE_RIVE_APOGEE_PROVIDER=true
+ENABLE_VIXSRC_PROVIDER=false
+```
+
+Or via the admin UI at `/admin/providers`.
+
+## Source ranking
+
+When multiple providers return sources, they are ranked by:
+
+1. HLS container (strong positive)
+2. H.264 codec (strong positive)
+3. Quality (1080p > 720p > 480p)
+4. Provider health (small adjustment)
+5. Original provider order (tie-breaker)
+
+File: `utils/sourceRanking.js`.
+
+## Manual server switching
+
+Users can switch providers manually:
+
+```js
+player.setServer('STELLAR');
+```
+
+The player resolves the codename to the technical key server-side.

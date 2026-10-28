@@ -1,0 +1,82 @@
+---
+title: "Admin: Feature toggles"
+description: Enable/disable 15 player features via the admin UI.
+---
+
+The Peak admin panel provides a feature toggle interface at `/admin/features`.
+
+## 15 feature toggles
+
+Each toggle controls a specific player feature:
+
+| Slug | Feature | Default | Description |
+|---|---|---|---|
+| `embed-demo` | Embed Demo | On | Enables `/embed/demo` page |
+| `token-auth` | Token Auth | On | HMAC-SHA256 token verification |
+| `dubs` | Dubs | On | Language-specific renditions |
+| `captions` | Captions | On | Subtitle loading and rendering |
+| `color-filters` | Color Filters | On | CSS + WebGL colour pipeline |
+| `scrubber-thumbnails` | Scrubber Thumbnails | On | VTT sprite previews on hover |
+| `audio-boost` | Audio Boost | On | VolumeBoost up to 200% |
+| `keyboard-shortcuts` | Keyboard Shortcuts | On | Hotkeys and navigation |
+| `stats-overlay` | Stats Overlay | On | Bitrate/latency overlay |
+| `chapters` | Chapters | On | Chapter markers and menu |
+| `quality-selection` | Quality Selection | On | Manual ABR cap selection |
+| `playback-speed` | Playback Speed | On | 0.25x–2x speed menu |
+| `pip` | PiP | On | Picture-in-Picture mode |
+| `mux-analytics` | Mux Analytics | Off | Mux data analytics tracking |
+| `server-switching` | Server Switching | On | Manual provider switching |
+
+## Per-feature pages
+
+Each feature has a dedicated page at `/admin/features/:slug` with:
+- Full description
+- Current status (On/Off)
+- Enable / Disable buttons
+
+## API
+
+```
+GET  /api/admin/features              — list all features with defs
+POST /api/admin/features              — update one or more toggles
+```
+
+### Update a feature
+
+```bash
+curl -X POST https://api.peak-player.com/api/admin/features \
+  -b "session=$ADMIN_SESSION" \
+  -H "content-type: application/json" \
+  -d '{"mux_analytics": true}'
+```
+
+## IPTV category toggles
+
+The IPTV toggles are managed at `/admin/iptv` and persist as:
+- `iptv_categories` config key in `peak_config`
+- Individual `iptv_category_<slug>` entries
+
+Master toggle: `iptvSeedEnabled` in `user-config.json` or the env var
+`IPTV_SEED_ENABLED`.
+
+## Storage
+
+All toggles are stored in a SQLite table:
+
+```sql
+CREATE TABLE IF NOT EXISTS peak_config (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+```
+
+Feature toggles are stored under key `feature_toggles` as a JSON object.
+
+## Files
+
+- `utils/adminConfig.js` — `FEATURE_DEFS`, `DEFAULT_FEATURE_TOGGLES`, `ensureFeatureToggles()`
+- `routes/adminConfigRoutes.js` — `/api/admin/features` endpoints
+- `admin/components/FeatureToggle.tsx` — toggle component
+- `admin/app/features/page.tsx` — overview page
+- `admin/app/features/[slug]/page.tsx` — detail page

@@ -1,0 +1,75 @@
+---
+title: AI Auth guide
+description: API keys, signed tokens, origin allowlists, and expiry.
+---
+
+## Flow
+
+```
+partner backend ──API key──▶ Peak API ──signed token──▶ browser
+```
+
+## API key
+
+Set `EMBED_PARTNERS` env var:
+
+```json
+[{"id":"demo","name":"Demo","apiKey":"your-long-key","origins":["https://app.example.com"]}]
+```
+
+Verified server-to-server. Never put in browser JS.
+
+File: `utils/embedPartners.js`.
+
+## Token format
+
+AES-256-GCM encrypted (not JWT). Opaque.
+
+```
+base64url(iv).base64url(ciphertext).base64url(tag)
+```
+
+Payload fields:
+
+| Field | Type | Description |
+|---|---|---|
+| v | string | Token version (`v1`) |
+| partnerId | string | Partner from EMBED_PARTNERS |
+| type | string | `movie` or `tv` |
+| id | string | TMDB id |
+| season | number? | TV season |
+| episode | number? | TV episode |
+| origins | string[] | Exact allowed origins |
+| iat | number | Issued-at (ms) |
+| exp | number | Expiry (ms) |
+
+File: `utils/embedToken.js`.
+
+## Verification
+
+At the edge (middleware), before the player renders:
+
+1. Decrypt token with `EMBED_TOKEN_SECRET`.
+2. Check `exp` not passed.
+3. Check `origin` in `origins` (exact match, no wildcard).
+4. Emit CSP `frame-ancestors` from origins.
+
+Files:
+- `middleware.ts` (player)
+- `utils/embed.js` — `getEmbed()`
+
+## Token TTL
+
+60s minimum, 24h maximum. Default: 15 minutes.
+
+```
+POST /api/v1/embed/sessions
+{ "type": "movie", "id": "550", "ttlSeconds": 900 }
+```
+
+## Read-only tokens
+
+Tokens can be marked read-only. These can mint embed sessions but cannot
+make state-changing API calls through the player.
+
+Admin: `/admin/tokens` to manage token definitions.

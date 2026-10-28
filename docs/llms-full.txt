@@ -1,0 +1,1282 @@
+# Peak Player Platform — AI Documentation (full)
+Generated: 2026-10-28T10:30:09.513Z
+
+## --- docs/content/docs/ai/api-reference.mdx ---
+---
+title: AI API reference
+description: Full HTTP API reference.
+---
+
+## Sessions
+
+### POST /api/v1/embed/sessions
+
+Mint a signed embed session.
+
+```bash
+curl -X POST https://api.peak-player.com/api/v1/embed/sessions \
+  -H "x-api-key: $PEAK_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"type":"movie","id":"550","ttlSeconds":900}'
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "token": "eyJ2Ijox...",
+  "expiresAt": "2026-10-25T16:30:00.000Z",
+  "embedUrl": "https://app.peak-player.com/embed/movie/550?token=...",
+  "sessionId": "sess_abc123"
+}
+```
+
+Errors:
+- `401` — Invalid or missing API key
+- `400` — Missing `type` or `id`
+- `403` — Origin not allowed
+
+## Streams
+
+### GET /api/v1/stream/:type/:id
+
+Returns validated, ranked sources as JSON.
+
+Parameters: `type=movie|tv|live_tv`, `id=tmdbId|channelId`, `season`, `episode`, `source`.
+
+### GET /api/v1/stream/events/:type/:id
+
+SSE stream: `meta`, `source`, `subtitle`, `diagnostic`, `done`, `error`.
+
+## Media metadata
+
+### GET /api/v1/media/:type/:id
+
+Returns title, year, overview, poster, backdrop, genres, rating.
+
+## Thumbnails
+
+### POST /api/v1/thumbnails/:type/:id
+
+Generate a thumbnail sprite (VTT) for scrubbing.
+
+### GET /api/v1/thumbnails/:file
+
+Serve a generated thumbnail sprite file.
+
+## Live TV
+
+### GET /api/v1/live/tv/channels
+
+List channels, optionally `group`, `q`, `limit`, `cursor`.
+
+### GET /api/v1/live/tv/groups
+
+List all channel groups.
+
+## Branding
+
+### GET /api/v1/branding
+
+Returns `{ name, logo, favicon, accentColor, ... }`.
+
+File: `utils/playerService.js` — `getBranding()`.
+
+## Health & metrics
+
+### GET /api/v1/playback/health
+
+```json
+{
+  "success": true,
+  "providers": [{ "name": "netmirror", "ok": true, "avgLatencyMs": 48, "errorCount": 0 }],
+  "telemetry": { "ttffMs": 142, "failoverRate": 0.02 }
+}
+```
+
+### GET /api/status
+
+Full status: uptime, requests, provider calls, metrics.
+
+### GET /api/health
+
+Lightweight health check: `{ ok: true, service: "peak", time: "..." }`.
+
+## Config
+
+### GET /api/config
+
+Returns merged runtime config (providers, quality, IPTV settings).
+
+### POST /api/config
+
+Update runtime config overrides. Written to `utils/user-config.json`.
+
+## Admin (auth required)
+
+### GET /api/admin/config
+
+List all `peak_config` rows (feature toggles, tokens, proxies, IPTV categories).
+
+### POST /api/admin/tokens
+
+```json
+{ "name": "Partner A", "partner": "demo", "expiresAt": "2026-10-26T00:00:00Z", "allowedOrigins": ["https://app.example.com"], "readOnly": false }
+```
+
+### DELETE /api/admin/tokens/:id
+
+### GET /api/admin/proxies
+
+### POST /api/admin/proxies
+
+```json
+{ "name": "Custom proxy", "upstreamUrl": "https://proxy.example.com", "headers": {}, "corsOrigins": ["https://app.example.com"] }
+```
+
+### PATCH /api/admin/iptv/categories
+
+```json
+{ "sports": true, "news": false }
+```
+
+
+## --- docs/content/docs/ai/architecture.mdx ---
+---
+title: AI Architecture
+description: Services, data flow, and failure domains.
+---
+
+## Services
+
+| Service | Port | Tech | Purpose |
+|---|---|---|---|
+| API | 8787 | Express | Source resolution, validation, proxy, embeds |
+| Player | 3001 | Next.js | Custom player, landing, embed routes |
+| Admin | 3003 | Next.js | Config UI, tokens, proxies, feature toggles |
+| Docs | 3002 | Next.js | fumadocs documentation |
+| MCP | stdio | TypeScript | AI agent read-only access |
+
+## Data flow
+
+```
+1. Partner server: POST /api/v1/embed/sessions (with API key)
+2. API: validates media, signs token, returns embed URL
+3. Browser: loads embed route (middleware verifies token, sets CSP)
+4. Player: SSE to /api/v1/stream/events/{type}/{id}
+5. API: fan-out to providers, validate, rank, SSE sources
+6. Browser: Hls.js plays first source via signed /api/proxy URLs
+7. Player: postMessage events to parent page
+```
+
+## Key files
+
+- `apiServer.js` — Express entry, route registration
+- `utils/config.js` — config loading + env mirroring
+- `utils/db.js` — SQLite connection
+- `utils/adminConfig.js` — config CRUD (peak_config table)
+- `utils/playerService.js` — stream resolution + ranking
+- `utils/sourceRanking.js` — ranking algorithm
+- `utils/sourceValidator.js` — source validation
+- `utils/embedToken.js` — AES-256-GCM token signing
+- `proxy/proxyServer.js` — signed proxy with SSRF guard
+- `providers/rive.js` — Peak Stream provider (PRIME/STELLAR/NEXUS/ORBIT)
+
+## Provider architecture
+
+4 sub-providers:
+
+| Technical key | Display codename | Label |
+|---|---|---|
+| `rive apogee` | PRIME | Apogee |
+| `rive vanguard` | STELLAR | Vanguard |
+| `rive pulse` | NEXUS | Pulse |
+| `rive citadel` | ORBIT | Citadel (dubs) |
+
+File: `player/src/lib/servers.ts` — codename map.
+
+## Storage
+
+| Store | Contents |
+|---|---|
+| SQLite `utils/peak.db` | IPTV channels, runtime config |
+| `utils/user-config.json` | Admin overrides |
+| Memory | Cache, playback sessions, provider health |
+
+## Failure domains
+
+- Provider failure: per-provider timeout, validation isolates failures
+- Player failure: failover to next source, no reload
+- API failure: player cannot resolve new sources
+- Proxy failure: playback stops, failover to next source URL
+- Edge failure: embed routes fail closed
+
+
+## --- docs/content/docs/ai/concepts.mdx ---
+---
+title: AI Concepts
+description: Source pipeline, validation, ranking, failover, and the embed boundary.
+---
+
+## Pipeline
+
+```
+request
+  │
+  ├─▶ provider fan-out ──▶ candidate sources
+  │                         │
+  │                         ├─▶ metadata normalization
+  │                         ├─▶ validation (protocol, manifest, segment)
+  │                         └─▶ ranking (container, codec, quality, health)
+  │
+  ├─▶ SSE: meta, source, subtitle, diagnostic, done
+  │
+  └─▶ player: first playable source ──▶ Hls.js / video element
+                                          └─▶ signed proxy ──▶ upstream
+```
+
+## Provider fan-out
+
+For movies/TV, enabled providers are queried independently. Each response is normalized.
+A slow provider cannot block the rest.
+
+For live TV, the IPTV catalog is read and the requested channel resolved.
+Live sources are either browser-playable HLS or external iframe URLs.
+
+File: `apiServer.js:543` — aggregate streams endpoint.
+
+## Metadata normalization
+
+Raw provider metadata is inferred into:
+
+- **Container:** `hls`, `mp4`, `webm`, `mkv`, `ogv`, `unknown`
+- **Video codec:** `h264`, `hevc`, `av1`, `vp9`, `unknown`
+- **Audio codec:** `aac`, `ac3`, `eac3`, `atmos`, `dts`, `opus`, `unknown`
+- **HDR:** HDR10, Dolby Vision, or none
+
+File: `utils/sourceMetadata.js`.
+
+## Validation
+
+Sources must pass before they are exposed:
+
+- URL protocol and host safety (private-address blocking)
+- HLS manifest reachability and shape
+- Representative segment where required
+- Deadline and size limits
+
+File: `utils/sourceValidator.js`. Failures are in `diagnostic` SSE events.
+
+## Ranking
+
+HLS is preferred. Signals:
+
+| Signal | Effect |
+|---|---|
+| HLS container | Strong positive |
+| MP4 / WebM | Positive, below HLS |
+| H.264 video | Strong positive |
+| HEVC | Negative for browser |
+| 1080p / 720p | Positive |
+| Provider health | Small adjustment |
+| Provider order | Tie-breaker |
+
+File: `utils/sourceRanking.js`.
+
+## Progressive delivery (SSE)
+
+```text
+event: meta
+data: {"title":"Inception","year":"2010"}
+
+event: source
+data: {"url":"/api/proxy/...","quality":"1080p","provider":"netmirror","codec":"hls"}
+
+event: done
+data: {"meta":{"providers":5,"sources":3,"latencyMs":1840,"cacheHit":false}}
+```
+
+File: `utils/playerService.js` — `getPlayerStreamEvents()`.
+
+## Failover
+
+The player attaches the first ranked source to Hls.js. On failure, it advances to the next.
+No page reload. No session loss.
+
+File: `player/src/components/player/PlayerProvider.tsx`.
+
+## Embed boundary
+
+Token payload:
+
+```
+{ v, partnerId, type, id, season, episode, origins, iat, exp }
+```
+
+Signed with HMAC-SHA256. Encoded as `base64url(payload).base64url(signature)`.
+
+CSP header:
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+No wildcard. If origin not in token, browser refuses to frame.
+
+Files: `utils/embedToken.js`, `utils/embed.js`.
+
+## What stays server-side
+
+- Provider URLs and credentials
+- Partner API keys
+- Proxy signing secrets
+- Full diagnostics with upstream errors
+- TMDB API credentials
+
+
+## --- docs/content/docs/ai/guides/auth.mdx ---
+---
+title: AI Auth guide
+description: API keys, signed tokens, origin allowlists, and expiry.
+---
+
+## Flow
+
+```
+partner backend ──API key──▶ Peak API ──signed token──▶ browser
+```
+
+## API key
+
+Set `EMBED_PARTNERS` env var:
+
+```json
+[{"id":"demo","name":"Demo","apiKey":"your-long-key","origins":["https://app.example.com"]}]
+```
+
+Verified server-to-server. Never put in browser JS.
+
+File: `utils/embedPartners.js`.
+
+## Token format
+
+AES-256-GCM encrypted (not JWT). Opaque.
+
+```
+base64url(iv).base64url(ciphertext).base64url(tag)
+```
+
+Payload fields:
+
+| Field | Type | Description |
+|---|---|---|
+| v | string | Token version (`v1`) |
+| partnerId | string | Partner from EMBED_PARTNERS |
+| type | string | `movie` or `tv` |
+| id | string | TMDB id |
+| season | number? | TV season |
+| episode | number? | TV episode |
+| origins | string[] | Exact allowed origins |
+| iat | number | Issued-at (ms) |
+| exp | number | Expiry (ms) |
+
+File: `utils/embedToken.js`.
+
+## Verification
+
+At the edge (middleware), before the player renders:
+
+1. Decrypt token with `EMBED_TOKEN_SECRET`.
+2. Check `exp` not passed.
+3. Check `origin` in `origins` (exact match, no wildcard).
+4. Emit CSP `frame-ancestors` from origins.
+
+Files:
+- `middleware.ts` (player)
+- `utils/embed.js` — `getEmbed()`
+
+## Token TTL
+
+60s minimum, 24h maximum. Default: 15 minutes.
+
+```
+POST /api/v1/embed/sessions
+{ "type": "movie", "id": "550", "ttlSeconds": 900 }
+```
+
+## Read-only tokens
+
+Tokens can be marked read-only. These can mint embed sessions but cannot
+make state-changing API calls through the player.
+
+Admin: `/admin/tokens` to manage token definitions.
+
+
+## --- docs/content/docs/ai/guides/embedding.mdx ---
+---
+title: AI Embedding guide
+description: Partner integration with the Peak SDK and postMessage protocol.
+---
+
+## Load the SDK
+
+```html
+<script src="https://app.peak-player.com/peak-embed.js"></script>
+```
+
+## Mount
+
+```js
+const player = PeakEmbed.mount({
+  target: '#peak-player',
+  url: embedUrl,
+  title: 'Movie Title',
+});
+```
+
+## Commands
+
+```js
+player.play();
+player.pause();
+player.seek(seconds);
+player.setVolume(0.5);
+player.setQuality('1080p');
+player.setSubtitles('en');  // or false to disable
+player.setSpeed(1.25);
+player.setPiP(true);
+player.setFullscreen(true);
+```
+
+## Events
+
+```js
+player.on('ready', () => {});
+player.on('play', () => {});
+player.on('playing', () => {});
+player.on('pause', () => {});
+player.on('timeupdate', ({ currentTime, duration }) => {});
+player.on('sourcechange', ({ quality, provider }) => {});
+player.on('subtitlechange', ({ lang, label }) => {});
+player.on('ended', () => {});
+player.on('error', ({ code, message }) => {});
+```
+
+## postMessage protocol
+
+Origin: `https://app.peak-player.com`
+
+```js
+const iframe = document.getElementById('peak-iframe');
+const target = 'https://app.peak-player.com';
+
+// Send a command
+iframe.contentWindow.postMessage({ type: 'PEAK_COMMAND', cmd: 'play' }, target);
+
+// Listen for events
+window.addEventListener('message', (e) => {
+  if (e.origin !== target) return;
+  if (e.data.type === 'PEAK_EVENT') {
+    console.log(e.data.event, e.data.payload);
+  }
+});
+```
+
+Commands: `play`, `pause`, `seek`, `setVolume`, `setQuality`, `setSubtitles`, `setSpeed`, `setPiP`, `setFullscreen`, `setAudioBoost`, `setColorFilter`, `setServer`, `reload`.
+
+Events: `ready`, `play`, `pause`, `timeupdate`, `sourcechange`, `subtitlechange`, `ended`, `error`, `diagnostic`.
+
+Files:
+- `player/src/app/embed/[...]/page.tsx` — embed routes
+- `player/src/lib/embedPage.ts` — config extraction
+- `player/sdk-contract.json` — full SDK contract
+
+
+## --- docs/content/docs/ai/guides/live-tv.mdx ---
+---
+title: AI Live TV guide
+description: HLS channel catalogs, IPTV categories, and live TV behavior.
+---
+
+## Resolve a channel
+
+```
+GET /api/v1/live/tv/channels?group=sports&limit=50
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "channels": [
+    {"id":"channel_sports_abc123","name":"Sports HD","group":"Sports","logo":"https://...","language":"en"}
+  ],
+  "nextCursor": "..."
+}
+```
+
+## Play a live channel
+
+```html
+<iframe src="https://app.peak-player.com/live/channel_sports_abc123?token=..."></iframe>
+```
+
+## IPTV seed config
+
+Controlled by environment:
+
+| Env var | Default | Description |
+|---|---|---|
+| `IPTV_SEED_ENABLED` | true | Enable iptv-org seed catalog |
+| `IPTV_SEED_CATEGORIES` | `*` | Categories to seed |
+| `IPTV_SEED_COUNTRIES` | `*` | Countries to seed |
+| `IPTV_SYNC_INTERVAL_MS` | 10800000 (3h) | Sync interval |
+| `IPTV_VALIDATE_CONCURRENCY` | 8 | Parallel validation |
+| `IPTV_VALIDATE_TIMEOUT_MS` | 6000 | Per-stream timeout |
+
+## Admin IPTV
+
+```
+GET  /api/admin/iptv/seed          — seed config status
+PATCH /api/admin/iptv/seed        — update seed config
+POST /api/admin/iptv/seed/sync     — run sync now
+GET  /api/admin/iptv/playlists    — list playlists
+POST /api/admin/iptv/playlists    — add playlist
+GET  /api/admin/iptv/channels     — list all channels (admin only)
+PATCH /api/admin/iptv/channels/:id — toggle channel enabled
+GET  /api/admin/iptv/groups       — list groups
+```
+
+Files:
+- `utils/iptvStore.js` — SQLite storage
+- `utils/iptvSync.js` — seed/sync scheduler
+- `routes/iptvAdminRoutes.js` — admin routes
+
+## Category toggles
+
+Admin UI: `/admin/iptv` or `/admin/features`.
+Config key: `iptv_categories` in `peak_config` table.
+
+
+## --- docs/content/docs/ai/guides/playback.mdx ---
+---
+title: AI Playback guide
+description: Source resolution, failover, and adaptive bitrate.
+---
+
+## Source resolution
+
+```js
+// Browser
+const events = fetchStreamEvents(apiBase, media, fingerprint, {
+  onMeta: (meta) => console.log(meta.title),
+  onSource: (s) => console.log('source', s.provider, s.quality),
+  onDone: (d) => console.log('ready', d.meta.providers, d.meta.sources),
+  onError: (e) => console.log('error', e.code),
+});
+```
+
+File: `player/src/lib/api.ts`.
+
+## Failover
+
+The player tries sources in ranked order. On failure, it logs a diagnostic
+and advances to the next source. No page reload.
+
+```js
+player.on('sourcechange', ({ quality, provider }) => {
+  // source swapped
+});
+player.on('diagnostic', ({ provider, ok }) => {
+  // health check result
+});
+```
+
+## ABR
+
+The player measures bandwidth and selects quality automatically.
+Manual override:
+
+```js
+player.setQuality('1080p');   // cap at 1080p
+player.setQuality('auto');    // back to auto
+```
+
+## Scrubber thumbnails
+
+Thumbnail VTT sprite previews on hover.
+
+Sources:
+- Provider-supplied `thumbnailVtt` (e.g., vidsrc thumbnails)
+- Remote VTT sprite from provider
+
+File: `player/src/components/player/media/useScrubberThumbnails.ts`.
+
+## Chapters
+
+```js
+player.on('chapterchange', ({ title, start }) => {});
+```
+
+File: `player/src/components/player/menus/ChaptersMenu.tsx`.
+
+
+## --- docs/content/docs/ai/guides/player-controls.mdx ---
+---
+title: AI Player controls guide
+description: Commands and events for the player SDK.
+---
+
+## Mount
+
+```js
+const player = PeakEmbed.mount({
+  target: '#peak-player',
+  url: embedUrl,
+  title: 'Title',
+});
+```
+
+## Transport
+
+```js
+player.play();         // ▶
+player.pause();        // ⏸
+player.seek(60);       // seconds
+player.seek(-10);      // relative
+player.setRate(1.25);  // 0.25–2.0
+player.setVolume(0.5); // 0–1
+player.setMuted(true);
+player.setFullscreen(true);
+player.setPiP(true);
+```
+
+## Source controls
+
+```js
+// Manual server switch (uses codename, not technical key)
+player.setServer('STELLAR');
+player.setServer('PRIME');
+player.setServer('NEXUS');
+
+// Quality override
+player.setQuality('1080p');  // manual ABR cap
+player.setQuality('auto');   // back to auto
+```
+
+## Captions / Dubs
+
+```js
+player.setCaptions('en');      // language code
+player.setCaptions(false);     // disable
+
+player.setDub('hi');          // switch to Hindi dub
+player.setDub('en');          // English track
+```
+
+## Audio
+
+```js
+player.setAudioBoost(1.5);   // up to 2.0x
+player.setAudioTrack('en');  // audio language
+```
+
+## Colour filters
+
+```js
+player.setColorFilter('amaze');
+player.setColorFilter('night');
+player.setColorFilter(false);  // reset
+```
+
+Presets: `amaze`, `night`, `positive`, `negative`, `mono`, `sepia`.
+
+File: `player/src/components/player/menus/ColourMenu.tsx`.
+
+## Settings menu
+
+The settings cog opens: ServerMenu, QualityMenu, AudioMenu, DubsMenu,
+CaptionsMenu, ColourMenu, SpeedMenu, ShortcutsMenu, StatsOverlay.
+
+File: `player/src/components/player/controls/SettingsMenu.tsx`.
+
+## Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| <kbd>Space</kbd> | Play / pause |
+| <kbd>K</kbd> | Play / pause |
+| <kbd>J</kbd> | Seek -10s |
+| <kbd>L</kbd> | Seek +10s |
+| <kbd>←</kbd> | Seek -5s |
+| <kbd>→</kbd> | Seek +5s |
+| <kbd>M</kbd> | Mute toggle |
+| <kbd>F</kbd> | Fullscreen |
+| <kbd>Shift</kbd> + <kbd>P</kbd> | PiP |
+| <kbd>Shift</kbd> + <kbd>?</kbd> | Show shortcuts |
+
+File: `player/src/components/player/videojs/video/behaviors/hotkeys.tsx`.
+
+## Stats overlay
+
+```js
+player.showStats();  // toggle bitrate/latency overlay
+```
+
+File: `player/src/components/player/overlays/StatsOverlay.tsx`.
+
+
+## --- docs/content/docs/ai/guides/preferences.mdx ---
+---
+title: AI Preferences guide
+description: Preference modes and persistence.
+---
+
+## Preference modes
+
+The player supports server-side preference modes, controlled by the
+`x-peak-embed-prefs-mode` header.
+
+| Mode | Description |
+|---|---|
+| `browser` | Preferences stored in localStorage (default) |
+| `server` | Preferences served by the API |
+| `user` | Preferences per-partner from embed token |
+
+File: `player/src/components/player/prefs/schema.ts`.
+
+## Preference store
+
+```js
+// Read
+const prefs = await fetch('/api/v1/preferences', {
+  headers: { 'x-peak-embed-prefs-mode': 'server' },
+});
+
+// Write
+await fetch('/api/v1/preferences', {
+  method: 'POST',
+  headers: { 'x-peak-embed-prefs-mode': 'user', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ volume: 0.8, captions: 'en', speed: 1.25 }),
+});
+```
+
+Files:
+- `utils/preferenceStore.js` — storage
+- `routes/preferenceRoutes.js` — routes
+- `player/src/components/player/prefs/modes.ts` — mode definitions
+- `player/src/components/player/prefs/PreferenceStore.ts` — client store
+
+
+## --- docs/content/docs/ai/guides/theming.mdx ---
+---
+title: AI Theming guide
+description: Design tokens, accent colors, and dark/light mode.
+---
+
+## Theme
+
+The player uses an AMOLED monochrome theme:
+
+- Dark: `#000000` canvas
+- Light: `#ffffff` canvas
+- Accent: grey `#e5e5e5`
+
+Toggle via the settings cog or programmatically:
+
+```js
+player.setTheme('dark');  // AMOLED black
+player.setTheme('light'); // white canvas
+```
+
+## Fonts
+
+- **Sans:** Geist (marketing, landing)
+- **Mono:** Geist Mono
+- **Player:** Roboto (controls, timecodes)
+
+Files:
+- `player/src/styles/globals.css` — base styles
+- `player/src/styles/landing.css` — landing page styles
+- `player/src/components/player/videojs/styles/themes/theme.css` — player theme
+
+## Color presets
+
+Colour filter pipeline presets:
+
+| Preset | Effect |
+|---|---|
+| `amaze` | Amazed (cool tint) |
+| `night` | Night mode |
+| `positive` | Photographic positive |
+| `negative` | Photographic negative |
+| `mono` | Monochrome |
+| `sepia` | Sepia |
+
+File: `player/src/components/player/colour/presets.ts`.
+
+## Dynamic accent
+
+The player API serves branding:
+
+```
+GET /api/v1/branding
+```
+
+Response includes accent color, logo URL, favicon.
+
+File: `utils/playerService.js` — `getBranding()`.
+
+
+## --- docs/content/docs/ai/quickstart.mdx ---
+---
+title: AI Quickstart
+description: Mint a signed embed session, mount the player, listen for events.
+---
+
+## 1. Create a session on your server
+
+```bash
+curl -X POST https://api.peak-player.com/api/v1/embed/sessions \
+  -H "x-api-key: YOUR_PARTNER_KEY" \
+  -d '{"type":"movie","id":"550","ttlSeconds":900}'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "token": "eyJ2IjoxLCJwYXJ0bmVySWQiOiJkZW1vIiwidHlwZSI6Im1vdmllIiwiaWQiOiI1NTAiLCJvcmlnaW5zIjpbImh0dHBzOi8vYXBwLmV4YW1wbGUuY29tIl0sImlhdCI6MTc2MTQwMDAwLCJleHAiOjE3NjE0MDA5MDB9.signature",
+  "expiresAt": "2026-10-25T16:30:00.000Z",
+  "embedUrl": "https://app.peak-player.com/embed/movie/550?token=eyJ2Ijox..."
+}
+```
+
+## 2. Mount the player in the browser
+
+```html
+<div id="peak-player"></div>
+<script src="https://app.peak-player.com/peak-embed.js"></script>
+<script>
+  const player = PeakEmbed.mount({
+    target: '#peak-player',
+    url: 'https://app.peak-player.com/embed/movie/550?token=eyJ2Ijox...',
+    title: 'Fight Club',
+  });
+  player.play();
+</script>
+```
+
+## 3. Listen for events
+
+```js
+player.on('ready', () => console.log('ready'));
+player.on('play', () => console.log('play'));
+player.on('pause', () => console.log('pause'));
+player.on('timeupdate', ({ currentTime }) => console.log('time', currentTime));
+player.on('sourcechange', ({ quality, provider }) =>
+  console.log('playing', quality, 'from', provider));
+player.on('ended', () => console.log('ended'));
+player.on('error', ({ code }) => console.log('error', code));
+```
+
+## Token payload
+
+Tokens are AES-256-GCM encrypted (not JWT). Payload:
+
+```
+{ v: 1, partnerId: string, type: string, id: string, season?: number, episode?: number, origins: string[], iat: number, exp: number }
+```
+
+File: `utils/embedToken.js` — `signEmbedToken()`, `verifyEmbedToken()`.
+
+## Key files
+
+- `apiServer.js:496` — `POST /api/v1/embed/sessions`
+- `utils/embedToken.js` — signing/verification
+- `player/src/app/embed/demo/DemoClient.tsx` — demo integration example
+
+
+## --- docs/content/docs/ai/reference/postmessage.mdx ---
+---
+title: AI postMessage reference
+description: Parent ↔ player messaging protocol.
+---
+
+## Origin
+
+Messages are only accepted from `https://app.peak-player.com`.
+Exact-origin match. No wildcard.
+
+## Commands (parent → player)
+
+```js
+iframe.contentWindow.postMessage({
+  type: 'PEAK_COMMAND',
+  cmd: 'play',
+  // ...args
+}, 'https://app.peak-player.com');
+```
+
+| cmd | args | Description |
+|---|---|---|
+| `play` |  | Start playback |
+| `pause` |  | Pause playback |
+| `seek` | time: number | Seek to time (seconds) |
+| `setVolume` | volume: 0–1 | Set volume |
+| `setMuted` | muted: boolean | Mute/unmute |
+| `setRate` | rate: number | Playback speed |
+| `setQuality` | quality: string | Quality override |
+| `setCaptions` | lang: string\|false | Set caption track |
+| `setDub` | lang: string | Switch dub |
+| `setAudioBoost` | gain: number | Amplify audio |
+| `setColorFilter` | preset: string\|false | Color filter |
+| `setServer` | codename: string | Switch provider |
+| `setPiP` | enabled: boolean | Picture-in-picture |
+| `setFullscreen` | enabled: boolean | Fullscreen |
+| `setTheme` | theme: string | dark\|light |
+| `showStats` |  | Toggle stats overlay |
+| `reload` |  | Reload sources |
+
+## Events (player → parent)
+
+```js
+window.addEventListener('message', (e) => {
+  if (e.origin !== 'https://app.peak-player.com') return;
+  if (e.data.type === 'PEAK_EVENT') {
+    console.log(e.data.event, e.data.payload);
+  }
+});
+```
+
+| event | payload | Description |
+|---|---|---|
+| `ready` | `{ version, embedUrl }` | Player is ready |
+| `play` | `{}` | Playback started |
+| `playing` | `{}` | First frame rendered |
+| `pause` | `{}` | Playback paused |
+| `ended` | `{}` | Media ended |
+| `timeupdate` | `{ currentTime, duration }` | Playback position |
+| `sourcechange` | `{ quality, provider, codec }` | Active source changed |
+| `subtitlechange` | `{ lang, label }` | Track changed |
+| `error` | `{ code, message }` | Error occurred |
+| `diagnostic` | `{ provider, ok, latencyMs }` | Health probe |
+
+File: `player/src/components/player/media/useMediaEngine.ts`.
+
+
+## --- docs/content/docs/ai/reference/sdk.mdx ---
+---
+title: AI SDK reference
+description: PeakEmbed JavaScript API and lifecycle events.
+---
+
+## PeakEmbed.mount(options)
+
+```ts
+interface MountOptions {
+  target: string | HTMLElement;   // CSS selector or element
+  url: string;                     // embed URL with token
+  title: string;                   // accessibility title
+  debug?: boolean;                 // verbose console logging
+}
+```
+
+Returns a `Player` instance.
+
+## Player methods
+
+```ts
+class Player {
+  play(): void;
+  pause(): void;
+  seek(seconds: number): void;
+  setVolume(0–1: number): void;
+  setMuted(muted: boolean): void;
+  setRate(0.25–2.0: number): void;
+  setQuality('auto' | '1080p' | '720p' | '480p' | '360p'): void;
+  setAudioTrack(lang: string): void;
+  setCaptions(lang: string | false): void;
+  setDub(lang: string): void;
+  setAudioBoost(0–2.0: number): void;
+  setColorFilter(preset: string | false): void;
+  setServer(codename: string): void;
+  setPiP(enabled: boolean): void;
+  setFullscreen(enabled: boolean): void;
+  setTheme('dark' | 'light'): void;
+  showStats(): void;
+  dispose(): void;
+}
+```
+
+## Events
+
+```ts
+player.on('ready', () => void);
+player.on('play', () => void);
+player.on('playing', () => void);
+player.on('pause', () => void);
+player.on('ended', () => void);
+player.on('timeupdate', ({ currentTime, duration }) => void);
+player.on('sourcechange', ({ quality, provider, codec }) => void);
+player.on('subtitlechange', ({ lang, label }) => void);
+player.on('error', ({ code, message }) => void);
+player.on('diagnostic', ({ provider, ok, latencyMs, error }) => void);
+```
+
+## Error codes
+
+| Code | Meaning |
+|---|---|
+| `NO_SOURCES` | No playable sources found |
+| `STREAM_UNAVAILABLE` | All sources failed |
+| `EMBED_NOT_AUTHORIZED` | Token verification failed |
+| `EMBED_EXPIRED` | Token expired |
+| `ORIGIN_NOT_ALLOWED` | Origin not in token |
+| `PLAYER_ERROR` | Runtime player error |
+
+File: `player/src/components/player/errors.ts`.
+
+Full contract: `player/sdk-contract.json`.
+
+
+## --- docs/content/docs/ai/reference/urls.mdx ---
+---
+title: AI URL reference
+description: Player and API URL patterns.
+---
+
+## Player routes
+
+| Pattern | Description |
+|---|---|
+| `/` | Landing page |
+| `/movie/{tmdbId}` | Movie player |
+| `/tv/{tmdbId}/{season}/{episode}` | TV player |
+| `/live/{channelId}` | Live TV player |
+| `/embed/movie/{tmdbId}?token=...` | Embedded movie |
+| `/embed/tv/{tmdbId}/{season}/{episode}?token=...` | Embedded TV |
+| `/embed/live/{channelId}?token=...` | Embedded live |
+| `/embed/demo` | Demo session |
+
+## API routes
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/embed/sessions` | Create signed embed session |
+| `GET` | `/api/v1/stream/{type}/{id}` | Validated stream JSON |
+| `GET` | `/api/v1/stream/events/{type}/{id}` | SSE stream events |
+| `GET` | `/api/v1/media/{type}/{id}` | Metadata |
+| `POST` | `/api/v1/thumbnails/{type}/{id}` | Thumbnail sprite |
+| `GET` | `/api/v1/thumbnails/{file}` | Thumbnail sprite file |
+| `GET` | `/api/v1/live/tv/channels` | List channels |
+| `GET` | `/api/v1/live/tv/groups` | List groups |
+| `GET` | `/api/v1/branding` | Branding metadata |
+| `GET` | `/api/v1/providers` | Visible provider list |
+| `GET` | `/api/v1/playback/health` | Health + telemetry |
+| `GET` | `/api/status` | Full status + metrics |
+| `GET` | `/api/config` | Runtime config |
+
+## Admin routes
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/admin/config` | List config keys |
+| `POST` | `/api/admin/config/:key` | Upsert config |
+| `DELETE` | `/api/admin/config/:key` | Delete config |
+| `GET` | `/api/admin/features` | List feature toggles |
+| `POST` | `/api/admin/features` | Update toggles |
+| `GET` | `/api/admin/tokens` | List tokens |
+| `POST` | `/api/admin/tokens` | Create token |
+| `DELETE` | `/api/admin/tokens/:id` | Revoke token |
+| `GET` | `/api/admin/proxies` | List proxies |
+| `POST` | `/api/admin/proxies` | Create proxy |
+| `DELETE` | `/api/admin/proxies/:id` | Revoke proxy |
+| `GET` | `/api/admin/iptv/categories` | List IPTV categories |
+| `PATCH` | `/api/admin/iptv/categories` | Update categories |
+| `GET` | `/api/admin/iptv/seed` | Seed config |
+| `PATCH` | `/api/admin/iptv/seed` | Update seed |
+
+## Provider query parameters
+
+```
+GET /api/streams/{provider}/{type}/{tmdbId}
+  ?source={provider}      // specific provider
+  ?season={n}             // TV season
+  ?episode={n}            // TV episode
+  ?invalidate=1           // bypass cache
+```
+
+Providers: `netmirror`, `vixsrc`, `vidlink`, `videasy`, `zxcstreams`,
+`vaplayer`, `showbox`, `4khdhub`, `castletv`, `dahmermovies`,
+`hdghartv`, `onetouchtv`, `streamflix`, `rive apogee`,
+`rive vanguard`, `rive pulse`, `rive citadel`.
+
+Technical keys are used in query params. Display codenames (PRIME, STELLAR, etc.)
+are resolved client-side from `player/src/lib/servers.ts`.
+
+
+## --- docs/content/docs/ai/security.mdx ---
+---
+title: AI Security
+description: Threat model, token signing, SSRF, and CSP.
+---
+
+## Threat model
+
+- **Upstream exposure:** Provider URLs must never reach the browser.
+- **Open proxy:** Signed proxy URLs prevent arbitrary fetching.
+- **Token forgery:** HMAC-SHA256 (AES-256-GCM) prevents tampering.
+- **Frame injection:** frame-ancestors allowlist blocks unauthorized origins.
+- **SSRF:** Proxy validates downstream URLs against private ranges.
+
+## Token signing
+
+AES-256-GCM, not JWT. Opaque.
+
+```js
+// Sign
+const token = signEmbedToken({
+  v: 1,
+  partnerId: 'demo',
+  type: 'movie',
+  id: '550',
+  origins: ['https://app.example.com'],
+  iat: Date.now(),
+  exp: Date.now() + 900_000,
+}, secret);
+
+// Verify
+const payload = verifyEmbedToken(token, secret, origin);
+// throws on invalid/expired/mismatched origin
+```
+
+TTL range: 60s–24h. Default 15min.
+
+File: `utils/embedToken.js`. Key env: `EMBED_TOKEN_SECRET`.
+
+## Proxy signing
+
+```js
+// Generate signed proxy URL
+const signedUrl = signProxyUrl('https://upstream.com/master.m3u8', {
+  exp: Date.now() + 3600_000,
+  corsOrigins: ['https://app.example.com'],
+  headers: { Origin: 'http://localhost:3011' },
+}, secret);
+```
+
+File: `utils/proxySigner.js`. Env: `PROXY_SIGNING_SECRET`.
+
+## SSRF protection
+
+- Private IP ranges blocked: `10.x`, `172.16-31.x`, `192.168.x`, `127.x`, `169.254.x`
+- localhost blocked
+- Link-local addresses blocked
+- DNS rebinding: resolved hostname checked against allowlist
+
+File: `utils/ssrfGuard.js`. Tested in `tests/ssrfGuard.test.js`.
+
+## CSP
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+- `default-src 'self'`
+- `frame-ancestors` derived from token origins (exact, no wildcard)
+- `connect-src` allows media proxy
+
+File: `middleware.ts` (player).
+
+## Origin validation
+
+- Partner origins: exact match only (no wildcard, no substring)
+- Embed token origins: checked at middleware
+- Proxy CORS: exact origins, no wildcard
+
+## Secrets management
+
+| Secret | Env var |
+|---|---|
+| Embed token secret | `EMBED_TOKEN_SECRET` |
+| Proxy signing secret | `PROXY_SIGNING_SECRET` |
+| TMDB API key | `TMDB_API_KEY` |
+| Partner API keys | `EMBED_PARTNERS` |
+
+
+## --- docs/content/docs/ai/self-hosting.mdx ---
+---
+title: AI Self-hosting
+description: Run Peak with Docker, npm, or pnpm.
+---
+
+## GitHub
+
+```
+https://github.com/pansiluchethiya/peak-player
+```
+
+## Docker
+
+```bash
+cp .env.example .env.local
+# Edit .env.local with your TMDB key and secrets
+
+docker compose up --build
+```
+
+Services:
+
+| Service | Port | Env file |
+|---|---|---|
+| `peak` | 8787 | `.env.peak.local` |
+| `player` | 3001 | `.env.player.local` |
+| `admin` | 3003 | `.env.admin.local` |
+| `docs` | 3002 | `.env.docs.local` |
+
+## npm
+
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+## pnpm
+
+```bash
+cp .env.example .env.local
+pnpm install
+pnpm --filter peak dev
+```
+
+## Required env vars
+
+```bash
+TMDB_API_KEY=your_tmdb_api_key
+PLAYER_PUBLIC_URL=https://app.peak-player.com
+PUBLIC_API_URL=https://api.peak-player.com
+EMBED_TOKEN_SECRET=<64-char hex>
+PROXY_SIGNING_SECRET=<64-char hex>
+EMBED_PARTNERS=[{"id":"demo","name":"Demo","apiKey":"...","origins":["https://app.example.com"]}]
+```
+
+## Database
+
+SQLite at `utils/peak.db`. Tables: `iptv_playlists`, `iptv_channels`, `peak_config`.
+
+Backups: copy `utils/peak.db` and `utils/user-config.json`.
+
+## Health checks
+
+```bash
+curl http://localhost:8787/api/health
+curl http://localhost:8787/api/v1/playback/health
+```
+
+File: `docker-compose.yml`, `Dockerfile`.
+

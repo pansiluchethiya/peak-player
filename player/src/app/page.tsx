@@ -26,6 +26,9 @@ import { BorderBeam } from '@/components/marketing/border-beam';
 import { HeroVideoDialog } from '@/components/marketing/hero-video-dialog';
 import { Marquee } from '@/components/marketing/marquee';
 import { NumberTicker } from '@/components/marketing/number-ticker';
+import { MiniPlayerDemo } from '@/components/MiniPlayerDemo';
+
+const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || 'https://docs.peak-player.com';
 
 const providers = [
   'Vixsrc',
@@ -565,7 +568,7 @@ export default function HomePage() {
                 troubleshooting.
               </p>
               <div className="peak-docs-actions">
-                <Link className="peak-button peak-button-primary" href="/docs">
+                <Link className="peak-button peak-button-primary" href={DOCS_URL}>
                   Read the docs
                   <ArrowRight aria-hidden="true" />
                 </Link>
@@ -686,7 +689,7 @@ export default function HomePage() {
         <nav aria-label="Footer">
           <a href="#player">Player</a>
           <a href="#quickstart">Quick start</a>
-          <a href="/docs">Docs</a>
+          <a href={DOCS_URL}>Docs</a>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- JSON endpoint, not a page */}
           <a href="/api/v1/playback/health">Health</a>
         </nav>

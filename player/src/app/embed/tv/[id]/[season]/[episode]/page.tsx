@@ -1,8 +1,15 @@
 import { PlayerRoot } from '@/components/player';
 import { apiBase, embedConfig } from '@/lib/embedPage';
 import type { Media } from '@/lib/types';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Peak Embed',
+  description: 'Embeddable player with signed sessions and validated sources.',
+  robots: { index: false, follow: false },
+};
 
 function positive(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? '1', 10);
