@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 import { describe, it } from 'node:test';
 import {
   buildFrameAncestors,
@@ -10,9 +10,19 @@ import {
 const SECRET = 'test-embed-secret';
 
 function token(payload: Record<string, unknown>, secret = SECRET): string {
-  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = createHmac('sha256', secret).update(encoded).digest('base64url');
-  return `${encoded}.${signature}`;
+  const key = createHash('sha256').update(secret, 'utf8').digest();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const ciphertext = Buffer.concat([
+    cipher.update(JSON.stringify(payload), 'utf8'),
+    cipher.final(),
+  ]);
+  return [
+    'v1',
+    iv.toString('base64url'),
+    ciphertext.toString('base64url'),
+    cipher.getAuthTag().toString('base64url'),
+  ].join('.');
 }
 
 function payload(overrides: Record<string, unknown> = {}) {
@@ -37,12 +47,19 @@ describe('edge embed token verification', () => {
     assert.equal(result.payload?.id, '550');
   });
 
-  it('rejects a tampered payload', async () => {
-    const signed = token(payload());
-    const [, signature] = signed.split('.');
-    const tampered = Buffer.from(JSON.stringify(payload({ id: '551' }))).toString('base64url');
+  it('keeps the token opaque', () => {
+    const encoded = token(payload());
+    assert.equal(encoded.split('.').length, 4);
+    assert.equal(encoded.startsWith('v1.'), true);
+    assert.equal(encoded.includes('partnerId'), false);
+  });
 
-    const result = await verifyEmbedToken(`${tampered}.${signature}`, {
+  it('rejects a tampered token', async () => {
+    const signed = token(payload());
+    const [version, iv, ciphertext, tag] = signed.split('.');
+    const tampered = `${version}.${iv}.${ciphertext.slice(0, -1)}x.${tag}`;
+
+    const result = await verifyEmbedToken(tampered, {
       secret: SECRET,
       now: 1_500,
     });
@@ -67,6 +84,10 @@ describe('edge embed token verification', () => {
       error: 'INVALID_TOKEN',
     });
     assert.deepEqual(await verifyEmbedToken('a.b.c', { secret: SECRET }), {
+      ok: false,
+      error: 'INVALID_TOKEN',
+    });
+    assert.deepEqual(await verifyEmbedToken('v1.a.b.c', { secret: SECRET }), {
       ok: false,
       error: 'INVALID_TOKEN',
     });

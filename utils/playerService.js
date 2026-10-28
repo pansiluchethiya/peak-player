@@ -3,6 +3,7 @@
 // Peak remains the only source of streams.
 const { listProviders, getProvider } = require('../providers/registry');
 const { resolveImdbId } = require('./tmdb');
+const { fetchExternalSubtitles, mergeSubtitles } = require('./subtitleSources');
 const { getMedia } = require('./mediaResolver');
 const { applyFilters } = require('./streamFilters');
 const { buildPlayerSource } = require('./sourceMetadata');
@@ -10,6 +11,7 @@ const { rankSources } = require('./sourceRanking');
 const { validateSource } = require('./sourceValidator');
 const { recordProviderResult } = require('./providerHealth');
 const { processStreamsForProxy } = require('../proxy/proxyServer');
+const { config } = require('./config');
 
 const DEFAULT_SOURCE = 'netmirror';
 const PREFERRED_ORDER = ['netmirror','zxcstreams','vaplayer','vixsrc','dahmermovies','vidlink','hdghartv','streamflix'];
@@ -21,6 +23,18 @@ const PLAYER_ACCENT = '#e5e5e5';
 const DEFAULT_CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_CACHE_TTL_MS = 30 * 60 * 1000;
 const eventCache = new Map();
+
+// Config values arrive from env as strings ("false", "0") or as booleans from
+// the JSON override file. Normalise both so branding never reports autoplay on
+// when the operator disabled it.
+function asBoolean(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  return fallback;
+}
 
 function lazyIptvStore() {
   try {
@@ -317,6 +331,12 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
     episode: episodeNumber,
   });
   const imdbId = await resolveImdbIdImpl(tmdbType, tmdbId).catch(() => null);
+  const externalSubtitlesPromise = fetchExternalSubtitles({
+    imdbId,
+    type: tmdbType,
+    season: seasonNumber,
+    episode: episodeNumber,
+  }).catch(() => []);
   const context = {
     tmdbId,
     type: tmdbType,
@@ -362,7 +382,10 @@ async function getPlayerStream({ type, id, season, episode, source, serverUrl, c
       });
     },
   });
-  const subtitles = collectSubtitles(originalStreams);
+  const subtitles = mergeSubtitles(
+    collectSubtitles(originalStreams),
+    await externalSubtitlesPromise,
+  );
   const diagnostics = [
     ...providerResults.map((result) => result.diagnostic),
     ...sourceDiagnostics,
@@ -567,6 +590,12 @@ async function getPlayerStreamEvents({
     episode: episodeNumber,
   });
   const imdbId = await resolveImdbIdImpl(tmdbType, tmdbId).catch(() => null);
+  const externalSubtitlesPromise = fetchExternalSubtitles({
+    imdbId,
+    type: tmdbType,
+    season: seasonNumber,
+    episode: episodeNumber,
+  }).catch(() => []);
 
   const context = {
     tmdbId,
@@ -645,6 +674,14 @@ async function getPlayerStreamEvents({
 
   await Promise.all(scrapePromises);
 
+  for (const sub of await externalSubtitlesPromise) {
+    if (cancelled && cancelled.value) break;
+    if (seenSubtitles.has(sub.url)) continue;
+    seenSubtitles.add(sub.url);
+    collectedSubtitles.push(sub);
+    emit('subtitle', sub);
+  }
+
   if (ttlMs > 0 && !(cancelled && cancelled.value)) {
     setCachedAggregate(cacheKey, {
       meta: { title, year },
@@ -676,7 +713,10 @@ function getBranding() {
     logoUrl: PLAYER_LOGO,
     accentColor: PLAYER_ACCENT,
     tagline: 'Cinema, elevated.',
-    preferences: { autoplay: config.autoplay !== false, autoplayMuted: config.autoplayMuted !== false },
+    preferences: {
+      autoplay: asBoolean(config.autoplay, true),
+      autoplayMuted: asBoolean(config.autoplayMuted, true),
+    },
     preferenceMode: config.playerPreferenceMode || process.env.PLAYER_PREFERENCE_MODE || 'browser',
   };
 }

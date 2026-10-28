@@ -6,6 +6,7 @@ const {
   aggregateCacheKey,
   cacheTtlMs,
   clearEventCache,
+  getBranding,
   getPlayerStream,
   getPlayerStreamEvents,
   prepareStreams,
@@ -493,5 +494,32 @@ describe('cacheTtlMs', () => {
     assert.equal(cacheTtlMs({}), 900000);
     assert.equal(cacheTtlMs({ playerCacheTtlMs: 999999999 }), 1800000);
     assert.equal(cacheTtlMs({ disableCache: true }), 0);
+  });
+});
+
+describe('getBranding', () => {
+  it('returns the player branding contract without throwing', () => {
+    const branding = getBranding();
+    assert.equal(branding.name, 'Peak');
+    assert.equal(branding.logoUrl, '/logo.svg');
+    assert.equal(branding.accentColor, '#e5e5e5');
+    assert.equal(typeof branding.preferences.autoplay, 'boolean');
+    assert.equal(typeof branding.preferences.autoplayMuted, 'boolean');
+    assert.ok(['browser', 'server', 'user'].includes(branding.preferenceMode));
+  });
+
+  it('normalises string booleans from env config', () => {
+    const { config } = require('../utils/config');
+    const previous = { autoplay: config.autoplay, autoplayMuted: config.autoplayMuted };
+    try {
+      config.autoplay = 'false';
+      config.autoplayMuted = '0';
+      const branding = getBranding();
+      assert.equal(branding.preferences.autoplay, false);
+      assert.equal(branding.preferences.autoplayMuted, false);
+    } finally {
+      config.autoplay = previous.autoplay;
+      config.autoplayMuted = previous.autoplayMuted;
+    }
   });
 });

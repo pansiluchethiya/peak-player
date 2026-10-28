@@ -21,6 +21,17 @@ describe('source metadata', () => {
     assert.equal(detectContainer({ url: proxied }), 'mkv');
   });
 
+  it('treats a playlist proxy URL as HLS even when the upstream path has no extension', () => {
+    const proxied = `https://peak.example/m3u8-proxy?url=${encodeURIComponent(
+      'https://cdn.example/playlist/123?type=video',
+    )}`;
+    const source = buildPlayerSource({ url: proxied, provider: 'vixsrc' });
+    assert.equal(source.container, 'hls');
+    assert.equal(source.adaptive, true);
+    assert.equal(source.browserPlayable, true);
+    assert.equal(source.codec, 'hls');
+  });
+
   it('never labels MKV or HEVC as MP4', () => {
     const source = buildPlayerSource({
       url: 'https://cdn.example/movie.mkv',

@@ -5,6 +5,8 @@ const crypto = require('node:crypto');
 const MIN_TTL_SECONDS = 60;
 const DEFAULT_TTL_SECONDS = 15 * 60;
 const MAX_TTL_SECONDS = 24 * 60 * 60;
+const TOKEN_VERSION = 'v1';
+const IV_BYTES = 12;
 
 let fallbackSecret = null;
 let warned = false;
@@ -31,19 +33,65 @@ function normalizeTtlSeconds(value) {
   return Math.min(MAX_TTL_SECONDS, Math.max(MIN_TTL_SECONDS, Math.floor(number)));
 }
 
-function encodePayload(payload) {
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+function keyFor(secret) {
+  return crypto.createHash('sha256').update(String(secret), 'utf8').digest();
 }
 
-function sign(encodedPayload, secret) {
-  return crypto.createHmac('sha256', secret).update(encodedPayload).digest('base64url');
+/**
+ * The token is an opaque AES-GCM envelope: `v1.iv.ciphertext.tag`. Nothing in
+ * the URL decodes to partner ids, origins, or preferences, so a copied link
+ * cannot be mistaken for (or leak) a provider/session cookie.
+ */
+function encryptPayload(payload, secret) {
+  const iv = crypto.randomBytes(IV_BYTES);
+  const cipher = crypto.createCipheriv('aes-256-gcm', keyFor(secret), iv);
+  const ciphertext = Buffer.concat([
+    cipher.update(JSON.stringify(payload), 'utf8'),
+    cipher.final(),
+  ]);
+  const tag = cipher.getAuthTag();
+  return [
+    TOKEN_VERSION,
+    iv.toString('base64url'),
+    ciphertext.toString('base64url'),
+    tag.toString('base64url'),
+  ].join('.');
 }
 
-function safeEqual(left, right) {
-  const leftBuffer = Buffer.from(String(left || ''), 'utf8');
-  const rightBuffer = Buffer.from(String(right || ''), 'utf8');
-  if (leftBuffer.length !== rightBuffer.length) return false;
-  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+function decryptPayload(token, secret) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 4) return { ok: false, error: 'INVALID_TOKEN' };
+  const [version, ivPart, cipherPart, tagPart] = parts;
+  if (version !== TOKEN_VERSION || !ivPart || !cipherPart || !tagPart) {
+    return { ok: false, error: 'INVALID_TOKEN' };
+  }
+
+  let iv;
+  let ciphertext;
+  let tag;
+  try {
+    iv = Buffer.from(ivPart, 'base64url');
+    ciphertext = Buffer.from(cipherPart, 'base64url');
+    tag = Buffer.from(tagPart, 'base64url');
+  } catch {
+    return { ok: false, error: 'INVALID_TOKEN' };
+  }
+  if (iv.length !== IV_BYTES || tag.length !== 16) {
+    return { ok: false, error: 'INVALID_TOKEN' };
+  }
+
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', keyFor(secret), iv);
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    const payload = JSON.parse(plaintext);
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return { ok: false, error: 'INVALID_PAYLOAD' };
+    }
+    return { ok: true, payload };
+  } catch {
+    return { ok: false, error: 'INVALID_SIGNATURE' };
+  }
 }
 
 function signEmbedToken(payload = {}, options = {}) {
@@ -56,8 +104,7 @@ function signEmbedToken(payload = {}, options = {}) {
     iat: issuedAt,
     exp: issuedAt + ttlSeconds,
   };
-  const encoded = encodePayload(body);
-  return `${encoded}.${sign(encoded, secret)}`;
+  return encryptPayload(body, secret);
 }
 
 function verifyEmbedToken(token, options = {}) {
@@ -65,28 +112,17 @@ function verifyEmbedToken(token, options = {}) {
     return { ok: false, payload: null, error: 'MISSING_TOKEN' };
   }
 
-  const parts = token.split('.');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) {
-    return { ok: false, payload: null, error: 'INVALID_TOKEN' };
-  }
-
-  const [encodedPayload, signature] = parts;
   const secret = options.secret || getEmbedTokenSecret();
-  if (!safeEqual(signature, sign(encodedPayload, secret))) {
-    return { ok: false, payload: null, error: 'INVALID_SIGNATURE' };
+  if (!secret) {
+    return { ok: false, payload: null, error: 'SECRET_MISSING' };
   }
 
-  let payload;
-  try {
-    payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
-  } catch {
-    return { ok: false, payload: null, error: 'INVALID_PAYLOAD' };
+  const decrypted = decryptPayload(token, secret);
+  if (!decrypted.ok) {
+    return { ok: false, payload: null, error: decrypted.error };
   }
 
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return { ok: false, payload: null, error: 'INVALID_PAYLOAD' };
-  }
-
+  const payload = decrypted.payload;
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const exp = Number(payload.exp);
   if (!Number.isFinite(exp)) {

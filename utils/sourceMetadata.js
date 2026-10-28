@@ -38,12 +38,16 @@ function extensionOf(url) {
 }
 
 function isHlsStream(stream) {
+  const raw = String(stream?.url || '');
   const url = originalUrl(stream);
   const codec = String(stream?.codec || '').toLowerCase();
   return (
     HLS_CODECS.has(codec) ||
     stream?.adaptive === true ||
     /\.m3u8($|\?)/i.test(url) ||
+    // Peak's playlist proxy is authoritative even when the nested upstream path
+    // has no `.m3u8` extension (e.g. vixsrc `/playlist/123?type=video`).
+    /\/m3u8-proxy\?/i.test(raw) ||
     /\/m3u8-proxy\?/i.test(url)
   );
 }
