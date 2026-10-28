@@ -189,6 +189,9 @@ function parseByteRange(rangeHeader, size) {
 
 const CACHE_MAX_SIZE = 2000;
 const CACHE_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
+// Number of playlist segments to warm ahead of the player. Large VOD playlists
+// (1000+ segments) must not trigger a prefetch stampede.
+const PREFETCH_LIMIT = 4;
 const segmentCache = new Map();
 // Track first open-ended (bytes=0-) range per target to clamp only once per TTL window
 const openRangeClampMap = new Map();
@@ -297,6 +300,21 @@ function extractOriginalUrl(proxyUrl) {
     } catch { return proxyUrl; }
 }
 
+function preferEnglishAudio(line) {
+    if (!line.startsWith('#EXT-X-MEDIA:') || !/TYPE=AUDIO/i.test(line)) return line;
+    const isEnglish = /LANGUAGE="(?:eng|en)(?:[-_][A-Za-z]+)?"/i.test(line) || /NAME="English"/i.test(line);
+    let next = line
+        .replace(/DEFAULT=(YES|NO)/i, `DEFAULT=${isEnglish ? 'YES' : 'NO'}`)
+        .replace(/AUTOSELECT=(YES|NO)/i, `AUTOSELECT=${isEnglish ? 'YES' : 'NO'}`);
+    if (isEnglish && !/DEFAULT=/i.test(next)) {
+        next = next.replace('#EXT-X-MEDIA:', '#EXT-X-MEDIA:DEFAULT=YES,');
+    }
+    if (isEnglish && !/AUTOSELECT=/i.test(next)) {
+        next = next.replace('#EXT-X-MEDIA:', '#EXT-X-MEDIA:AUTOSELECT=YES,');
+    }
+    return next;
+}
+
 function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
     const lines = content.split('\n');
     const out = []; const segmentUrls = [];
@@ -306,8 +324,8 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
     for (const line of lines) {
         if (line.startsWith('#')) {
             expectVariantPlaylist = line.startsWith('#EXT-X-STREAM-INF');
-            if (line.startsWith('#EXT-X-KEY:')) {
-                // Key URIs may be absolute or relative to the playlist URL.
+            if (line.startsWith('#EXT-X-KEY:') || line.startsWith('#EXT-X-MAP:')) {
+                // Key and init-section URIs may be absolute or relative to the playlist URL.
                 const uriMatch = line.match(/URI="([^"]+)"/);
                 if (uriMatch) {
                     try {
@@ -318,14 +336,15 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
                     } catch { out.push(line); }
                 } else out.push(line);
             } else if (line.startsWith('#EXT-X-MEDIA:') || line.startsWith('#EXT-X-I-FRAME-STREAM-INF:')) {
-                const uriMatch = line.match(/URI="([^"]+)"/);
+                const preferred = preferEnglishAudio(line);
+                const uriMatch = preferred.match(/URI="([^"]+)"/);
                 if (uriMatch) {
                     try {
                         const mediaUrl = new URL(uriMatch[1], targetUrl).href;
                         const proxyUrl = proxyUrlFor('/m3u8-proxy', baseProxyUrl, mediaUrl, headers);
-                        out.push(line.replace(uriMatch[1], () => proxyUrl));
-                    } catch { out.push(line); }
-                } else out.push(line);
+                        out.push(preferred.replace(uriMatch[1], () => proxyUrl));
+                    } catch { out.push(preferred); }
+                } else out.push(preferred);
             } else out.push(line);
         } else if (line.trim()) {
             try {
@@ -346,13 +365,25 @@ function rewriteM3u8(content, targetUrl, baseProxyUrl, headers) {
                     // signed-header forwarding.
                     segmentUrls.push(abs);
                     out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
-                } else out.push(abs);
+                } else if (/^data:/i.test(abs)) {
+                    out.push(abs);
+                } else {
+                    // Providers disguise transport segments with image extensions
+                    // (e.g. `s_0.jpg` containing MPEG-TS) or omit the extension.
+                    // Anything that is not a playlist is media, so proxy it too:
+                    // leaving it absolute breaks CORS and signed-header forwarding.
+                    segmentUrls.push(abs);
+                    out.push(proxyUrlFor('/ts-proxy', baseProxyUrl, abs, headers));
+                }
             } catch { out.push(line); }
             expectVariantPlaylist = false;
         } else out.push(line);
     }
     if (segmentUrls.length && !isCacheDisabled()) {
-        Promise.all(segmentUrls.map(u => prefetchSegment(u, headers))).catch(() => undefined);
+        // Warm only the first few segments. VOD playlists can list thousands of
+        // segments; prefetching them all saturates the upstream and starves the
+        // segment requests the player is actually waiting on.
+        Promise.all(segmentUrls.slice(0, PREFETCH_LIMIT).map(u => prefetchSegment(u, headers))).catch(() => undefined);
     }
     return out.join('\n');
 }
