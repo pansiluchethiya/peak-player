@@ -3,8 +3,19 @@ title: Self-hosting
 description: Run the API, player, and docs with the right secrets, URLs, and reverse-proxy rules.
 ---
 
-Peak is a Node.js API plus a Next.js player. The docs site is a separate Next.js app. You can run
-them directly with npm or with the provided Docker Compose stack.
+Peak is a Node.js API plus Next.js player, admin, and docs apps. You can run them directly with
+npm or pnpm, or with the provided Docker Compose stack.
+
+> **GitHub:** \`https://github.com/pansiluchethiya/peak-player\`
+
+## Services
+
+| Service | Port | App | Purpose |
+| --- | --- | --- | --- |
+| `peak` | 8787 | Express | API server |
+| `player` | 3001 | Next.js | Player + landing page |
+| `admin` | 3003 | Next.js | Admin control panel |
+| `docs` | 3002 | Next.js | Documentation |
 
 ## Requirements
 
@@ -39,15 +50,18 @@ EMBED_PARTNERS=[{"id":"partner","name":"Partner","apiKey":"<long key>","origins"
 | `EMBED_PARTNERS` | For embeds | JSON array of partner objects |
 | `EMBED_DEMO_API_KEY` | Demo only | Must match a partner key |
 | `NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED` | No | Off unless set to `1` at build time |
+| `PEAK_DOCS_URL` | No | Documentation URL for link redirection. Default: `https://docs.peak-player.com` |
+| `NEXT_PUBLIC_DOCS_URL` | No | Build-time version of `PEAK_DOCS_URL` for the player client bundle |
 
 <Callout type="warn" title="NEXT_PUBLIC values are build-time">
   `NEXT_PUBLIC_ALLOW_THIRD_PARTY_EMBED` is compiled into the client bundle. Changing it at runtime
   does nothing; rebuild the player image after changing it.
 </Callout>
 
-## Local development
+## Local development (npm)
 
 ```bash
+cp .env.example .env.local
 npm install
 npm --prefix player install
 npm --prefix docs install
@@ -56,8 +70,19 @@ npm --prefix player run dev
 npm --prefix docs run dev
 ```
 
-The player dev server runs on port 3001; the docs dev server runs on port 3002. The API port comes
-from `API_PORT` (default `8787`).
+The player dev server runs on port 3001; the docs dev server runs on port 3002.
+The admin dev server runs on port 3003. The API port comes from `API_PORT`
+(default `8787`).
+
+## Local development (pnpm)
+
+```bash
+cp .env.example .env.local
+pnpm install
+pnpm --filter peak dev
+```
+
+This starts all services (API, player, admin, docs) concurrently.
 
 ## Docker Compose
 
@@ -65,8 +90,23 @@ from `API_PORT` (default `8787`).
 docker compose up --build
 ```
 
-The compose file starts `peak` on `8787` and `peak-player` on `3001`. It includes a development-only
-demo partner:
+The compose file starts four services:
+
+- `peak` on `8787` — API server
+- `player` on `3001` — Next.js player
+- `admin` on `3003` — Next.js admin
+- `docs` on `3002` — Next.js documentation
+
+Each service reads its configuration from a per-service `.env` file:
+
+| File | Service |
+| --- | --- |
+| `.env.peak.local` | API server |
+| `.env.player.local` | Player |
+| `.env.admin.local` | Admin |
+| `.env.docs.local` | Docs |
+
+The compose file includes a development-only demo partner:
 
 ```json
 {"id":"demo","name":"Peak Demo","apiKey":"demo-key-change-me","origins":["http://localhost:3001"]}

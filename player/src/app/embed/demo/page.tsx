@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Peak Embed demo',
   description: 'Try the signed Peak embed player and SDK.',
+  robots: { index: false, follow: false },
 };
 
 export default function EmbedDemoPage() {

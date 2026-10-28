@@ -1,0 +1,77 @@
+---
+title: AI Embedding guide
+description: Partner integration with the Peak SDK and postMessage protocol.
+---
+
+## Load the SDK
+
+```html
+<script src="https://app.peak-player.com/peak-embed.js"></script>
+```
+
+## Mount
+
+```js
+const player = PeakEmbed.mount({
+  target: '#peak-player',
+  url: embedUrl,
+  title: 'Movie Title',
+});
+```
+
+## Commands
+
+```js
+player.play();
+player.pause();
+player.seek(seconds);
+player.setVolume(0.5);
+player.setQuality('1080p');
+player.setSubtitles('en');  // or false to disable
+player.setSpeed(1.25);
+player.setPiP(true);
+player.setFullscreen(true);
+```
+
+## Events
+
+```js
+player.on('ready', () => {});
+player.on('play', () => {});
+player.on('playing', () => {});
+player.on('pause', () => {});
+player.on('timeupdate', ({ currentTime, duration }) => {});
+player.on('sourcechange', ({ quality, provider }) => {});
+player.on('subtitlechange', ({ lang, label }) => {});
+player.on('ended', () => {});
+player.on('error', ({ code, message }) => {});
+```
+
+## postMessage protocol
+
+Origin: `https://app.peak-player.com`
+
+```js
+const iframe = document.getElementById('peak-iframe');
+const target = 'https://app.peak-player.com';
+
+// Send a command
+iframe.contentWindow.postMessage({ type: 'PEAK_COMMAND', cmd: 'play' }, target);
+
+// Listen for events
+window.addEventListener('message', (e) => {
+  if (e.origin !== target) return;
+  if (e.data.type === 'PEAK_EVENT') {
+    console.log(e.data.event, e.data.payload);
+  }
+});
+```
+
+Commands: `play`, `pause`, `seek`, `setVolume`, `setQuality`, `setSubtitles`, `setSpeed`, `setPiP`, `setFullscreen`, `setAudioBoost`, `setColorFilter`, `setServer`, `reload`.
+
+Events: `ready`, `play`, `pause`, `timeupdate`, `sourcechange`, `subtitlechange`, `ended`, `error`, `diagnostic`.
+
+Files:
+- `player/src/app/embed/[...]/page.tsx` — embed routes
+- `player/src/lib/embedPage.ts` — config extraction
+- `player/sdk-contract.json` — full SDK contract

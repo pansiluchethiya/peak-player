@@ -4,6 +4,13 @@
     "index",
     "quickstart",
     "concepts",
+    "providers",
+    "thumbnails",
+    "subtitles",
+    "dubs",
+    "colour",
+    "audio-boost",
+    "server-switching",
     "guides",
     "reference",
     "api-reference",
@@ -15,6 +22,9 @@
     "changelog",
     "status",
     "legal",
-    "faq"
+    "faq",
+    "admin-tokens",
+    "admin-proxies",
+    "admin-features"
   ]
 }

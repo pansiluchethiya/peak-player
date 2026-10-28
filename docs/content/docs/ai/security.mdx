@@ -1,0 +1,86 @@
+---
+title: AI Security
+description: Threat model, token signing, SSRF, and CSP.
+---
+
+## Threat model
+
+- **Upstream exposure:** Provider URLs must never reach the browser.
+- **Open proxy:** Signed proxy URLs prevent arbitrary fetching.
+- **Token forgery:** HMAC-SHA256 (AES-256-GCM) prevents tampering.
+- **Frame injection:** frame-ancestors allowlist blocks unauthorized origins.
+- **SSRF:** Proxy validates downstream URLs against private ranges.
+
+## Token signing
+
+AES-256-GCM, not JWT. Opaque.
+
+```js
+// Sign
+const token = signEmbedToken({
+  v: 1,
+  partnerId: 'demo',
+  type: 'movie',
+  id: '550',
+  origins: ['https://app.example.com'],
+  iat: Date.now(),
+  exp: Date.now() + 900_000,
+}, secret);
+
+// Verify
+const payload = verifyEmbedToken(token, secret, origin);
+// throws on invalid/expired/mismatched origin
+```
+
+TTL range: 60s–24h. Default 15min.
+
+File: `utils/embedToken.js`. Key env: `EMBED_TOKEN_SECRET`.
+
+## Proxy signing
+
+```js
+// Generate signed proxy URL
+const signedUrl = signProxyUrl('https://upstream.com/master.m3u8', {
+  exp: Date.now() + 3600_000,
+  corsOrigins: ['https://app.example.com'],
+  headers: { Origin: 'http://localhost:3011' },
+}, secret);
+```
+
+File: `utils/proxySigner.js`. Env: `PROXY_SIGNING_SECRET`.
+
+## SSRF protection
+
+- Private IP ranges blocked: `10.x`, `172.16-31.x`, `192.168.x`, `127.x`, `169.254.x`
+- localhost blocked
+- Link-local addresses blocked
+- DNS rebinding: resolved hostname checked against allowlist
+
+File: `utils/ssrfGuard.js`. Tested in `tests/ssrfGuard.test.js`.
+
+## CSP
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+- `default-src 'self'`
+- `frame-ancestors` derived from token origins (exact, no wildcard)
+- `connect-src` allows media proxy
+
+File: `middleware.ts` (player).
+
+## Origin validation
+
+- Partner origins: exact match only (no wildcard, no substring)
+- Embed token origins: checked at middleware
+- Proxy CORS: exact origins, no wildcard
+
+## Secrets management
+
+| Secret | Env var |
+|---|---|
+| Embed token secret | `EMBED_TOKEN_SECRET` |
+| Proxy signing secret | `PROXY_SIGNING_SECRET` |
+| TMDB API key | `TMDB_API_KEY` |
+| Partner API keys | `EMBED_PARTNERS` |

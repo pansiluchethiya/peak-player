@@ -37,10 +37,10 @@ const WRAPPER_HEADERS = {
 };
 
 const PROVIDERS = [
-  { id: 'apogee', label: 'Apogee', provider: 'Rive Apogee' },
-  { id: 'vanguard', label: 'Vanguard', provider: 'Rive Vanguard' },
-  { id: 'pulse', label: 'Pulse', provider: 'Rive Pulse' },
-  { id: 'citadel', label: 'Citadel', provider: 'Rive Citadel' },
+  { id: 'apogee', label: 'Apogee', provider: 'Peak Prime' },
+  { id: 'vanguard', label: 'Vanguard', provider: 'Peak Stellar' },
+  { id: 'pulse', label: 'Pulse', provider: 'Peak Nexus' },
+  { id: 'citadel', label: 'Citadel', provider: 'Peak Orbit' },
 ];
 
 const LANGUAGE_CODES = {

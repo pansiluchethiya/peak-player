@@ -1,0 +1,68 @@
+---
+title: "Admin: Proxy management"
+description: Create, list, revoke proxies and view the provider health dashboard.
+---
+
+The Peak admin panel provides a proxy management interface at `/admin/proxies`.
+
+## Proxy definitions
+
+Proxies are stored in the `peak_config` SQLite table under the `proxies` key.
+Each proxy definition includes:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier |
+| `name` | string | Human-readable name |
+| `upstreamUrl` | string | Upstream proxy URL |
+| `headers` | object | Custom headers for upstream |
+| `corsOrigins` | string[] | Allowed CORS origins |
+| `createdAt` | ISO date | Creation timestamp |
+
+## API
+
+```
+GET    /api/admin/proxies        — list all proxies
+POST   /api/admin/proxies        — create a proxy
+DELETE /api/admin/proxies/:id    — revoke a proxy
+```
+
+### Create a proxy
+
+```bash
+curl -X POST https://api.peak-player.com/api/admin/proxies \
+  -b "session=$ADMIN_SESSION" \
+  -H "content-type: application/json" \
+  -d '{
+    "name": "Custom upstream",
+    "upstreamUrl": "https://proxy.example.com",
+    "headers": {"User-Agent": "Peak-Proxy"},
+    "corsOrigins": ["https://app.example.com"]
+  }'
+```
+
+## Health dashboard
+
+The proxy manager includes a live health dashboard showing:
+
+- Provider name
+- Status (healthy/unhealthy)
+- Average latency (ms)
+- Error count
+
+Data source: `GET /api/v1/playback/health`.
+
+## Admin UI
+
+1. Navigate to `/admin/proxies`.
+2. Click **New proxy**.
+3. Fill in: Name, Upstream URL, Headers (JSON), CORS origins.
+4. Click **Create**.
+5. View provider health in the dashboard below.
+
+## Files
+
+- `utils/adminConfig.js` — proxy CRUD helpers
+- `routes/adminConfigRoutes.js` — `/api/admin/proxies` endpoints
+- `admin/components/ProxyManager.tsx` — React component
+- `admin/app/proxies/page.tsx` — admin page

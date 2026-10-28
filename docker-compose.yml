@@ -66,6 +66,51 @@ services:
       start_period: 20s
       retries: 3
 
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: peak-admin
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://peak:8787
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:8787}
+      - PEAK_DOCS_URL=${PEAK_DOCS_URL:-https://docs.peak-player.com}
+      - NEXT_PUBLIC_DOCS_URL=${NEXT_PUBLIC_DOCS_URL:-https://docs.peak-player.com}
+      - PORT=3003
+    ports:
+      - "${ADMIN_PORT:-3003}:3003"
+    depends_on:
+      peak:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3003/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  docs:
+    build:
+      context: ./docs
+      dockerfile: Dockerfile
+    container_name: peak-docs
+    environment:
+      - NEXT_PUBLIC_DOCS_URL=${NEXT_PUBLIC_DOCS_URL:-https://docs.peak-player.com}
+      - PORT=3002
+    ports:
+      - "${DOCS_PORT:-3002}:3002"
+    depends_on:
+      peak:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3002/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
 volumes:
   user_config_data:
   # restart_marker:

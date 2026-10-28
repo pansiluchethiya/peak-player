@@ -1,0 +1,58 @@
+---
+title: Server switching
+description: Manual provider switching via the ServerMenu and SDK.
+---
+
+Peak allows users to manually switch between providers using the ServerMenu.
+Providers are identified by their display codenames (PRIME, STELLAR, NEXUS, ORBIT,
+etc.), not their technical keys.
+
+## SDK command
+
+```js
+// Switch to a specific provider by codename
+player.setServer('STELLAR');
+player.setServer('PRIME');
+player.setServer('NOVA');
+player.setServer('VESPER');
+```
+
+The player resolves the codename to the technical key server-side.
+
+## ServerMenu
+
+The ServerMenu appears in the player settings and lists all currently available
+sources grouped by provider codename.
+
+File: `player/src/components/player/menus/ServerMenu.tsx`.
+
+## Available codenames
+
+| Codename | Provider |
+|---|---|
+| `PRIME` | Peak Prime (Apogee) |
+| `STELLAR` | Peak Stellar (Vanguard) |
+| `NEXUS` | Peak Nexus (Pulse) |
+| `ORBIT` | Peak Orbit (Citadel, dubs) |
+| `NOVA` | NetMirror |
+| `VESPER` | VixSrc |
+| `ORION` | VidLink |
+| `LYRA` | Videasy |
+| `KESTREL` | ZXCStreams |
+| `HALCYON` | VaPlayer |
+| `MERIDIAN` | ShowBox |
+| `ATLAS` | 4KHDHub |
+| `CITADEL` | CastleTV |
+| `DUNE` | DahmerMovies |
+| `HELIOS` | HDGharTV |
+| `ONYX` | OneTouchTV |
+| `NOCTIS` | StreamFlix |
+
+## Source file
+
+`player/src/lib/servers.ts` — `SERVER_CODENAMES` map and lookup functions
+`codenameForProvider()` / `providerForCodename()`.
+
+## Feature toggle
+
+Server switching is enabled by default. Disable via `/admin/features/server-switching`.

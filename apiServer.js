@@ -334,7 +334,21 @@ app.get('/api/status', (req,res) => {
     'PATCH /api/admin/iptv/playlists/:id',
     'GET /api/admin/iptv/channels',
     'PATCH /api/admin/iptv/channels/:id',
-    'GET /api/admin/iptv/groups'
+    'GET /api/admin/iptv/groups',
+    'GET /api/admin/config',
+    'GET /api/admin/config/:key',
+    'POST /api/admin/config/:key',
+    'DELETE /api/admin/config/:key',
+    'GET /api/admin/features',
+    'POST /api/admin/features',
+    'GET /api/admin/tokens',
+    'POST /api/admin/tokens',
+    'DELETE /api/admin/tokens/:id',
+    'GET /api/admin/proxies',
+    'POST /api/admin/proxies',
+    'DELETE /api/admin/proxies/:id',
+    'GET /api/admin/iptv/categories',
+    'PATCH /api/admin/iptv/categories',
   ];
   // Determine cookie requirement heuristically (currently Showbox / PStream)
   const cookieRequiredProviders = new Set(['showbox']);
@@ -659,6 +673,11 @@ createIptvAdminRoutes(app, {
   config,
   saveConfigPatch,
 });
+
+// Admin config API — feature toggles, tokens, proxies, IPTV categories
+const { createAdminConfigRoutes } = require('./routes/adminConfigRoutes');
+createAdminConfigRoutes(app, { requireAuth });
+
 const { createPreferenceRoutes } = require('./routes/preferenceRoutes');
 const { readPreferences, writePreferences } = require('./utils/preferenceStore');
 createPreferenceRoutes(app, {
@@ -700,6 +719,20 @@ const server = app.listen(PORT, HOST, () => {
    console.log('  GET  /api/admin/iptv/channels');
    console.log('  PATCH /api/admin/iptv/channels/:id');
    console.log('  GET  /api/admin/iptv/groups');
+   console.log('  GET  /api/admin/config');
+   console.log('  GET  /api/admin/config/:key');
+   console.log('  POST /api/admin/config/:key');
+   console.log('  DELETE /api/admin/config/:key');
+   console.log('  GET  /api/admin/features');
+   console.log('  POST /api/admin/features');
+   console.log('  GET  /api/admin/tokens');
+   console.log('  POST /api/admin/tokens');
+   console.log('  DELETE /api/admin/tokens/:id');
+   console.log('  GET  /api/admin/proxies');
+   console.log('  POST /api/admin/proxies');
+   console.log('  DELETE /api/admin/proxies/:id');
+   console.log('  GET  /api/admin/iptv/categories');
+   console.log('  PATCH /api/admin/iptv/categories');
    console.log('  GET  /api/streams/:type/:id');
    console.log('  POST /api/streams/:type/:id');
   if (!config.febboxCookies || config.febboxCookies.length === 0) {

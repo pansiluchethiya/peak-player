@@ -18,17 +18,17 @@ describe('servers (codenames)', () => {
     assert.equal(codenameForProvider('hdghartv'), 'HELIOS');
     assert.equal(codenameForProvider('onetouchtv'), 'ONYX');
     assert.equal(codenameForProvider('streamflix'), 'NOCTIS');
-    assert.equal(codenameForProvider('rive apogee'), 'RIVE');
-    assert.equal(codenameForProvider('rive vanguard'), 'RIVE V');
-    assert.equal(codenameForProvider('rive pulse'), 'RIVE P');
-    assert.equal(codenameForProvider('rive citadel'), 'RIVE DUB');
+    assert.equal(codenameForProvider('rive apogee'), 'PRIME');
+    assert.equal(codenameForProvider('rive vanguard'), 'STELLAR');
+    assert.equal(codenameForProvider('rive pulse'), 'NEXUS');
+    assert.equal(codenameForProvider('rive citadel'), 'ORBIT');
   });
 
   it('round-trips codename <-> provider', () => {
     assert.equal(providerForCodename('NOVA'), 'netmirror');
     assert.equal(providerForCodename('noctis'), 'streamflix');
-    assert.equal(providerForCodename('RIVE V'), 'rive vanguard');
-    assert.equal(providerForCodename('RIVE DUB'), 'rive citadel');
+    assert.equal(providerForCodename('STELLAR'), 'rive vanguard');
+    assert.equal(providerForCodename('ORBIT'), 'rive citadel');
     assert.equal(providerForCodename('UNKNOWN'), null);
     assert.equal(codenameForProvider('unknown'), null);
   });

@@ -11,10 +11,38 @@ export const metadata: Metadata = {
     template: '%s · Peak Admin',
   },
   description:
-    'Peak administration portal — monitor providers, tune filtering, and manage your streaming API.',
+    'Peak administration portal — monitor providers, tune filtering, manage tokens, proxies, and feature toggles.',
+  openGraph: {
+    type: 'website',
+    locale: 'en-US',
+    url: 'https://admin.peak-player.com',
+    siteName: 'Peak Admin',
+    images: [
+      {
+        url: 'https://peak-player.com/og-admin.png',
+        width: 1200,
+        height: 630,
+        alt: 'Peak Admin — streaming control panel',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Peak Admin · streaming control panel',
+    description: 'Monitor providers, manage tokens, proxies, and feature toggles.',
+    images: ['https://peak-player.com/og-admin.png'],
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+  alternates: {
+    canonical: 'https://admin.peak-player.com',
+  },
   icons: {
     icon: '/assets/favicon.svg',
     shortcut: '/assets/favicon.svg',
+    apple: '/assets/apple-touch-icon.png',
   },
 };
 

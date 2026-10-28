@@ -1,0 +1,73 @@
+---
+title: AI URL reference
+description: Player and API URL patterns.
+---
+
+## Player routes
+
+| Pattern | Description |
+|---|---|
+| `/` | Landing page |
+| `/movie/{tmdbId}` | Movie player |
+| `/tv/{tmdbId}/{season}/{episode}` | TV player |
+| `/live/{channelId}` | Live TV player |
+| `/embed/movie/{tmdbId}?token=...` | Embedded movie |
+| `/embed/tv/{tmdbId}/{season}/{episode}?token=...` | Embedded TV |
+| `/embed/live/{channelId}?token=...` | Embedded live |
+| `/embed/demo` | Demo session |
+
+## API routes
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/embed/sessions` | Create signed embed session |
+| `GET` | `/api/v1/stream/{type}/{id}` | Validated stream JSON |
+| `GET` | `/api/v1/stream/events/{type}/{id}` | SSE stream events |
+| `GET` | `/api/v1/media/{type}/{id}` | Metadata |
+| `POST` | `/api/v1/thumbnails/{type}/{id}` | Thumbnail sprite |
+| `GET` | `/api/v1/thumbnails/{file}` | Thumbnail sprite file |
+| `GET` | `/api/v1/live/tv/channels` | List channels |
+| `GET` | `/api/v1/live/tv/groups` | List groups |
+| `GET` | `/api/v1/branding` | Branding metadata |
+| `GET` | `/api/v1/providers` | Visible provider list |
+| `GET` | `/api/v1/playback/health` | Health + telemetry |
+| `GET` | `/api/status` | Full status + metrics |
+| `GET` | `/api/config` | Runtime config |
+
+## Admin routes
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/admin/config` | List config keys |
+| `POST` | `/api/admin/config/:key` | Upsert config |
+| `DELETE` | `/api/admin/config/:key` | Delete config |
+| `GET` | `/api/admin/features` | List feature toggles |
+| `POST` | `/api/admin/features` | Update toggles |
+| `GET` | `/api/admin/tokens` | List tokens |
+| `POST` | `/api/admin/tokens` | Create token |
+| `DELETE` | `/api/admin/tokens/:id` | Revoke token |
+| `GET` | `/api/admin/proxies` | List proxies |
+| `POST` | `/api/admin/proxies` | Create proxy |
+| `DELETE` | `/api/admin/proxies/:id` | Revoke proxy |
+| `GET` | `/api/admin/iptv/categories` | List IPTV categories |
+| `PATCH` | `/api/admin/iptv/categories` | Update categories |
+| `GET` | `/api/admin/iptv/seed` | Seed config |
+| `PATCH` | `/api/admin/iptv/seed` | Update seed |
+
+## Provider query parameters
+
+```
+GET /api/streams/{provider}/{type}/{tmdbId}
+  ?source={provider}      // specific provider
+  ?season={n}             // TV season
+  ?episode={n}            // TV episode
+  ?invalidate=1           // bypass cache
+```
+
+Providers: `netmirror`, `vixsrc`, `vidlink`, `videasy`, `zxcstreams`,
+`vaplayer`, `showbox`, `4khdhub`, `castletv`, `dahmermovies`,
+`hdghartv`, `onetouchtv`, `streamflix`, `rive apogee`,
+`rive vanguard`, `rive pulse`, `rive citadel`.
+
+Technical keys are used in query params. Display codenames (PRIME, STELLAR, etc.)
+are resolved client-side from `player/src/lib/servers.ts`.

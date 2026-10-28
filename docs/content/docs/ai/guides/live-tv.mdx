@@ -1,0 +1,64 @@
+---
+title: AI Live TV guide
+description: HLS channel catalogs, IPTV categories, and live TV behavior.
+---
+
+## Resolve a channel
+
+```
+GET /api/v1/live/tv/channels?group=sports&limit=50
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "channels": [
+    {"id":"channel_sports_abc123","name":"Sports HD","group":"Sports","logo":"https://...","language":"en"}
+  ],
+  "nextCursor": "..."
+}
+```
+
+## Play a live channel
+
+```html
+<iframe src="https://app.peak-player.com/live/channel_sports_abc123?token=..."></iframe>
+```
+
+## IPTV seed config
+
+Controlled by environment:
+
+| Env var | Default | Description |
+|---|---|---|
+| `IPTV_SEED_ENABLED` | true | Enable iptv-org seed catalog |
+| `IPTV_SEED_CATEGORIES` | `*` | Categories to seed |
+| `IPTV_SEED_COUNTRIES` | `*` | Countries to seed |
+| `IPTV_SYNC_INTERVAL_MS` | 10800000 (3h) | Sync interval |
+| `IPTV_VALIDATE_CONCURRENCY` | 8 | Parallel validation |
+| `IPTV_VALIDATE_TIMEOUT_MS` | 6000 | Per-stream timeout |
+
+## Admin IPTV
+
+```
+GET  /api/admin/iptv/seed          — seed config status
+PATCH /api/admin/iptv/seed        — update seed config
+POST /api/admin/iptv/seed/sync     — run sync now
+GET  /api/admin/iptv/playlists    — list playlists
+POST /api/admin/iptv/playlists    — add playlist
+GET  /api/admin/iptv/channels     — list all channels (admin only)
+PATCH /api/admin/iptv/channels/:id — toggle channel enabled
+GET  /api/admin/iptv/groups       — list groups
+```
+
+Files:
+- `utils/iptvStore.js` — SQLite storage
+- `utils/iptvSync.js` — seed/sync scheduler
+- `routes/iptvAdminRoutes.js` — admin routes
+
+## Category toggles
+
+Admin UI: `/admin/iptv` or `/admin/features`.
+Config key: `iptv_categories` in `peak_config` table.

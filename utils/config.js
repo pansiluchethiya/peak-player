@@ -186,6 +186,7 @@ function applyConfigToEnv(cfg){
   delete process.env.VIDSRC_PROXY_URL;
   delete process.env.MOVIESMOD_PROXY_URL;
   if (cfg.defaultRegion) process.env.FEBBOX_REGION = cfg.defaultRegion; // alias
+  process.env.PEAK_DOCS_URL = cfg.docsUrl || 'https://docs.peak-player.com';
 }
 
 function loadConfig() {
@@ -217,6 +218,7 @@ function loadConfig() {
     autoplay: process.env.AUTO_PLAY !== undefined ? process.env.AUTO_PLAY : true,
     autoplayMuted: process.env.AUTO_PLAY_MUTED !== undefined ? process.env.AUTO_PLAY_MUTED : true,
     playerPreferenceMode: process.env.PLAYER_PREFERENCE_MODE || 'browser',
+    docsUrl: process.env.PEAK_DOCS_URL || 'https://docs.peak-player.com',
   };
   
   // Dynamic provider enable flags from env

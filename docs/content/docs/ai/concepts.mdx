@@ -1,0 +1,119 @@
+---
+title: AI Concepts
+description: Source pipeline, validation, ranking, failover, and the embed boundary.
+---
+
+## Pipeline
+
+```
+request
+  │
+  ├─▶ provider fan-out ──▶ candidate sources
+  │                         │
+  │                         ├─▶ metadata normalization
+  │                         ├─▶ validation (protocol, manifest, segment)
+  │                         └─▶ ranking (container, codec, quality, health)
+  │
+  ├─▶ SSE: meta, source, subtitle, diagnostic, done
+  │
+  └─▶ player: first playable source ──▶ Hls.js / video element
+                                          └─▶ signed proxy ──▶ upstream
+```
+
+## Provider fan-out
+
+For movies/TV, enabled providers are queried independently. Each response is normalized.
+A slow provider cannot block the rest.
+
+For live TV, the IPTV catalog is read and the requested channel resolved.
+Live sources are either browser-playable HLS or external iframe URLs.
+
+File: `apiServer.js:543` — aggregate streams endpoint.
+
+## Metadata normalization
+
+Raw provider metadata is inferred into:
+
+- **Container:** `hls`, `mp4`, `webm`, `mkv`, `ogv`, `unknown`
+- **Video codec:** `h264`, `hevc`, `av1`, `vp9`, `unknown`
+- **Audio codec:** `aac`, `ac3`, `eac3`, `atmos`, `dts`, `opus`, `unknown`
+- **HDR:** HDR10, Dolby Vision, or none
+
+File: `utils/sourceMetadata.js`.
+
+## Validation
+
+Sources must pass before they are exposed:
+
+- URL protocol and host safety (private-address blocking)
+- HLS manifest reachability and shape
+- Representative segment where required
+- Deadline and size limits
+
+File: `utils/sourceValidator.js`. Failures are in `diagnostic` SSE events.
+
+## Ranking
+
+HLS is preferred. Signals:
+
+| Signal | Effect |
+|---|---|
+| HLS container | Strong positive |
+| MP4 / WebM | Positive, below HLS |
+| H.264 video | Strong positive |
+| HEVC | Negative for browser |
+| 1080p / 720p | Positive |
+| Provider health | Small adjustment |
+| Provider order | Tie-breaker |
+
+File: `utils/sourceRanking.js`.
+
+## Progressive delivery (SSE)
+
+```text
+event: meta
+data: {"title":"Inception","year":"2010"}
+
+event: source
+data: {"url":"/api/proxy/...","quality":"1080p","provider":"netmirror","codec":"hls"}
+
+event: done
+data: {"meta":{"providers":5,"sources":3,"latencyMs":1840,"cacheHit":false}}
+```
+
+File: `utils/playerService.js` — `getPlayerStreamEvents()`.
+
+## Failover
+
+The player attaches the first ranked source to Hls.js. On failure, it advances to the next.
+No page reload. No session loss.
+
+File: `player/src/components/player/PlayerProvider.tsx`.
+
+## Embed boundary
+
+Token payload:
+
+```
+{ v, partnerId, type, id, season, episode, origins, iat, exp }
+```
+
+Signed with HMAC-SHA256. Encoded as `base64url(payload).base64url(signature)`.
+
+CSP header:
+
+```http
+Content-Security-Policy: frame-ancestors 'self' https://app.example.com
+```
+
+No wildcard. If origin not in token, browser refuses to frame.
+
+Files: `utils/embedToken.js`, `utils/embed.js`.
+
+## What stays server-side
+
+- Provider URLs and credentials
+- Partner API keys
+- Proxy signing secrets
+- Full diagnostics with upstream errors
+- TMDB API credentials

@@ -1,5 +1,6 @@
 import { PlayerRoot } from '@/components/player';
 import type { Media } from '@/lib/types';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,4 +36,27 @@ export default async function TvPage({
       preset={media.type === 'live_tv' ? 'live-video' : 'video'}
     />
   );
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string; season: string; episode: string }>;
+  searchParams: Promise<{ poster?: string }>;
+}): Promise<Metadata> {
+  const { id, season, episode } = await params;
+  const { poster } = await searchParams;
+  const posterUrl = poster || `https://image.tmdb.org/t/p/w500${id}.jpg`;
+  return {
+    title: `TV Show ${id} · Peak`,
+    openGraph: {
+      title: `TV Show ${id} · Peak Player`,
+      description: 'Watch using the Peak embeddable player.',
+      type: 'video.tv_show',
+      url: `https://app.peak-player.com/tv/${id}/${season}/${episode}`,
+      images: [{ url: posterUrl, width: 500, height: 750 }],
+    },
+    robots: { index: true, follow: true },
+  };
 }

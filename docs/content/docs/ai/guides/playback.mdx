@@ -1,0 +1,60 @@
+---
+title: AI Playback guide
+description: Source resolution, failover, and adaptive bitrate.
+---
+
+## Source resolution
+
+```js
+// Browser
+const events = fetchStreamEvents(apiBase, media, fingerprint, {
+  onMeta: (meta) => console.log(meta.title),
+  onSource: (s) => console.log('source', s.provider, s.quality),
+  onDone: (d) => console.log('ready', d.meta.providers, d.meta.sources),
+  onError: (e) => console.log('error', e.code),
+});
+```
+
+File: `player/src/lib/api.ts`.
+
+## Failover
+
+The player tries sources in ranked order. On failure, it logs a diagnostic
+and advances to the next source. No page reload.
+
+```js
+player.on('sourcechange', ({ quality, provider }) => {
+  // source swapped
+});
+player.on('diagnostic', ({ provider, ok }) => {
+  // health check result
+});
+```
+
+## ABR
+
+The player measures bandwidth and selects quality automatically.
+Manual override:
+
+```js
+player.setQuality('1080p');   // cap at 1080p
+player.setQuality('auto');    // back to auto
+```
+
+## Scrubber thumbnails
+
+Thumbnail VTT sprite previews on hover.
+
+Sources:
+- Provider-supplied `thumbnailVtt` (e.g., vidsrc thumbnails)
+- Remote VTT sprite from provider
+
+File: `player/src/components/player/media/useScrubberThumbnails.ts`.
+
+## Chapters
+
+```js
+player.on('chapterchange', ({ title, start }) => {});
+```
+
+File: `player/src/components/player/menus/ChaptersMenu.tsx`.

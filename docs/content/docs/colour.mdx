@@ -1,0 +1,62 @@
+---
+title: Colour filters
+description: CSS filter pipeline and WebGL colour pipeline.
+---
+
+Peak supports colour filters that can be applied to the player video. Two pipelines
+are available: a CSS filter pipeline and a WebGL pipeline.
+
+## Presets
+
+| Preset | Effect |
+|---|---|
+| `amaze` | Amazed — cool tint shift |
+| `night` | Night mode — reduce blue light |
+| `positive` | Photographic positive (invert colors) |
+| `negative` | Photographic negative |
+| `mono` | Monochrome |
+| `sepia` | Sepia tone |
+
+## Player integration
+
+```js
+player.setColorFilter('amaze');
+player.setColorFilter('night');
+player.setColorFilter(false);  // reset
+```
+
+### ColourMenu
+
+The ColourMenu in the player settings lists all presets.
+
+## Implementation
+
+### CSS filter pipeline
+
+Uses CSS `filter` properties applied to the video element. Fast, GPU-accelerated.
+
+File: `player/src/components/player/colour/CssFilterPipeline.ts`.
+
+### WebGL pipeline
+
+Uses a WebGL shader for more complex colour transformations. Slower but more flexible.
+
+File: `player/src/components/player/colour/WebGlPipeline.ts`.
+
+### Presets
+
+Available presets are defined in `player/src/components/player/colour/presets.ts`.
+
+## Feature toggle
+
+Colour filters are enabled by default. Disable via `/admin/features/color-filters`.
+
+## Custom presets
+
+You can extend the presets array in `presets.ts`:
+
+```ts
+export const colourPresets = [
+  { id: 'my-preset', label: 'My Preset', css: 'contrast(120%) hue-rotate(90deg)' },
+];
+```
