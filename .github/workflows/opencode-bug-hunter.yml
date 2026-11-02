@@ -39,7 +39,7 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
-          model: opencode/free
+          model: opencode/glm-5.3-flash-free
           agent: build
           prompt: |
             You are an expert autonomous bug hunter specializing in TypeScript, full-stack JavaScript frameworks, web applications, and containerized architectures.
