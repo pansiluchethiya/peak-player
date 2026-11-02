@@ -1,6 +1,6 @@
 {
   "name": "peak",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Peak — streaming source aggregation API with a self-hosted admin portal",
   "main": "apiServer.js",
   "scripts": {
