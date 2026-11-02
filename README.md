@@ -22,18 +22,6 @@ Peak turns TMDB IDs into playable streams. It aggregates 13 built-in providers, 
 
 The API and admin portal are a single Node.js service with no build step for the UI.
 
-## Screenshots
-
-| Light | Dark |
-| --- | --- |
-| ![Peak dashboard in light mode](screenshots/peak-dashboard-light.png) | ![Peak dashboard in dark mode](screenshots/peak-dashboard-dark.png) |
-
-| Providers | Mobile |
-| --- | --- |
-| ![Provider configuration](screenshots/peak-providers-light.png) | ![Peak on mobile](screenshots/peak-mobile-light.png) |
-
-More screenshots are available in [`screenshots/`](screenshots).
-
 ## Features
 
 - **13 providers** — Showbox/FebBox, 4KHDHub, VixSrc, Videasy, Vidlink, DahmerMovies, StreamFlix, VaPlayer, CastleTV, HDGharTV, NetMirror, OneTouchTV, and ZXCStreams.
