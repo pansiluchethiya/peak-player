@@ -370,7 +370,8 @@ For the companion Peak web frontend, call the API directly from the browser with
 
 ## License
 
-MIT. See [`LICENSE.md`](LICENSE.md).
+MIT. See [`LICENSE.md`](LICENSE.md)
+!NOTICE the license will be changed into AGPL 3.0 in the future.
 
 ## Acknowledgements
 
