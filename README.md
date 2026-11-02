@@ -24,7 +24,7 @@ The API and admin portal are a single Node.js service with no build step for the
 
 ## Features
 
-- **13 providers** — Showbox/FebBox, 4KHDHub, VixSrc, Videasy, Vidlink, DahmerMovies, StreamFlix, VaPlayer, CastleTV, HDGharTV, NetMirror, OneTouchTV, and ZXCStreams.
+- **14 providers** — Showbox/FebBox, 4KHDHub, VixSrc, Videasy, Vidlink, DahmerMovies, StreamFlix, VaPlayer, CastleTV, HDGharTV, NetMirror, OneTouchTV, and ZXCStreams, Rivestream.
 - **Aggregated streams** — Query one TMDB ID and receive normalized streams from every enabled provider.
 - **Provider controls** — Enable or disable providers, choose defaults, and run functional checks from the dashboard.
 - **TMDB key rotation** — Add multiple TMDB API keys and rotate them per request.
