@@ -35,43 +35,21 @@ jobs:
       - name: Install Dependencies
         run: npm install --prefer-offline --no-audit
 
-      - name: Sign in to OpenCode
-        env:
-          AUDIENCE: https://opencode.ai/console
-        run: |
-          set -euo pipefail
-          oidc=$(curl -sSf --oauth2-bearer "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | jq -r .value)
-          echo "OIDC token length: ${#oidc}"
-
-          resp=$(curl -sS -w '\n%{http_code}' https://opencode.ai/console/auth/oauth/token \
-            -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
-            -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
-            -d client_id=sk_b1ab9a5a-f689-4546-bd03-ff6c697a83a8 \
-            -d subject_token="$oidc")
-          code=$(echo "$resp" | tail -n1)
-          body=$(echo "$resp" | sed '$d')
-
-          if [ "$code" != "200" ]; then
-            echo "Token exchange failed ($code): $body"
-            exit 1
-          fi
-
-          token=$(echo "$body" | jq -r .access_token)
-          echo "::add-mask::$token"
-          echo "OPENCODE_API_KEY=$token" >> "$GITHUB_ENV"
-
       - name: Run OpenCode Autonomous Agent
         uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: opencode/glm-5.3-flash-free
           agent: build
+          use_github_token: true
           prompt: |
             You are an expert autonomous bug hunter specializing in TypeScript, full-stack JavaScript frameworks, web applications, and containerized architectures.
 
             This project contains 3 distinct applications alongside a Docker setup for one-click deployment. Inspect the codebase for the current trigger event. Look specifically for:
             1. Server-side rendering anomalies, hydration discrepancies, data streaming faults, or unhandled exceptions.
             2. Network configuration issues within your docker-compose or inefficiencies in multi-stage Dockerfiles that compromise deployment reliability.
-            3. Resource leaks, invalid API routes, cross-application contract mismatches, or missing environment configurations..
+            3. Resource leaks, invalid API routes, cross-application contract mismatches, or missing environment configurations.
 
             If you identify any definitive bugs or deployment regressions, write the fix immediately inside the affected application or configuration file, create a new branch, push the changes, and open a Pull Request back into the target branch detailing your findings.
