@@ -1,0 +1,65 @@
+name: OpenCode Autonomous Bug Hunter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  hunt-bugs:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --prefer-offline --no-audit
+
+      - name: Sign in to OpenCode
+        env:
+          AUDIENCE: https://opencode.ai/console
+        run: |
+          oidc=$(curl -sSf --oauth2-bearer "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | jq -r .value)
+          token=$(curl -sSf https://opencode.ai/console/auth/oauth/token \
+            -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+            -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
+            -d client_id=sk_b1ab9a5a-f689-4546-bd03-ff6c697a83a8 \
+            -d subject_token="$oidc" | jq -r .access_token)
+          echo "::add-mask::$token"
+          echo "OPENCODE_API_KEY=$token" >> "$GITHUB_ENV"
+
+      - name: Run OpenCode Autonomous Agent
+        uses: anomalyco/opencode/github@latest
+        with:
+          model: opencode/glm-5.3-flash-free
+          agent: build
+          prompt: |
+            You are an expert autonomous bug hunter specializing in TypeScript, full-stack JavaScript frameworks, web applications, and containerized architectures.
+
+            This project contains 3 distinct applications alongside a Docker setup for one-click deployment. Inspect the codebase for the current trigger event. Look specifically for:
+            1. Server-side rendering anomalies, hydration discrepancies, data streaming faults, or unhandled exceptions.
+            2. Network configuration issues within your docker-compose or inefficiencies in multi-stage Dockerfiles that compromise deployment reliability.
+            3. Resource leaks, invalid API routes, cross-application contract mismatches, or missing environment configurations.
+
+            If you identify any definitive bugs or deployment regressions, write the fix immediately inside the affected application or configuration file, create a new branch, push the changes, and open a Pull Request back into the target branch detailing your findings.
