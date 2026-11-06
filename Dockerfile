@@ -8,7 +8,7 @@ RUN apk add --no-cache python3 make g++
 
 # Install only production dependencies first (leveraging cache)
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy only required source (avoid sending screenshots, node_modules already installed)
 COPY apiServer.js ./
