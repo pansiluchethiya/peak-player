@@ -39,13 +39,25 @@ jobs:
         env:
           AUDIENCE: https://opencode.ai/console
         run: |
+          set -euo pipefail
           oidc=$(curl -sSf --oauth2-bearer "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | jq -r .value)
-          token=$(curl -sSf https://opencode.ai/console/auth/oauth/token \
+          echo "OIDC token length: ${#oidc}"
+
+          resp=$(curl -sS -w '\n%{http_code}' https://opencode.ai/console/auth/oauth/token \
             -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
             -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
             -d client_id=sk_b1ab9a5a-f689-4546-bd03-ff6c697a83a8 \
-            -d subject_token="$oidc" | jq -r .access_token)
+            -d subject_token="$oidc")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+
+          if [ "$code" != "200" ]; then
+            echo "Token exchange failed ($code): $body"
+            exit 1
+          fi
+
+          token=$(echo "$body" | jq -r .access_token)
           echo "::add-mask::$token"
           echo "OPENCODE_API_KEY=$token" >> "$GITHUB_ENV"
 
